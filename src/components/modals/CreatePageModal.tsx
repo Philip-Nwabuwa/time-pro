@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
+import { useCreatePage } from "@/lib/api/hooks";
 
 interface PageFormData {
   title: string;
@@ -23,11 +23,11 @@ interface PageFormData {
 
 export default function CreatePageModal() {
   const { isModalOpen, closeModal } = useModal();
+  const createPage = useCreatePage();
   const [formData, setFormData] = useState<PageFormData>({
     title: "",
     description: "",
   });
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -43,20 +43,14 @@ export default function CreatePageModal() {
     e.preventDefault();
 
     if (!formData.title.trim()) {
-      toast.error("Page title is required");
       return;
     }
 
-    setIsLoading(true);
-
     try {
-      // TODO: Implement API call to create page
-      console.log("Creating page:", formData);
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      toast.success("Page created successfully!");
+      await createPage.mutateAsync({
+        title: formData.title.trim(),
+        description: formData.description.trim() || null,
+      });
 
       // Reset form
       setFormData({
@@ -67,14 +61,13 @@ export default function CreatePageModal() {
       // Close modal
       closeModal();
     } catch (error) {
-      toast.error("Failed to create page. Please try again.");
-    } finally {
-      setIsLoading(false);
+      // Error handling is done in the hook with toast notifications
+      console.error("Failed to create page:", error);
     }
   };
 
   const handleClose = () => {
-    if (!isLoading) {
+    if (!createPage.isPending) {
       setFormData({
         title: "",
         description: "",
@@ -103,7 +96,7 @@ export default function CreatePageModal() {
               placeholder="Enter page title"
               value={formData.title}
               onChange={handleInputChange}
-              disabled={isLoading}
+              disabled={createPage.isPending}
               required
             />
           </div>
@@ -116,7 +109,7 @@ export default function CreatePageModal() {
               placeholder="Describe your event page..."
               value={formData.description}
               onChange={handleInputChange}
-              disabled={isLoading}
+              disabled={createPage.isPending}
               className="min-h-[80px]"
             />
           </div>
@@ -126,16 +119,16 @@ export default function CreatePageModal() {
               type="button"
               variant="outline"
               onClick={handleClose}
-              disabled={isLoading}
+              disabled={createPage.isPending}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={isLoading || !formData.title.trim()}
+              disabled={createPage.isPending || !formData.title.trim()}
               className="bg-green-600 hover:bg-green-700 focus:ring-green-500"
             >
-              {isLoading ? "Creating..." : "Create Page"}
+              {createPage.isPending ? "Creating..." : "Create Page"}
             </Button>
           </DialogFooter>
         </form>

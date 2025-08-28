@@ -114,7 +114,7 @@ export default function DiscoveryPage() {
         (event) =>
           event.title.toLowerCase().includes(query.toLowerCase()) ||
           event.description.toLowerCase().includes(query.toLowerCase()) ||
-          (event.eventCode && event.eventCode.includes(query))
+          (event.eventCode && event.eventCode.includes(query)),
       );
       setFilteredEvents(filtered);
     }

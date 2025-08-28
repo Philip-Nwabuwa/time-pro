@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -21,58 +20,21 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import {
-  fetchPageById,
-  fetchEventsByPageId,
-  fetchMembersByPageId,
-  type PageData,
-  type Event,
-  type Member,
-} from "@/lib/mockApi";
+import { usePage, usePageEvents, usePageMembers } from "@/lib/api/hooks";
 
 export default function PageDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const pageId = params.id as string;
 
-  const [page, setPage] = useState<PageData | null>(null);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [eventsLoading, setEventsLoading] = useState(false);
-  const [membersLoading, setMembersLoading] = useState(false);
-
-  useEffect(() => {
-    const loadPageData = async () => {
-      try {
-        const pageData = await fetchPageById(pageId);
-        setPage(pageData);
-
-        if (pageData) {
-          setEventsLoading(true);
-          setMembersLoading(true);
-
-          const [eventsData, membersData] = await Promise.all([
-            fetchEventsByPageId(pageId),
-            fetchMembersByPageId(pageId),
-          ]);
-
-          setEvents(eventsData);
-          setMembers(membersData);
-        }
-      } catch (error) {
-        console.error("Failed to load page data:", error);
-      } finally {
-        setLoading(false);
-        setEventsLoading(false);
-        setMembersLoading(false);
-      }
-    };
-
-    if (pageId) {
-      loadPageData();
-    }
-  }, [pageId]);
+  const {
+    data: page,
+    isLoading: pageLoading,
+    error: pageError,
+  } = usePage(pageId);
+  const { data: events = [], isLoading: eventsLoading } = usePageEvents(pageId);
+  const { data: members = [], isLoading: membersLoading } =
+    usePageMembers(pageId);
 
   const handleBackClick = () => {
     router.push("/");
@@ -103,12 +65,24 @@ export default function PageDetailsPage() {
     }
   };
 
-  if (loading || !page) {
+  if (pageLoading) {
     return (
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
           <span className="ml-2 text-gray-500">Loading page details...</span>
+        </div>
+      </main>
+    );
+  }
+
+  if (pageError || !page) {
+    return (
+      <main className="mx-auto max-w-6xl px-6 py-8">
+        <div className="flex items-center justify-center py-12">
+          <span className="text-red-500">
+            Failed to load page details. Please try again.
+          </span>
         </div>
       </main>
     );

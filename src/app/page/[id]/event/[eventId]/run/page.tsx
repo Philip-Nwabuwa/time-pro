@@ -28,7 +28,20 @@ import {
   ImagePlus,
   CheckSquare,
 } from "lucide-react";
-import { fetchEventDetails, type EventDetails } from "@/lib/mockApi";
+import { useEventDetails } from "@/lib/api/hooks";
+import {
+  fetchEventSessionAll,
+  createQnaQuestion,
+  updateQnaQuestion,
+  deleteQnaQuestion,
+  uploadSessionPhoto,
+  deleteSessionPhoto,
+  getPhotoPublicUrl,
+  upsertSessionData,
+  type QnaQuestion,
+  type SessionPhoto
+} from "@/lib/api/eventSessions";
+import { toast } from "sonner";
 
 function formatSeconds(total: number) {
   const m = Math.floor(total / 60)
@@ -223,8 +236,11 @@ export default function RunEventPage() {
   const pageId = params.id as string;
   const eventId = params.eventId as string;
 
-  const [details, setDetails] = useState<EventDetails | null>(null);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: details,
+    isLoading: loading,
+    error,
+  } = useEventDetails(pageId, eventId);
 
   // Fullscreen modal state
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -241,20 +257,17 @@ export default function RunEventPage() {
 
   // Q&A Session state
   const [qnaQuestion, setQnaQuestion] = useState("");
-  const [qnaMessages, setQnaMessages] = useState<
-    Array<{
-      id: string;
-      question: string;
-      timestamp: Date;
-      answered?: boolean;
-    }>
-  >([]);
+  const [qnaMessages, setQnaMessages] = useState<QnaQuestion[]>([]);
+  const [loadingQna, setLoadingQna] = useState(false);
 
   // Right panel tabs and photo state
   const [activeToolTab, setActiveToolTab] = useState<"qna" | "photos">(
     "photos",
   );
-  const [photos, setPhotos] = useState<string[]>(["/window.svg"]);
+  const [photos, setPhotos] = useState<Array<{ id: string; url: string; photo: SessionPhoto; selected?: boolean }>>();
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // User details modal state
   const [selectedUser, setSelectedUser] = useState<{
@@ -320,6 +333,9 @@ export default function RunEventPage() {
 
     const nextIndex = currentSpeakerIndex + 1;
     if (nextIndex < details.schedule.length) {
+      // Save current speaker's final time before switching
+      saveSessionState();
+      
       setCurrentSpeakerIndex(nextIndex);
       setSeconds(0); // Reset timer
       setAddedTime(0); // Reset added time
@@ -342,39 +358,239 @@ export default function RunEventPage() {
   };
 
   // Q&A functions
-  const handleSendQuestion = () => {
-    if (qnaQuestion.trim()) {
-      const newQuestion = {
-        id: Date.now().toString(),
+  const handleSendQuestion = async () => {
+    if (!qnaQuestion.trim() || !eventId) return;
+    
+    setLoadingQna(true);
+    try {
+      const newQuestion = await createQnaQuestion({
+        event_id: eventId,
         question: qnaQuestion.trim(),
-        timestamp: new Date(),
-        answered: false,
-      };
+        answered: false
+      });
       setQnaMessages((prev) => [...prev, newQuestion]);
       setQnaQuestion("");
+      toast.success("Question added");
+    } catch (error) {
+      console.error("Error creating question:", error);
+      toast.error("Failed to add question");
+    } finally {
+      setLoadingQna(false);
     }
   };
 
-  const toggleQuestionAnswered = (questionId: string) => {
-    setQnaMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === questionId ? { ...msg, answered: !msg.answered } : msg,
-      ),
-    );
+  const toggleQuestionAnswered = async (questionId: string) => {
+    const question = qnaMessages.find(q => q.id === questionId);
+    if (!question) return;
+
+    try {
+      const updated = await updateQnaQuestion(questionId, {
+        answered: !question.answered
+      });
+      setQnaMessages((prev) =>
+        prev.map((msg) => msg.id === questionId ? updated : msg)
+      );
+      toast.success(updated.answered ? "Marked as answered" : "Marked as unanswered");
+    } catch (error) {
+      console.error("Error updating question:", error);
+      toast.error("Failed to update question");
+    }
   };
 
-  useEffect(() => {
-    const load = async () => {
+  // Photo functions
+  const handleFileUpload = async (files: File[]) => {
+    if (!eventId || files.length === 0) return;
+
+    setUploadingPhoto(true);
+    try {
+      const uploadPromises = files.map(file => uploadSessionPhoto(eventId, file));
+      const results = await Promise.all(uploadPromises);
+      
+      const newPhotos = results.map(({ photo, publicUrl }) => ({
+        id: photo.id,
+        url: publicUrl,
+        photo,
+        selected: false
+      }));
+      
+      setPhotos((prev = []) => [...prev, ...newPhotos]);
+      toast.success(`Uploaded ${files.length} photo${files.length > 1 ? 's' : ''}`);
+    } catch (error) {
+      console.error("Error uploading photos:", error);
+      toast.error("Failed to upload photos");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    try {
+      await deleteSessionPhoto(photoId);
+      setPhotos((prev = []) => prev.filter(p => p.id !== photoId));
+      toast.success("Photo deleted");
+    } catch (error) {
+      console.error("Error deleting photo:", error);
+      toast.error("Failed to delete photo");
+    }
+  };
+
+  // Save session state periodically
+  const saveSessionState = async () => {
+    if (!eventId) return;
+    
+    const sessionState = {
+      currentSpeakerIndex,
+      seconds,
+      addedTime,
+      hasStarted,
+      isRunning: false, // Don't persist running state
+      timerPausedAt: isRunning ? null : new Date().toISOString(), // Track when timer was paused
+      savedAt: new Date().toISOString()
+    };
+
+    try {
+      await upsertSessionData(eventId, sessionState);
+    } catch (error) {
+      console.error("Error saving session state:", error);
+    }
+  };
+
+  // Photo selection functions
+  const togglePhotoSelection = (photoId: string) => {
+    setSelectedPhotos(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(photoId)) {
+        newSet.delete(photoId);
+      } else {
+        newSet.add(photoId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllPhotos = () => {
+    if (!photos) return;
+    const allPhotoIds = photos.map(p => p.id);
+    setSelectedPhotos(new Set(allPhotoIds));
+  };
+
+  const deselectAllPhotos = () => {
+    setSelectedPhotos(new Set());
+  };
+
+  const downloadSelectedPhotos = async () => {
+    if (!photos || selectedPhotos.size === 0) return;
+    
+    const selectedPhotoData = photos.filter(photo => selectedPhotos.has(photo.id));
+    
+    // For multiple photos, create a zip file or download individually
+    for (const photo of selectedPhotoData) {
       try {
-        const d = await fetchEventDetails(pageId, eventId);
-        setDetails(d);
-      } finally {
-        setLoading(false);
+        const response = await fetch(photo.url);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = photo.photo.file_name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error(`Error downloading ${photo.photo.file_name}:`, error);
+      }
+    }
+    
+    toast.success(`Downloaded ${selectedPhotos.size} photo${selectedPhotos.size > 1 ? 's' : ''}`);
+  };
+
+  const deleteSelectedPhotos = async () => {
+    if (selectedPhotos.size === 0) return;
+    
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete ${selectedPhotos.size} selected photo${selectedPhotos.size > 1 ? 's' : ''}?`
+    );
+    
+    if (!confirmDelete) return;
+    
+    try {
+      await Promise.all(
+        Array.from(selectedPhotos).map(photoId => deleteSessionPhoto(photoId))
+      );
+      
+      setPhotos(prev => prev?.filter(p => !selectedPhotos.has(p.id)));
+      setSelectedPhotos(new Set());
+      toast.success(`Deleted ${selectedPhotos.size} photo${selectedPhotos.size > 1 ? 's' : ''}`);
+    } catch (error) {
+      console.error("Error deleting photos:", error);
+      toast.error("Failed to delete some photos");
+    }
+  };
+
+
+  // Load session data on mount
+  useEffect(() => {
+    const loadSessionData = async () => {
+      if (!eventId) return;
+      
+      try {
+        const { questions, photos: sessionPhotos, sessionData } = await fetchEventSessionAll(eventId);
+        
+        // Load Q&A questions
+        setQnaMessages(questions);
+        
+        // Load photos with public URLs
+        if (sessionPhotos.length > 0) {
+          const photosWithUrls = await Promise.all(
+            sessionPhotos.map(async (photo) => ({
+              id: photo.id,
+              url: await getPhotoPublicUrl(photo.file_path),
+              photo,
+              selected: false
+            }))
+          );
+          setPhotos(photosWithUrls);
+        } else {
+          setPhotos([]);
+        }
+        
+        // Restore session state if available
+        if (sessionData?.session_data) {
+          const state = sessionData.session_data as any;
+          console.log('Restoring session state:', state);
+          
+          if (state.currentSpeakerIndex !== undefined) {
+            setCurrentSpeakerIndex(state.currentSpeakerIndex);
+          }
+          if (state.addedTime !== undefined) {
+            setAddedTime(state.addedTime);
+          }
+          if (state.hasStarted !== undefined) {
+            setHasStarted(state.hasStarted);
+          }
+          
+          // Restore timer with consideration for pause time
+          if (state.seconds !== undefined) {
+            let restoredSeconds = state.seconds;
+            
+            // If timer was paused and we have a pause timestamp, don't add elapsed time
+            // If timer was running, we would need to calculate elapsed time, but since we save
+            // isRunning as false, we assume it was paused
+            setSeconds(restoredSeconds);
+            
+            console.log(`Timer restored to: ${restoredSeconds} seconds`);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading session data:", error);
+        setPhotos([]);
       }
     };
-    load();
-  }, [pageId, eventId]);
 
+    loadSessionData();
+  }, [eventId]);
+
+  // Timer effect
   useEffect(() => {
     if (!isRunning) return;
     intervalRef.current = window.setInterval(
@@ -385,6 +601,33 @@ export default function RunEventPage() {
       if (intervalRef.current) window.clearInterval(intervalRef.current);
     };
   }, [isRunning]);
+
+  // Auto-save session state periodically and when timer state changes
+  useEffect(() => {
+    const saveInterval = setInterval(() => {
+      saveSessionState();
+    }, 30000); // Save every 30 seconds
+    return () => clearInterval(saveInterval);
+  }, [currentSpeakerIndex, seconds, addedTime, hasStarted, isRunning, eventId]);
+
+  // Save state immediately when timer stops (paused)
+  useEffect(() => {
+    if (!isRunning && hasStarted) {
+      // Timer was paused, save state immediately
+      saveSessionState();
+    }
+  }, [isRunning, hasStarted]);
+
+  // Save state when component unmounts or speaker changes
+  useEffect(() => {
+    return () => {
+      saveSessionState();
+    };
+  }, []);
+
+  useEffect(() => {
+    saveSessionState();
+  }, [currentSpeakerIndex]);
 
   // Handle ESC key to exit fullscreen
   useEffect(() => {
@@ -416,10 +659,20 @@ export default function RunEventPage() {
     );
   }
 
-  if (!details) {
+  if (error || !details) {
     return (
       <main className="mx-auto max-w-6xl px-6 py-8">
-        <p className="text-gray-500">Event not found.</p>
+        <p className="text-red-500">
+          {error ? `Error loading event: ${error.message}` : "Event not found."}
+        </p>
+        <Button
+          variant="outline"
+          onClick={() => router.push(`/page/${pageId}/event/${eventId}`)}
+          className="mt-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Event Details
+        </Button>
       </main>
     );
   }
@@ -639,9 +892,9 @@ export default function RunEventPage() {
                     <Button
                       variant="secondary"
                       onClick={handleSendQuestion}
-                      disabled={!qnaQuestion.trim()}
+                      disabled={!qnaQuestion.trim() || loadingQna}
                     >
-                      Send
+                      {loadingQna ? "Sending..." : "Send"}
                     </Button>
                   </div>
 
@@ -671,7 +924,7 @@ export default function RunEventPage() {
                                 {msg.question}
                               </div>
                               <div className="text-xs text-gray-500 mt-1">
-                                {msg.timestamp.toLocaleTimeString()}
+                                {new Date(msg.created_at || '').toLocaleTimeString()}
                               </div>
                             </div>
                             <Button
@@ -697,20 +950,57 @@ export default function RunEventPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="font-medium">Photo Gallery</div>
-                      <Badge variant="secondary" className="text-xs">
-                        {photos.length} photo{photos.length !== 1 ? "s" : ""}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {(photos?.length || 0)} photo{(photos?.length || 0) !== 1 ? "s" : ""}
+                        </Badge>
+                        {selectedPhotos.size > 0 && (
+                          <Badge variant="default" className="text-xs bg-blue-500">
+                            {selectedPhotos.size} selected
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="icon">
-                        <CheckSquare className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="icon">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="icon">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {selectedPhotos.size > 0 ? (
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={deselectAllPhotos}
+                            className="text-xs"
+                          >
+                            Deselect All
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={downloadSelectedPhotos}
+                            title={`Download ${selectedPhotos.size} selected photo${selectedPhotos.size > 1 ? 's' : ''}`}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={deleteSelectedPhotos}
+                            title={`Delete ${selectedPhotos.size} selected photo${selectedPhotos.size > 1 ? 's' : ''}`}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={selectAllPhotos}
+                          disabled={(photos?.length || 0) === 0}
+                          className="text-xs"
+                        >
+                          Select All
+                        </Button>
+                      )}
                     </div>
                   </div>
 
@@ -723,18 +1013,10 @@ export default function RunEventPage() {
                     onDrop={(e) => {
                       e.preventDefault();
                       const files = Array.from(e.dataTransfer.files || []);
-                      files.forEach((file) => {
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          if (typeof reader.result === "string") {
-                            setPhotos((prev) => [
-                              ...prev,
-                              reader.result as string,
-                            ]);
-                          }
-                        };
-                        reader.readAsDataURL(file);
-                      });
+                      const imageFiles = files.filter(file => file.type.startsWith('image/'));
+                      if (imageFiles.length > 0) {
+                        handleFileUpload(imageFiles);
+                      }
                     }}
                   >
                     <div
@@ -744,8 +1026,12 @@ export default function RunEventPage() {
                     >
                       <div className="flex flex-col items-center gap-2">
                         <ImagePlus className="h-6 w-6" />
-                        <div className="font-medium">Upload Photos</div>
-                        <div className="text-xs">Drag & drop or click</div>
+                        <div className="font-medium">
+                          {uploadingPhoto ? "Uploading..." : "Upload Photos"}
+                        </div>
+                        <div className="text-xs">
+                          {uploadingPhoto ? "Please wait" : "Drag & drop images or click"}
+                        </div>
                       </div>
                       <input
                         ref={fileInputRef}
@@ -755,18 +1041,10 @@ export default function RunEventPage() {
                         className="hidden"
                         onChange={(e) => {
                           const files = Array.from(e.target.files || []);
-                          files.forEach((file) => {
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              if (typeof reader.result === "string") {
-                                setPhotos((prev) => [
-                                  ...prev,
-                                  reader.result as string,
-                                ]);
-                              }
-                            };
-                            reader.readAsDataURL(file);
-                          });
+                          const imageFiles = files.filter(file => file.type.startsWith('image/'));
+                          if (imageFiles.length > 0) {
+                            handleFileUpload(imageFiles);
+                          }
                           // reset input value so same file can be added again later
                           if (e.target) e.target.value = "";
                         }}
@@ -776,18 +1054,47 @@ export default function RunEventPage() {
 
                   {/* Thumbs */}
                   <div className="mt-4 grid grid-cols-4 gap-3">
-                    {photos.map((src, i) => (
-                      <div
-                        key={`${src}-${i}`}
-                        className="relative aspect-square rounded-md overflow-hidden border"
-                      >
-                        <img
-                          src={src}
-                          alt={`photo-${i + 1}`}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                    ))}
+                    {(photos || []).map((photo) => {
+                      const isSelected = selectedPhotos.has(photo.id);
+                      return (
+                        <div
+                          key={photo.id}
+                          className={`relative aspect-square rounded-md overflow-hidden border group cursor-pointer ${
+                            isSelected ? 'border-blue-500 border-2 bg-blue-50' : 'border-gray-200'
+                          }`}
+                          onClick={() => togglePhotoSelection(photo.id)}
+                        >
+                          <img
+                            src={photo.url}
+                            alt={photo.photo.file_name}
+                            className="h-full w-full object-cover"
+                          />
+                          {/* Selection indicator */}
+                          <div className={`absolute top-1 left-1 w-5 h-5 rounded border flex items-center justify-center ${
+                            isSelected 
+                              ? 'bg-blue-500 border-blue-500' 
+                              : 'bg-white/80 border-gray-300 opacity-0 group-hover:opacity-100'
+                          } transition-opacity`}>
+                            {isSelected && (
+                              <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                          {/* Individual delete button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePhoto(photo.id);
+                            }}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Delete photo"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

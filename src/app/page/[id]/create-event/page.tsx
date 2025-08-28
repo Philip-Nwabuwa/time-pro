@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -12,6 +12,7 @@ import {
   Camera,
   Mail,
   Link as LinkIcon,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +27,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { fetchPageById, type PageData } from "@/lib/mockApi";
+import { usePage } from "@/lib/api/hooks";
+import DateTimePickerForm from "@/components/DateTimePickerForm";
+import { createEvent, createScheduleItem } from "@/lib/api/events";
+import type { EventInsert, EventScheduleItemInsert } from "@/lib/api/types";
 
 interface SpeakerRole {
   id: string;
@@ -45,7 +54,9 @@ interface SpeakerRole {
 
 interface EventFormData {
   title: string;
-  date: string;
+  date: Date | null;
+  time: string | null;
+  location: string;
   allowFeedback: boolean;
   anonymousFeedback: boolean;
   detailedSpeakerProfiles: boolean;
@@ -57,52 +68,25 @@ export default function CreateEventPage() {
   const router = useRouter();
   const pageId = params.id as string;
 
-  const [page, setPage] = useState<PageData | null>(null);
+  const {
+    data: page,
+    isLoading: pageLoading,
+    error: pageError,
+  } = usePage(pageId);
   const [formData, setFormData] = useState<EventFormData>({
-    title: "Toastmasters Meeting",
-    date: "15/08/2025",
+    title: "",
+    date: null,
+    time: null,
+    location: "",
     allowFeedback: true,
     anonymousFeedback: false,
     detailedSpeakerProfiles: true,
-    roles: [
-      {
-        id: "1",
-        roleName: "Closing Remarks",
-        speakerName: "Toastmaster",
-        speakerEmail: "speaker@example.com",
-        bio: "",
-        avatar: "T",
-        minTime: "1:00",
-        targetTime: "1:36",
-        maxTime: "2:00",
-        socialMediaLinks: [{ platform: "LinkedIn", url: "" }],
-      },
-    ],
+    roles: [],
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
-
-  useEffect(() => {
-    const loadPageData = async () => {
-      try {
-        const pageData = await fetchPageById(pageId);
-        setPage(pageData);
-      } catch (error) {
-        console.error("Failed to load page data:", error);
-        toast.error("Failed to load page data");
-        router.push("/");
-      } finally {
-        setPageLoading(false);
-      }
-    };
-
-    if (pageId) {
-      loadPageData();
-    }
-  }, [pageId, router]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -111,9 +95,23 @@ export default function CreateEventPage() {
     }));
   };
 
+  const handleDateChange = (date: Date | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      date,
+    }));
+  };
+
+  const handleTimeChange = (time: string | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      time,
+    }));
+  };
+
   const handleCheckboxChange = (
     name: string,
-    checked: boolean | "indeterminate"
+    checked: boolean | "indeterminate",
   ) => {
     if (checked === "indeterminate") return;
     setFormData((prev) => ({
@@ -152,7 +150,7 @@ export default function CreateEventPage() {
     setFormData((prev) => ({
       ...prev,
       roles: prev.roles.map((role) =>
-        role.id === roleId ? { ...role, [field]: value } : role
+        role.id === roleId ? { ...role, [field]: value } : role,
       ),
     }));
   };
@@ -169,7 +167,7 @@ export default function CreateEventPage() {
                 { platform: "LinkedIn", url: "" },
               ],
             }
-          : role
+          : role,
       ),
     }));
   };
@@ -182,10 +180,10 @@ export default function CreateEventPage() {
           ? {
               ...role,
               socialMediaLinks: role.socialMediaLinks.filter(
-                (_, index) => index !== linkIndex
+                (_, index) => index !== linkIndex,
               ),
             }
-          : role
+          : role,
       ),
     }));
   };
@@ -194,7 +192,7 @@ export default function CreateEventPage() {
     roleId: string,
     linkIndex: number,
     field: "platform" | "url",
-    value: string
+    value: string,
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -203,10 +201,10 @@ export default function CreateEventPage() {
           ? {
               ...role,
               socialMediaLinks: role.socialMediaLinks.map((link, index) =>
-                index === linkIndex ? { ...link, [field]: value } : link
+                index === linkIndex ? { ...link, [field]: value } : link,
               ),
             }
-          : role
+          : role,
       ),
     }));
   };
@@ -224,6 +222,50 @@ export default function CreateEventPage() {
     return `${minutes}m${seconds > 0 ? ` ${seconds}s` : ""}`;
   };
 
+  const parseTimeToMinutes = (timeString: string): number => {
+    if (!timeString) return 0;
+    const [hours, minutes] = timeString.split(":").map(Number);
+    return (hours || 0) * 60 + (minutes || 0);
+  };
+
+  const transformFormDataToEventInsert = (): EventInsert => {
+    return {
+      title: formData.title,
+      event_date: formData.date!.toISOString().split("T")[0],
+      event_time: formData.time!,
+      location: formData.location || null,
+      page_id: pageId,
+      allow_feedback: formData.allowFeedback,
+      anonymous_feedback: formData.anonymousFeedback,
+      detailed_speaker_profiles: formData.detailedSpeakerProfiles,
+      estimated_minutes: Math.round(calculateTotalTime() * 60),
+      roles_count: formData.roles.length,
+      status: "upcoming",
+      configured: true,
+    };
+  };
+
+  const transformRolesToScheduleItems = (
+    eventId: string,
+  ): EventScheduleItemInsert[] => {
+    return formData.roles.map((role, index) => ({
+      event_id: eventId,
+      title: role.roleName || "Untitled Role",
+      role: role.roleName || "Speaker",
+      order_index: index,
+      allocated_minutes: parseTimeToMinutes(role.targetTime),
+      speaker_name: role.speakerName || null,
+      speaker_email: role.speakerEmail || null,
+      speaker_bio: role.bio || null,
+      speaker_avatar: role.avatar || null,
+      min_minutes: parseTimeToMinutes(role.minTime) || null,
+      target_minutes: parseTimeToMinutes(role.targetTime) || null,
+      max_minutes: parseTimeToMinutes(role.maxTime) || null,
+      social_media_links:
+        role.socialMediaLinks.length > 0 ? role.socialMediaLinks : null,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -237,21 +279,40 @@ export default function CreateEventPage() {
       return;
     }
 
+    if (!formData.time) {
+      toast.error("Event time is required");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // TODO: Implement API call to create event
-      console.log("Creating event for page:", pageId, formData);
+      const eventData = transformFormDataToEventInsert();
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Create the event first
+      const createdEvent = await createEvent(eventData);
+
+      // Create schedule items if there are any roles
+      if (formData.roles.length > 0) {
+        const scheduleItems = transformRolesToScheduleItems(createdEvent.id);
+
+        // Create all schedule items
+        await Promise.all(
+          scheduleItems.map((item) =>
+            createScheduleItem(createdEvent.id, item),
+          ),
+        );
+      }
 
       toast.success("Event created successfully!");
-
-      // Navigate back to page details
       router.push(`/page/${pageId}`);
     } catch (error) {
-      toast.error("Failed to create event. Please try again.");
+      console.error("Error creating event:", error);
+      toast.error(
+        error instanceof Error
+          ? `Failed to create event: ${error.message}`
+          : "Failed to create event. Please try again.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -271,11 +332,11 @@ export default function CreateEventPage() {
     );
   }
 
-  if (!page) {
+  if (pageError || !page) {
     return (
       <main className="mx-auto max-w-4xl px-6 py-8">
         <div className="text-center">
-          <div className="text-red-500">Page not found</div>
+          <div className="text-red-500">Page not found or access denied</div>
           <Button onClick={() => router.push("/")} className="mt-4">
             Back to Dashboard
           </Button>
@@ -321,18 +382,51 @@ export default function CreateEventPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="date">
+              <Label>
                 <Calendar className="h-4 w-4 inline mr-2" />
-                Date *
+                Date & Time *
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                    disabled={isLoading}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {formData.date && formData.time
+                      ? `${formData.date.toLocaleDateString()} at ${
+                          formData.time
+                        }`
+                      : formData.date
+                        ? `${formData.date.toLocaleDateString()} - Select time`
+                        : "Select date and time"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <DateTimePickerForm
+                    selectedDate={formData.date}
+                    selectedTime={formData.time}
+                    onDateChange={handleDateChange}
+                    onTimeChange={handleTimeChange}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="location">
+                <MapPin className="h-4 w-4 inline mr-2" />
+                Location
               </Label>
               <Input
-                id="date"
-                name="date"
+                id="location"
+                name="location"
                 type="text"
-                value={formData.date}
+                placeholder="Enter event location (optional)"
+                value={formData.location}
                 onChange={handleInputChange}
                 disabled={isLoading}
-                required
                 className="text-base"
               />
             </div>
@@ -406,6 +500,7 @@ export default function CreateEventPage() {
                     {formatTime(calculateTotalTime())} total
                   </div>
                   <Button
+                    type="button"
                     onClick={addRole}
                     size="sm"
                     className="bg-green-600 hover:bg-green-700"
@@ -463,7 +558,12 @@ export default function CreateEventPage() {
                             <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium">
                               {role.avatar || "?"}
                             </div>
-                            <Button size="sm" variant="outline" className="p-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="p-2"
+                            >
                               <Camera className="h-4 w-4" />
                             </Button>
                           </div>
@@ -471,6 +571,7 @@ export default function CreateEventPage() {
                       </div>
 
                       <Button
+                        type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => removeRole(role.id)}
@@ -530,7 +631,7 @@ export default function CreateEventPage() {
                               updateRole(
                                 role.id,
                                 "speakerEmail",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             placeholder="speaker@example.com"
@@ -564,7 +665,7 @@ export default function CreateEventPage() {
                                       role.id,
                                       linkIndex,
                                       "platform",
-                                      value
+                                      value,
                                     )
                                   }
                                 >
@@ -593,13 +694,14 @@ export default function CreateEventPage() {
                                       role.id,
                                       linkIndex,
                                       "url",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="https://..."
                                   className="flex-1"
                                 />
                                 <Button
+                                  type="button"
                                   variant="ghost"
                                   size="sm"
                                   onClick={() =>
@@ -612,6 +714,7 @@ export default function CreateEventPage() {
                               </div>
                             ))}
                             <Button
+                              type="button"
                               variant="outline"
                               size="sm"
                               onClick={() => addSocialMediaLink(role.id)}
@@ -646,6 +749,7 @@ export default function CreateEventPage() {
                       </div>
                     </div>
                     <Button
+                      type="button"
                       onClick={() => {}}
                       size="sm"
                       className="bg-green-600 hover:bg-green-700"
@@ -698,17 +802,29 @@ export default function CreateEventPage() {
                           <Input placeholder="Option 1" className="bg-white" />
                           <Input placeholder="Option 2" className="bg-white" />
                         </div>
-                        <Button variant="outline" size="sm" className="w-full">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                        >
                           <Plus className="h-4 w-4 mr-1" />
                           Add Option
                         </Button>
                       </div>
 
                       <div className="flex gap-3 pt-4">
-                        <Button className="bg-green-600 hover:bg-green-700 flex-1">
+                        <Button
+                          type="button"
+                          className="bg-green-600 hover:bg-green-700 flex-1"
+                        >
                           Create Poll
                         </Button>
-                        <Button variant="outline" className="flex-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="flex-1"
+                        >
                           Cancel
                         </Button>
                       </div>
@@ -733,7 +849,12 @@ export default function CreateEventPage() {
           </Button>
           <Button
             type="submit"
-            disabled={isLoading || !formData.title.trim() || !formData.date}
+            disabled={
+              isLoading ||
+              !formData.title.trim() ||
+              !formData.date ||
+              !formData.time
+            }
             className="bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
             size="lg"
           >

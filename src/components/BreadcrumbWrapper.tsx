@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -11,7 +10,7 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import { fetchEventDetails, fetchPageById, type EventDetails, type PageData } from "@/lib/mockApi";
+import { usePage, useEventDetails } from "@/lib/api/hooks";
 
 interface BreadcrumbData {
   title: string;
@@ -21,9 +20,6 @@ interface BreadcrumbData {
 export default function BreadcrumbWrapper() {
   const pathname = usePathname();
   const router = useRouter();
-  const [eventDetails, setEventDetails] = useState<EventDetails | null>(null);
-  const [pageDetails, setPageDetails] = useState<PageData | null>(null);
-  const [loading, setLoading] = useState(false);
 
   // Parse pathname to extract dynamic segments
   const pathSegments = pathname.split("/").filter(Boolean);
@@ -33,38 +29,16 @@ export default function BreadcrumbWrapper() {
   const isPublicPath = publicPaths.includes(pathname);
   const isRootPath = pathname === "/";
 
-  useEffect(() => {
-    const loadDetails = async () => {
-      // Load page details if we're on any page route
-      if (pathSegments[0] === "page" && pathSegments[1]) {
-        const pageId = pathSegments[1];
-        
-        setLoading(true);
-        try {
-          // Load page details
-          const pageData = await fetchPageById(pageId);
-          setPageDetails(pageData);
-          
-          // Also load event details if we're on an event page
-          if (
-            pathSegments.length >= 4 &&
-            pathSegments[2] === "event" &&
-            pathSegments[3]
-          ) {
-            const eventId = pathSegments[3];
-            const eventData = await fetchEventDetails(pageId, eventId);
-            setEventDetails(eventData);
-          }
-        } catch (error) {
-          console.error("Failed to load details:", error);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
+  // Extract IDs from path
+  const pageId = pathSegments[0] === "page" ? pathSegments[1] : "";
+  const eventId = pathSegments[2] === "event" ? pathSegments[3] : "";
 
-    loadDetails();
-  }, [pathname, pathSegments]);
+  // Conditionally fetch data based on path
+  const { data: pageDetails, isLoading: pageLoading } = usePage(pageId);
+  const { data: eventDetails, isLoading: eventLoading } = useEventDetails(
+    pageId,
+    eventId,
+  );
 
   // Generate breadcrumb items based on current path
   const generateBreadcrumbs = (): BreadcrumbData[] => {
@@ -82,7 +56,9 @@ export default function BreadcrumbWrapper() {
       });
 
       // Get the page title for breadcrumb
-      const pageTitle = loading ? "Loading..." : pageDetails?.title || "Dashboard";
+      const pageTitle = pageLoading
+        ? "Loading..."
+        : pageDetails?.title || "Dashboard";
 
       // If we're on a specific page dashboard
       if (pathSegments.length === 2) {
@@ -97,7 +73,7 @@ export default function BreadcrumbWrapper() {
 
         // Event level
         if (pathSegments[2] === "event" && pathSegments[3]) {
-          const eventTitle = loading
+          const eventTitle = eventLoading
             ? "Loading..."
             : eventDetails?.title || "Event";
           breadcrumbs.push({

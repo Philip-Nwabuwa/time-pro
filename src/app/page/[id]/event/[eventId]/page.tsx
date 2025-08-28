@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +13,7 @@ import {
   Pencil,
   ArrowLeft,
 } from "lucide-react";
-import { fetchEventDetails, type EventDetails } from "@/lib/mockApi";
+import { useEventDetails } from "@/lib/api/hooks";
 
 export default function EventDetailsPage() {
   const params = useParams();
@@ -22,20 +21,11 @@ export default function EventDetailsPage() {
   const pageId = params.id as string;
   const eventId = params.eventId as string;
 
-  const [details, setDetails] = useState<EventDetails | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const d = await fetchEventDetails(pageId, eventId);
-        setDetails(d);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (pageId && eventId) load();
-  }, [pageId, eventId]);
+  const {
+    data: details,
+    isLoading: loading,
+    error,
+  } = useEventDetails(pageId, eventId);
 
   if (loading) {
     return (
@@ -45,10 +35,20 @@ export default function EventDetailsPage() {
     );
   }
 
-  if (!details) {
+  if (error || !details) {
     return (
       <main className="mx-auto max-w-6xl px-6 py-8">
-        <p className="text-gray-500">Event not found.</p>
+        <p className="text-red-500">
+          {error ? `Error loading event: ${error.message}` : "Event not found."}
+        </p>
+        <Button
+          variant="outline"
+          onClick={() => router.push(`/page/${pageId}`)}
+          className="mt-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Page
+        </Button>
       </main>
     );
   }

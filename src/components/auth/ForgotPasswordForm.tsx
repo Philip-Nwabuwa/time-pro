@@ -83,7 +83,7 @@ export default function ForgotPasswordForm() {
       setCanResend(false);
     } catch (error: any) {
       toast.error(
-        error.message || "Failed to send reset code. Please try again."
+        error.message || "Failed to send reset code. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -125,7 +125,7 @@ export default function ForgotPasswordForm() {
       setStep("success");
     } catch (error: any) {
       toast.error(
-        error.message || "Failed to reset password. Please try again."
+        error.message || "Failed to reset password. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -184,7 +184,7 @@ export default function ForgotPasswordForm() {
 
   const handleKeyDown = (
     index: number,
-    e: React.KeyboardEvent<HTMLInputElement>
+    e: React.KeyboardEvent<HTMLInputElement>,
   ) => {
     // Handle backspace
     if (e.key === "Backspace" && !otp[index] && index > 0) {

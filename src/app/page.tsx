@@ -10,15 +10,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useModal } from "@/contexts/ModalContext";
-import { useEffect, useState } from "react";
-import { fetchPages, type PageData } from "@/lib/mockApi";
+import { usePages } from "@/lib/api/hooks";
 import { useRouter } from "next/navigation";
 
 export default function HomePage() {
   const { openModal } = useModal();
   const router = useRouter();
-  const [pages, setPages] = useState<PageData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: pages = [], isLoading, error } = usePages();
 
   const handleCreatePageClick = () => {
     openModal("CREATE_PAGE");
@@ -28,22 +26,7 @@ export default function HomePage() {
     router.push(`/page/${pageId}`);
   };
 
-  useEffect(() => {
-    const loadPages = async () => {
-      try {
-        const pagesData = await fetchPages();
-        setPages(pagesData);
-      } catch (error) {
-        console.error("Failed to load pages:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadPages();
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <main className="mx-auto max-w-6xl px-6 py-8">
         <Card className="border">
@@ -61,6 +44,32 @@ export default function HomePage() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
               <span className="ml-2 text-gray-500">Loading pages...</span>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="mx-auto max-w-6xl px-6 py-8">
+        <Card className="border">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle className="text-xl">My Pages</CardTitle>
+              <CardDescription>Manage your event pages</CardDescription>
+            </div>
+            <Button size="sm" className="gap-2" onClick={handleCreatePageClick}>
+              <Plus className="h-4 w-4" />
+              Create Page
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center py-12">
+              <span className="text-red-500">
+                Failed to load pages. Please try again.
+              </span>
             </div>
           </CardContent>
         </Card>
