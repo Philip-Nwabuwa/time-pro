@@ -50,7 +50,7 @@ export default function Navbar({ user, onSignOut }: NavbarProps) {
   };
 
   const handleDiscoveryClick = () => {
-    router.push("/dashboard/discovery");
+    router.push("/discovery");
   };
 
   return (

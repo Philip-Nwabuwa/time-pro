@@ -70,7 +70,7 @@ export default function LoginForm() {
       }
 
       toast.success("Signed in successfully!");
-      window.location.href = "/dashboard";
+      window.location.href = "/";
     } catch (error: any) {
       toast.error(error.message || "Authentication failed. Please try again.");
     } finally {

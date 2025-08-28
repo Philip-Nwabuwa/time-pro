@@ -1,8 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { ModalProvider } from "@/contexts/ModalContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { Timer } from "lucide-react";
 import { toast } from "sonner";
@@ -11,26 +10,31 @@ import CreatePageModal from "@/components/modals/CreatePageModal";
 import EditProfileModal from "@/components/modals/EditProfileModal";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
 
-export default function DashboardLayout({
+const publicPaths = ["/signin", "/signup", "/verify-otp"];
+
+export default function RootLayoutClient({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  
+  const isPublicPath = publicPaths.includes(pathname);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !isPublicPath) {
       router.push("/signin");
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isPublicPath]);
 
   const handleSignOut = async () => {
     try {
       await signOut();
       toast.success("Signed out successfully!");
-      router.push("/");
-    } catch (error) {
+      router.push("/signin");
+    } catch (_error) {
       toast.error("Failed to sign out. Please try again.");
     }
   };
@@ -48,19 +52,23 @@ export default function DashboardLayout({
     );
   }
 
+  // For public paths (signin, signup, verify-otp), don't show navbar or modals
+  if (isPublicPath) {
+    return <>{children}</>;
+  }
+
+  // For authenticated paths, redirect to signin if not authenticated
   if (!user) {
     return null;
   }
 
   return (
-    <ModalProvider>
-      <div className="min-h-screen bg-gray-50">
-        <Navbar user={user} onSignOut={handleSignOut} />
-        {children}
-        <CreatePageModal />
-        <EditProfileModal />
-        <ChangePasswordModal />
-      </div>
-    </ModalProvider>
+    <div className="min-h-screen bg-gray-50">
+      <Navbar user={user} onSignOut={handleSignOut} />
+      {children}
+      <CreatePageModal />
+      <EditProfileModal />
+      <ChangePasswordModal />
+    </div>
   );
 }

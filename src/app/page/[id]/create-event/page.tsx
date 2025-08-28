@@ -90,7 +90,7 @@ export default function CreateEventPage() {
       } catch (error) {
         console.error("Failed to load page data:", error);
         toast.error("Failed to load page data");
-        router.push("/dashboard");
+        router.push("/");
       } finally {
         setPageLoading(false);
       }
@@ -249,7 +249,7 @@ export default function CreateEventPage() {
       toast.success("Event created successfully!");
 
       // Navigate back to page details
-      router.push(`/dashboard/page/${pageId}`);
+      router.push(`/page/${pageId}`);
     } catch (error) {
       toast.error("Failed to create event. Please try again.");
     } finally {
@@ -276,7 +276,7 @@ export default function CreateEventPage() {
       <main className="mx-auto max-w-4xl px-6 py-8">
         <div className="text-center">
           <div className="text-red-500">Page not found</div>
-          <Button onClick={() => router.push("/dashboard")} className="mt-4">
+          <Button onClick={() => router.push("/")} className="mt-4">
             Back to Dashboard
           </Button>
         </div>

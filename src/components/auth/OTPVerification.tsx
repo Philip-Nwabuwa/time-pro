@@ -62,7 +62,7 @@ export default function OTPVerification({
       toast.success("Email verified successfully!");
       setSuccess(true);
       setTimeout(() => {
-        router.push("/dashboard");
+        router.push("/");
       }, 2000);
     } catch (error: any) {
       toast.error(error.message || "Verification failed. Please try again.");

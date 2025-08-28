@@ -144,7 +144,7 @@ export default function DiscoveryPage() {
   };
 
   const handleBackClick = () => {
-    router.push("/dashboard");
+    router.push("/");
   };
 
   return (

@@ -32,7 +32,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         if (error) throw error;
 
         toast.success("Signed in successfully!");
-        window.location.href = "/dashboard";
+        window.location.href = "/";
       } else {
         if (!agreeToTerms) {
           toast.error("Please agree to the Terms and Conditions");

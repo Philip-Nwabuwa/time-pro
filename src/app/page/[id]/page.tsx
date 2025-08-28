@@ -75,11 +75,11 @@ export default function PageDetailsPage() {
   }, [pageId]);
 
   const handleBackClick = () => {
-    router.push("/dashboard");
+    router.push("/");
   };
 
   const handleCreateEvent = () => {
-    router.push(`/dashboard/page/${pageId}/create-event`);
+    router.push(`/page/${pageId}/create-event`);
   };
 
   const formatDate = (dateString: string) => {
@@ -123,7 +123,7 @@ export default function PageDetailsPage() {
           className="mb-4 gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Dashboard
+          Back to Home
         </Button>
 
         <div className="flex items-start justify-between">
