@@ -74,19 +74,17 @@ const mockEvents: Event[] = [
     date: "Fri, Aug 29, 2025",
     time: "18:00:00",
     location: "Library Main Branch",
-    eventCode: "2029",
     status: "live",
   },
   {
     id: "5",
     category: "Community",
-    title: "Local Food Festival",
+    title: "Local Food Festivalfjsdhbuyfbyuhbdyuedyucydsciwhduis",
     description:
       "Celebrate diverse cuisines from local restaurants and food trucks",
     date: "Sat, Aug 30, 2025",
     time: "11:00:00",
     location: "Central Park",
-    eventCode: "2030",
     status: "live",
   },
   {
@@ -98,25 +96,9 @@ const mockEvents: Event[] = [
     date: "Sun, Aug 31, 2025",
     time: "08:00:00",
     location: "Main Street",
-    eventCode: "2031",
     status: "live",
   },
 ];
-
-const getCategoryIcon = (category: string) => {
-  switch (category) {
-    case "Technology":
-      return <Monitor className="h-4 w-4" />;
-    case "Business":
-      return <Briefcase className="h-4 w-4" />;
-    case "Education":
-      return <GraduationCap className="h-4 w-4" />;
-    case "Community":
-      return <Home className="h-4 w-4" />;
-    default:
-      return <Calendar className="h-4 w-4" />;
-  }
-};
 
 export default function DiscoveryPage() {
   const router = useRouter();
@@ -132,7 +114,7 @@ export default function DiscoveryPage() {
         (event) =>
           event.title.toLowerCase().includes(query.toLowerCase()) ||
           event.description.toLowerCase().includes(query.toLowerCase()) ||
-          (event.eventCode && event.eventCode.includes(query))
+          (event.eventCode && event.eventCode.includes(query)),
       );
       setFilteredEvents(filtered);
     }
@@ -189,18 +171,15 @@ export default function DiscoveryPage() {
             className="hover:shadow-lg transition-shadow duration-200"
           >
             <CardHeader className="pb-3">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  {getCategoryIcon(event.category)}
-                  <span>{event.category}</span>
-                </div>
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="text-lg font-semibold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
+                  {event.title}
+                </h3>
                 <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
                   {event.status}
                 </Badge>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {event.title}
-              </h3>
+
               <p className="text-gray-600 text-sm leading-relaxed">
                 {event.description}
               </p>
@@ -220,12 +199,6 @@ export default function DiscoveryPage() {
                   <MapPin className="h-4 w-4 text-gray-400" />
                   <span>{event.location}</span>
                 </div>
-                {event.eventCode && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Settings className="h-4 w-4 text-gray-400" />
-                    <span>{event.eventCode}</span>
-                  </div>
-                )}
               </div>
 
               <Button

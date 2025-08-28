@@ -204,7 +204,10 @@ export default function PageDetailsPage() {
               {events.map((event) => (
                 <Card
                   key={event.id}
-                  className="hover:shadow-sm transition-shadow"
+                  className="hover:shadow-sm transition-shadow cursor-pointer"
+                  onClick={() =>
+                    router.push(`/page/${pageId}/event/${event.id}`)
+                  }
                 >
                   <CardHeader>
                     <div className="flex items-start justify-between">

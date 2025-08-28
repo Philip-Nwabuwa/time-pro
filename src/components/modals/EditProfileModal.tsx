@@ -3,14 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useModal } from "@/contexts/ModalContext";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -318,28 +311,15 @@ export default function EditProfileModal() {
     }
   };
 
-  const getInitials = () => {
-    if (formData.firstName && formData.lastName) {
-      return `${formData.firstName[0]}${formData.lastName[0]}`.toUpperCase();
-    }
-    return user?.email?.substring(0, 2).toUpperCase() || "U";
-  };
-
-  // Prevent modal from closing automatically - only allow explicit close via Cancel button
-  const handleModalChange = (open: boolean) => {
-    // Don't allow the modal to be closed by external events (ESC key, click outside, etc.)
-    // Only allow closing via the Cancel button which calls handleClose directly
-    if (!open) {
-      return; // Prevent closing
-    }
-  };
-
   return (
-    <Dialog open={isModalOpen("EDIT_PROFILE")} onOpenChange={handleModalChange}>
+    <Dialog open={isModalOpen("EDIT_PROFILE")} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Profile Avatar Preview */}
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="text-sm font-medium text-gray-700">
+              Current Avatar
+            </div>
             <AvatarPicker
               initialAvatarUrl={getUserAvatarUrl(user)}
               onAvatarChange={handleAvatarChange}

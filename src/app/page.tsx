@@ -90,7 +90,18 @@ export default function HomePage() {
                 onClick={() => handlePageClick(page.id)}
               >
                 <CardHeader>
-                  <CardTitle className="text-lg">{page.title}</CardTitle>
+                  <CardTitle className="text-lg flex items-center justify-between gap-2">
+                    {page.title}{" "}
+                    <span
+                      className={
+                        page.role === "admin"
+                          ? "inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700"
+                          : "inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
+                      }
+                    >
+                      {page.role}
+                    </span>
+                  </CardTitle>
                   <CardDescription>{page.desc}</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -105,15 +116,6 @@ export default function HomePage() {
                         <span>{page.events} events</span>
                       </div>
                     </div>
-                    <span
-                      className={
-                        page.role === "admin"
-                          ? "inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700"
-                          : "inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
-                      }
-                    >
-                      {page.role}
-                    </span>
                   </div>
                 </CardContent>
               </Card>

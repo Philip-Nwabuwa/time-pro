@@ -258,7 +258,7 @@ export default function CreateEventPage() {
   };
 
   const handleBack = () => {
-    router.push(`/dashboard/page/${pageId}`);
+    router.push(`/page/${pageId}`);
   };
 
   if (pageLoading) {

@@ -95,7 +95,7 @@ export default function CreatePageModal() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Page Title *</Label>
+            <Label htmlFor="title">Page Title</Label>
             <Input
               id="title"
               name="title"
@@ -121,7 +121,7 @@ export default function CreatePageModal() {
             />
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2">
             <Button
               type="button"
               variant="outline"

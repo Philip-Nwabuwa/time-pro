@@ -18,6 +18,21 @@ export interface Event {
   status: "upcoming" | "ongoing" | "completed";
 }
 
+export interface EventScheduleItem {
+  id: string;
+  order: number;
+  title: string;
+  role: string;
+  allocatedMinutes: number;
+}
+
+export interface EventDetails extends Event {
+  estimatedMinutes: number;
+  rolesCount: number;
+  configured: boolean;
+  schedule: EventScheduleItem[];
+}
+
 export interface Member {
   id: string;
   name: string;
@@ -34,38 +49,6 @@ const mockPages: PageData[] = [
     desc: "Community events in London",
     members: 156,
     events: 8,
-    role: "member",
-  },
-  {
-    id: "2",
-    title: "Champions Connect",
-    desc: "Champions connect",
-    members: 89,
-    events: 7,
-    role: "admin",
-  },
-  {
-    id: "3",
-    title: "Tech Innovators",
-    desc: "Technology and innovation meetups",
-    members: 234,
-    events: 4,
-    role: "admin",
-  },
-  {
-    id: "4",
-    title: "Benjamin ejeh Agbo",
-    desc: "Personal event page",
-    members: 12,
-    events: 0,
-    role: "admin",
-  },
-  {
-    id: "5",
-    title: "Digital Marketing Masters",
-    desc: "Learn the latest digital marketing strategies",
-    members: 78,
-    events: 7,
     role: "member",
   },
 ];
@@ -147,6 +130,74 @@ const mockEvents: Record<string, Event[]> = {
       status: "upcoming",
     },
   ],
+};
+
+// Mock detailed schedule per event (keyed by `${pageId}:${eventId}`)
+const mockEventDetails: Record<string, EventDetails> = {
+  "1:e1": {
+    id: "e1",
+    title: "London Tech Meetup",
+    description: "Monthly gathering of tech enthusiasts in London",
+    date: "2024-09-15",
+    time: "18:00",
+    location: "Tech Hub London",
+    attendees: 45,
+    status: "upcoming",
+    estimatedMinutes: 60,
+    rolesCount: 10,
+    configured: true,
+    schedule: [
+      {
+        id: "s1",
+        order: 1,
+        title: "Welcome & Opening",
+        role: "Toastmaster",
+        allocatedMinutes: 3,
+      },
+      {
+        id: "s2",
+        order: 2,
+        title: "Business Session",
+        role: "President",
+        allocatedMinutes: 10,
+      },
+      {
+        id: "s3",
+        order: 3,
+        title: "Introduction of Speakers",
+        role: "Toastmaster",
+        allocatedMinutes: 2,
+      },
+      {
+        id: "s4",
+        order: 4,
+        title: "Prepared Speech #1",
+        role: "Speaker 1",
+        allocatedMinutes: 7,
+      },
+      {
+        id: "s5",
+        order: 5,
+        title: "Prepared Speech #2",
+        role: "Speaker 2",
+        allocatedMinutes: 7,
+      },
+      {
+        id: "s6",
+        order: 6,
+        title: "Table Topics Session",
+        role: "Table Topics Master",
+        allocatedMinutes: 15,
+      },
+      {
+        id: "s7",
+        order: 7,
+        title: "Speech Evaluation #1",
+        role: "Evaluator 1",
+        allocatedMinutes: 3,
+      },
+    ],
+  },
 };
 
 const mockMembers: Record<string, Member[]> = {
@@ -237,5 +288,17 @@ export const fetchMembersByPageId = (pageId: string): Promise<Member[]> => {
     setTimeout(() => {
       resolve(mockMembers[pageId] || []);
     }, 600);
+  });
+};
+
+export const fetchEventDetails = (
+  pageId: string,
+  eventId: string,
+): Promise<EventDetails | null> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const details = mockEventDetails[`${pageId}:${eventId}`] || null;
+      resolve(details);
+    }, 700);
   });
 };

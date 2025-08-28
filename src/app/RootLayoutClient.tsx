@@ -6,11 +6,12 @@ import { useEffect } from "react";
 import { Timer } from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
+import BreadcrumbWrapper from "@/components/BreadcrumbWrapper";
 import CreatePageModal from "@/components/modals/CreatePageModal";
 import EditProfileModal from "@/components/modals/EditProfileModal";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
 
-const publicPaths = ["/signin", "/signup", "/verify-otp"];
+const publicPaths = ["/signin", "/signup", "/verify-otp", "/forgot-password"];
 
 export default function RootLayoutClient({
   children,
@@ -20,7 +21,7 @@ export default function RootLayoutClient({
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  
+
   const isPublicPath = publicPaths.includes(pathname);
 
   useEffect(() => {
@@ -65,6 +66,7 @@ export default function RootLayoutClient({
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar user={user} onSignOut={handleSignOut} />
+      <BreadcrumbWrapper />
       {children}
       <CreatePageModal />
       <EditProfileModal />
