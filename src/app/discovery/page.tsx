@@ -114,7 +114,7 @@ export default function DiscoveryPage() {
         (event) =>
           event.title.toLowerCase().includes(query.toLowerCase()) ||
           event.description.toLowerCase().includes(query.toLowerCase()) ||
-          (event.eventCode && event.eventCode.includes(query)),
+          (event.eventCode && event.eventCode.includes(query))
       );
       setFilteredEvents(filtered);
     }
@@ -130,15 +130,7 @@ export default function DiscoveryPage() {
   };
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
-      {/* Back Button */}
-      <div className="mb-6">
-        <Button variant="ghost" onClick={handleBackClick} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Dashboard
-        </Button>
-      </div>
-
+    <main className="mx-auto max-w-6xl px-6 py-4">
       {/* Header Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">

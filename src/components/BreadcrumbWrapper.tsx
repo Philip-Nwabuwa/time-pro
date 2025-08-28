@@ -11,7 +11,7 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import { fetchEventDetails, type EventDetails } from "@/lib/mockApi";
+import { fetchEventDetails, fetchPageById, type EventDetails, type PageData } from "@/lib/mockApi";
 
 interface BreadcrumbData {
   title: string;
@@ -22,40 +22,48 @@ export default function BreadcrumbWrapper() {
   const pathname = usePathname();
   const router = useRouter();
   const [eventDetails, setEventDetails] = useState<EventDetails | null>(null);
+  const [pageDetails, setPageDetails] = useState<PageData | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Parse pathname to extract dynamic segments
   const pathSegments = pathname.split("/").filter(Boolean);
-  
+
   // Don't show breadcrumb on root pages or auth pages
   const publicPaths = ["/signin", "/signup", "/verify-otp", "/forgot-password"];
   const isPublicPath = publicPaths.includes(pathname);
   const isRootPath = pathname === "/";
-  
-  if (isPublicPath || isRootPath) {
-    return null;
-  }
 
   useEffect(() => {
-    // Load event details if we're on an event page
-    const loadEventDetails = async () => {
-      if (pathSegments.length >= 4 && pathSegments[0] === "page" && pathSegments[2] === "event") {
+    const loadDetails = async () => {
+      // Load page details if we're on any page route
+      if (pathSegments[0] === "page" && pathSegments[1]) {
         const pageId = pathSegments[1];
-        const eventId = pathSegments[3];
         
         setLoading(true);
         try {
-          const details = await fetchEventDetails(pageId, eventId);
-          setEventDetails(details);
+          // Load page details
+          const pageData = await fetchPageById(pageId);
+          setPageDetails(pageData);
+          
+          // Also load event details if we're on an event page
+          if (
+            pathSegments.length >= 4 &&
+            pathSegments[2] === "event" &&
+            pathSegments[3]
+          ) {
+            const eventId = pathSegments[3];
+            const eventData = await fetchEventDetails(pageId, eventId);
+            setEventDetails(eventData);
+          }
         } catch (error) {
-          console.error("Failed to load event details:", error);
+          console.error("Failed to load details:", error);
         } finally {
           setLoading(false);
         }
       }
     };
 
-    loadEventDetails();
+    loadDetails();
   }, [pathname, pathSegments]);
 
   // Generate breadcrumb items based on current path
@@ -66,27 +74,44 @@ export default function BreadcrumbWrapper() {
       breadcrumbs.push({ title: "Discovery" });
     } else if (pathSegments[0] === "page" && pathSegments[1]) {
       const pageId = pathSegments[1];
-      
-      // Dashboard level
+
+      // Always add Home as the first breadcrumb for page routes
       breadcrumbs.push({
-        title: "Dashboard",
-        href: `/page/${pageId}`,
+        title: "Home",
+        href: "/",
       });
 
-      // Event level
-      if (pathSegments[2] === "event" && pathSegments[3]) {
-        const eventTitle = loading ? "Loading..." : eventDetails?.title || "Event";
+      // Get the page title for breadcrumb
+      const pageTitle = loading ? "Loading..." : pageDetails?.title || "Dashboard";
+
+      // If we're on a specific page dashboard
+      if (pathSegments.length === 2) {
+        // This is the dashboard page (/page/[id])
+        breadcrumbs.push({ title: pageTitle });
+      } else {
+        // We're deeper in the page, so page becomes a link
         breadcrumbs.push({
-          title: eventTitle,
-          href: `/page/${pageId}/event/${pathSegments[3]}`,
+          title: pageTitle,
+          href: `/page/${pageId}`,
         });
 
-        // Event run level
-        if (pathSegments[4] === "run") {
-          breadcrumbs.push({ title: "Meeting Run" });
+        // Event level
+        if (pathSegments[2] === "event" && pathSegments[3]) {
+          const eventTitle = loading
+            ? "Loading..."
+            : eventDetails?.title || "Event";
+          breadcrumbs.push({
+            title: eventTitle,
+            href: `/page/${pageId}/event/${pathSegments[3]}`,
+          });
+
+          // Event run level
+          if (pathSegments[4] === "run") {
+            breadcrumbs.push({ title: "Meeting Run" });
+          }
+        } else if (pathSegments[2] === "create-event") {
+          breadcrumbs.push({ title: "Create Event" });
         }
-      } else if (pathSegments[2] === "create-event") {
-        breadcrumbs.push({ title: "Create Event" });
       }
     }
 
@@ -95,8 +120,8 @@ export default function BreadcrumbWrapper() {
 
   const breadcrumbs = generateBreadcrumbs();
 
-  // Don't show breadcrumb if no breadcrumbs to show
-  if (breadcrumbs.length === 0) {
+  // Don't show breadcrumb if no breadcrumbs to show or on public/root paths
+  if (breadcrumbs.length === 0 || isPublicPath || isRootPath) {
     return null;
   }
 

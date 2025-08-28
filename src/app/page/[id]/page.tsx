@@ -115,17 +115,8 @@ export default function PageDetailsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
+    <main className="mx-auto max-w-6xl px-6 py-4">
       <div className="mb-6">
-        <Button
-          variant="ghost"
-          onClick={handleBackClick}
-          className="mb-4 gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Home
-        </Button>
-
         <div className="flex items-start justify-between">
           <div>
             <div className="text-2xl">{page.title}</div>

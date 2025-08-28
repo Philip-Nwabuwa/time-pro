@@ -48,16 +48,6 @@ export default function EventDetailsPage() {
   if (!details) {
     return (
       <main className="mx-auto max-w-6xl px-6 py-8">
-        <div className="mb-6">
-          <Button
-            variant="ghost"
-            className="gap-2"
-            onClick={() => router.back()}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-        </div>
         <p className="text-gray-500">Event not found.</p>
       </main>
     );

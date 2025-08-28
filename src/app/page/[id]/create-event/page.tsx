@@ -102,7 +102,7 @@ export default function CreateEventPage() {
   }, [pageId, router]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -113,7 +113,7 @@ export default function CreateEventPage() {
 
   const handleCheckboxChange = (
     name: string,
-    checked: boolean | "indeterminate",
+    checked: boolean | "indeterminate"
   ) => {
     if (checked === "indeterminate") return;
     setFormData((prev) => ({
@@ -152,7 +152,7 @@ export default function CreateEventPage() {
     setFormData((prev) => ({
       ...prev,
       roles: prev.roles.map((role) =>
-        role.id === roleId ? { ...role, [field]: value } : role,
+        role.id === roleId ? { ...role, [field]: value } : role
       ),
     }));
   };
@@ -169,7 +169,7 @@ export default function CreateEventPage() {
                 { platform: "LinkedIn", url: "" },
               ],
             }
-          : role,
+          : role
       ),
     }));
   };
@@ -182,10 +182,10 @@ export default function CreateEventPage() {
           ? {
               ...role,
               socialMediaLinks: role.socialMediaLinks.filter(
-                (_, index) => index !== linkIndex,
+                (_, index) => index !== linkIndex
               ),
             }
-          : role,
+          : role
       ),
     }));
   };
@@ -194,7 +194,7 @@ export default function CreateEventPage() {
     roleId: string,
     linkIndex: number,
     field: "platform" | "url",
-    value: string,
+    value: string
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -203,10 +203,10 @@ export default function CreateEventPage() {
           ? {
               ...role,
               socialMediaLinks: role.socialMediaLinks.map((link, index) =>
-                index === linkIndex ? { ...link, [field]: value } : link,
+                index === linkIndex ? { ...link, [field]: value } : link
               ),
             }
-          : role,
+          : role
       ),
     }));
   };
@@ -288,16 +288,6 @@ export default function CreateEventPage() {
     <main className="mx-auto max-w-4xl px-6 py-8">
       {/* Header */}
       <div className="mb-8">
-        <Button
-          variant="ghost"
-          onClick={handleBack}
-          className="mb-4 gap-2"
-          disabled={isLoading}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to {page.title}
-        </Button>
-
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Create New Event
@@ -540,7 +530,7 @@ export default function CreateEventPage() {
                               updateRole(
                                 role.id,
                                 "speakerEmail",
-                                e.target.value,
+                                e.target.value
                               )
                             }
                             placeholder="speaker@example.com"
@@ -574,7 +564,7 @@ export default function CreateEventPage() {
                                       role.id,
                                       linkIndex,
                                       "platform",
-                                      value,
+                                      value
                                     )
                                   }
                                 >
@@ -603,7 +593,7 @@ export default function CreateEventPage() {
                                       role.id,
                                       linkIndex,
                                       "url",
-                                      e.target.value,
+                                      e.target.value
                                     )
                                   }
                                   placeholder="https://..."
