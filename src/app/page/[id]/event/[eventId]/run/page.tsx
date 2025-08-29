@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import {
   Calendar,
   MessageSquare,
@@ -38,10 +39,26 @@ import {
   deleteSessionPhoto,
   getPhotoPublicUrl,
   upsertSessionData,
+  createPoll,
+  updatePoll,
+  deletePoll,
+  submitPollVote,
+  getUserPollVotes,
+  approveSessionPhoto,
+  rejectSessionPhoto,
+  fetchSessionPhotosWithApproval,
   type QnaQuestion,
-  type SessionPhoto
+  type SessionPhoto,
+  type PollWithOptions
 } from "@/lib/api/eventSessions";
 import { toast } from "sonner";
+import PollsSection from "@/components/polls/PollsSection";
+import { useAuth } from "@/contexts/AuthContext";
+import { updateEvent } from "@/lib/api/events";
+import ImageGallery from "@/components/ImageGallery";
+import AddTimeModal from "@/components/modals/AddTimeModal";
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import EndMeetingModal from "@/components/modals/EndMeetingModal";
 
 function formatSeconds(total: number) {
   const m = Math.floor(total / 60)
@@ -67,8 +84,11 @@ interface TimerCardProps {
   onToggleFullscreen?: () => void;
   timerBackgroundColor: string;
   timerTextColor: string;
+  min: number;
   target: number;
   max: number;
+  hideTimeDetails: boolean;
+  onToggleHideDetails: () => void;
 }
 
 function TimerCard({
@@ -85,146 +105,172 @@ function TimerCard({
   onToggleFullscreen,
   timerBackgroundColor,
   timerTextColor,
+  min,
   target,
   max,
+  hideTimeDetails,
+  onToggleHideDetails,
 }: TimerCardProps) {
   return (
     <Card className={isFullscreen ? "h-full" : ""}>
       <CardContent
         className={`p-6 ${timerBackgroundColor} ${timerTextColor} rounded-md ${
           isFullscreen ? "h-full flex flex-col justify-center" : ""
-        }`}
+        } ${hideTimeDetails ? "min-h-[200px] flex items-center justify-center" : ""}`}
       >
         <div className="flex items-start justify-between">
-          <div>
-            <div className={isFullscreen ? "text-lg" : "text-sm"}>
-              {currentSlot?.title || "Table Topics Master"}
+          {!hideTimeDetails && (
+            <div>
+              <div className={isFullscreen ? "text-lg" : "text-sm"}>
+                {currentSlot?.title || "Table Topics Master"}
+              </div>
+              <div
+                className={`opacity-80 ${isFullscreen ? "text-sm" : "text-xs"}`}
+              >
+                {currentSpeaker || "Unknown Speaker"}
+              </div>
+            </div>
+          )}
+          <div className="flex items-center gap-2 ml-auto">
+            {!isFullscreen && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs opacity-80 cursor-pointer" htmlFor="hide-details-switch">
+                  Hide Details
+                </label>
+                <Switch
+                  id="hide-details-switch"
+                  checked={hideTimeDetails}
+                  onCheckedChange={onToggleHideDetails}
+                  className="data-[state=checked]:bg-white/30 data-[state=unchecked]:bg-white/10"
+                />
+              </div>
+            )}
+            <button
+              className="opacity-80 hover:opacity-100"
+              onClick={onToggleFullscreen}
+            >
+              {isFullscreen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
+
+{!hideTimeDetails && (
+          <div className="text-center my-8">
+            <div
+              className={`font-semibold tabular-nums tracking-tight ${
+                isFullscreen ? "text-[128px]" : "text-[64px]"
+              }`}
+            >
+              {formatSeconds(seconds)}
             </div>
             <div
-              className={`opacity-80 ${isFullscreen ? "text-sm" : "text-xs"}`}
+              className={`mt-2 flex items-center justify-center gap-6 ${
+                isFullscreen ? "text-base" : "text-sm"
+              }`}
             >
-              {currentSpeaker || "Unknown Speaker"}
+              <div>
+                Min:{" "}
+                <span className="font-mono border border-white rounded-full px-2 py-1">
+                  {formatSeconds(min)}
+                </span>
+              </div>
+              <div>
+                Target:{" "}
+                <span className="font-mono border border-white rounded-full px-2 py-1">
+                  {formatSeconds(target)}
+                </span>
+              </div>
+              <div>
+                Max:{" "}
+                <span className="font-mono border border-white rounded-full px-2 py-1">
+                  {formatSeconds(max)}
+                </span>
+              </div>
             </div>
+            <Badge
+              variant="secondary"
+              className={`mt-3 bg-white/20 text-white border-white/20 ${
+                isFullscreen ? "text-base px-4 py-2" : ""
+              }`}
+            >
+              {onTimeState}
+            </Badge>
           </div>
-          <button
-            className="opacity-80 hover:opacity-100"
-            onClick={onToggleFullscreen}
-          >
-            {isFullscreen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Maximize2 className="h-4 w-4" />
-            )}
-          </button>
-        </div>
+        )}
 
-        <div className="text-center my-8">
-          <div
-            className={`font-semibold tabular-nums tracking-tight ${
-              isFullscreen ? "text-[128px]" : "text-[64px]"
-            }`}
-          >
-            {formatSeconds(seconds)}
-          </div>
-          <div
-            className={`mt-2 flex items-center justify-center gap-6 ${
-              isFullscreen ? "text-base" : "text-sm"
-            }`}
-          >
-            <div>
-              Min:{" "}
-              <span className="font-mono border border-white rounded-full px-2 py-1">
-                03:00
-              </span>
+{!hideTimeDetails && (
+          <>
+            {/* Timer controls */}
+            <div
+              className={`grid grid-cols-3 gap-3 w-full ${
+                isFullscreen ? "gap-6" : ""
+              }`}
+            >
+              <Button
+                variant="secondary"
+                size={isFullscreen ? "default" : "default"}
+                className="bg-white/10 text-white hover:bg-white/20"
+                onClick={onNextSpeaker}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Next Speaker
+              </Button>
+              <Button
+                onClick={onToggleTimer}
+                size={isFullscreen ? "default" : "default"}
+                className="bg-emerald-700 hover:bg-emerald-800"
+              >
+                {isRunning ? "Stop" : hasStarted ? "Resume" : "Start Timer"}
+              </Button>
+              <Button
+                variant="secondary"
+                size={isFullscreen ? "default" : "default"}
+                className="bg-white/10 text-white hover:bg-white/20"
+              >
+                <Volume2
+                  className={`${isFullscreen ? "h-5 w-5" : "h-4 w-4"} mr-2`}
+                />{" "}
+                Sound On
+              </Button>
             </div>
-            <div>
-              Target:{" "}
-              <span className="font-mono border border-white rounded-full px-2 py-1">
-                {formatSeconds(target)}
-              </span>
-            </div>
-            <div>
-              Max:{" "}
-              <span className="font-mono border border-white rounded-full px-2 py-1">
-                {formatSeconds(max)}
-              </span>
-            </div>
-          </div>
-          <Badge
-            variant="secondary"
-            className={`mt-3 bg-white/20 text-white border-white/20 ${
-              isFullscreen ? "text-base px-4 py-2" : ""
-            }`}
-          >
-            {onTimeState}
-          </Badge>
-        </div>
 
-        {/* Timer controls */}
-        <div
-          className={`grid grid-cols-3 gap-3 w-full ${
-            isFullscreen ? "gap-6" : ""
-          }`}
-        >
-          <Button
-            variant="secondary"
-            size={isFullscreen ? "default" : "default"}
-            className="bg-white/10 text-white hover:bg-white/20"
-            onClick={onNextSpeaker}
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Next Speaker
-          </Button>
-          <Button
-            onClick={onToggleTimer}
-            size={isFullscreen ? "default" : "default"}
-            className="bg-emerald-700 hover:bg-emerald-800"
-          >
-            {isRunning ? "Pause" : hasStarted ? "Resume" : "Start Timer"}
-          </Button>
-          <Button
-            variant="secondary"
-            size={isFullscreen ? "default" : "default"}
-            className="bg-white/10 text-white hover:bg-white/20"
-          >
-            <Volume2
-              className={`${isFullscreen ? "h-5 w-5" : "h-4 w-4"} mr-2`}
-            />{" "}
-            Sound On
-          </Button>
-        </div>
-
-        {/* quick add */}
-        <div
-          className={`mt-4 flex items-center justify-center gap-3 ${
-            isFullscreen ? "gap-6" : ""
-          }`}
-        >
-          <Button
-            size={isFullscreen ? "default" : "sm"}
-            variant="secondary"
-            className="bg-white/10 text-white hover:bg-white/20"
-            onClick={() => onAddTime(30)}
-          >
-            +30s
-          </Button>
-          <Button
-            size={isFullscreen ? "default" : "sm"}
-            variant="secondary"
-            className="bg-white/10 text-white hover:bg-white/20"
-            onClick={() => onAddTime(60)}
-          >
-            +1 min
-          </Button>
-          <Button
-            size={isFullscreen ? "default" : "sm"}
-            variant="secondary"
-            className="bg-white/10 text-white hover:bg-white/20"
-            onClick={() => onAddTime(120)}
-          >
-            +2 min
-          </Button>
-        </div>
+            {/* quick add */}
+            <div
+              className={`mt-4 flex items-center justify-center gap-3 ${
+                isFullscreen ? "gap-6" : ""
+              }`}
+            >
+              <Button
+                size={isFullscreen ? "default" : "sm"}
+                variant="secondary"
+                className="bg-white/10 text-white hover:bg-white/20"
+                onClick={() => onAddTime(30)}
+              >
+                +30s
+              </Button>
+              <Button
+                size={isFullscreen ? "default" : "sm"}
+                variant="secondary"
+                className="bg-white/10 text-white hover:bg-white/20"
+                onClick={() => onAddTime(60)}
+              >
+                +1 min
+              </Button>
+              <Button
+                size={isFullscreen ? "default" : "sm"}
+                variant="secondary"
+                className="bg-white/10 text-white hover:bg-white/20"
+                onClick={() => onAddTime(120)}
+              >
+                +2 min
+              </Button>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
@@ -235,6 +281,7 @@ export default function RunEventPage() {
   const params = useParams();
   const pageId = params.id as string;
   const eventId = params.eventId as string;
+  const { user } = useAuth();
 
   const {
     data: details,
@@ -255,20 +302,35 @@ export default function RunEventPage() {
   const [currentSpeakerIndex, setCurrentSpeakerIndex] = useState(0);
   const [addedTime, setAddedTime] = useState(0);
 
+  // Hide time details state (per user)
+  const [hideTimeDetails, setHideTimeDetails] = useState(false);
+
   // Q&A Session state
   const [qnaQuestion, setQnaQuestion] = useState("");
   const [qnaMessages, setQnaMessages] = useState<QnaQuestion[]>([]);
   const [loadingQna, setLoadingQna] = useState(false);
 
   // Right panel tabs and photo state
-  const [activeToolTab, setActiveToolTab] = useState<"qna" | "photos">(
-    "photos",
+  const [activeToolTab, setActiveToolTab] = useState<"qna" | "photos" | "polls">(
+    "polls",
   );
   const [photos, setPhotos] = useState<Array<{ id: string; url: string; photo: SessionPhoto; selected?: boolean }>>();
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryInitialIndex, setGalleryInitialIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Modal states
+  const [showAddTimeModal, setShowAddTimeModal] = useState(false);
+  const [showEndMeetingModal, setShowEndMeetingModal] = useState(false);
+  const [stoppedTime, setStoppedTime] = useState<string>("");
+
+  // Polls state
+  const [polls, setPolls] = useState<PollWithOptions[]>([]);
+  const [userVotes, setUserVotes] = useState<Record<string, string>>({});
+  const [loadingPolls, setLoadingPolls] = useState(false);
   // User details modal state
   const [selectedUser, setSelectedUser] = useState<{
     name: string;
@@ -353,8 +415,70 @@ export default function RunEventPage() {
   const handleToggleTimer = () => {
     if (!isRunning) {
       setHasStarted(true);
+      setIsRunning(true);
+    } else if (isRunning) {
+      // Stopping the timer - capture current time and offer to add time
+      const currentTime = seconds;
+      setIsRunning(false);
+      setStoppedTime(formatSeconds(currentTime));
+      setShowAddTimeModal(true);
+    } else {
+      // Resuming the timer
+      setIsRunning(true);
     }
-    setIsRunning((prev) => !prev);
+  };
+
+  const handleAddTimeFromModal = (additionalSeconds: number) => {
+    if (additionalSeconds > 0) {
+      setAddedTime(prev => prev + additionalSeconds);
+    }
+    setShowAddTimeModal(false);
+  };
+
+  const handleCloseAddTimeModal = () => {
+    setShowAddTimeModal(false);
+  };
+
+  // Hide details toggle function
+  const handleToggleHideDetails = () => {
+    const newHideState = !hideTimeDetails;
+    setHideTimeDetails(newHideState);
+
+    // Save preference immediately (only if user is loaded)
+    if (user?.id) {
+      saveUserPreference(user.id, 'hideTimeDetails', newHideState);
+    } else {
+      console.warn('Cannot save hide time details preference: user not loaded');
+    }
+  };
+
+  // End Meeting function
+  const handleEndMeeting = () => {
+    if (!details || !eventId) return;
+    setShowEndMeetingModal(true);
+  };
+
+  const confirmEndMeeting = async () => {
+    if (!details || !eventId) return;
+
+    try {
+      // Update event status to completed
+      await updateEvent(eventId, { status: "completed" });
+
+      // Mark any uncompleted items as cancelled
+      // TODO: Implement schedule item status updates
+
+      toast.success("Meeting ended successfully!");
+      setShowEndMeetingModal(false);
+      router.push(`/page/${pageId}/event/${eventId}`);
+    } catch (error) {
+      console.error("Error ending meeting:", error);
+      toast.error("Failed to end meeting. Please try again.");
+    }
+  };
+
+  const cancelEndMeeting = () => {
+    setShowEndMeetingModal(false);
   };
 
   // Q&A functions
@@ -403,18 +527,26 @@ export default function RunEventPage() {
 
     setUploadingPhoto(true);
     try {
-      const uploadPromises = files.map(file => uploadSessionPhoto(eventId, file));
+      // TODO: Check if user is admin (this would need to be added to user context)
+      const isAdmin = false; // Placeholder - implement admin check
+
+      const uploadPromises = files.map(file => uploadSessionPhoto(eventId, file, isAdmin));
       const results = await Promise.all(uploadPromises);
-      
+
       const newPhotos = results.map(({ photo, publicUrl }) => ({
         id: photo.id,
         url: publicUrl,
         photo,
         selected: false
       }));
-      
+
       setPhotos((prev = []) => [...prev, ...newPhotos]);
-      toast.success(`Uploaded ${files.length} photo${files.length > 1 ? 's' : ''}`);
+
+      if (isAdmin) {
+        toast.success(`Uploaded ${files.length} photo${files.length > 1 ? 's' : ''} successfully!`);
+      } else {
+        toast.success(`Uploaded ${files.length} photo${files.length > 1 ? 's' : ''} - awaiting admin approval`);
+      }
     } catch (error) {
       console.error("Error uploading photos:", error);
       toast.error("Failed to upload photos");
@@ -434,21 +566,64 @@ export default function RunEventPage() {
     }
   };
 
+  // Save user preference
+  const saveUserPreference = async (userId: string, key: string, value: any) => {
+    if (!eventId) return;
+
+    try {
+      // Get current session data first
+      const { sessionData: currentData } = await fetchEventSessionAll(eventId);
+      const currentSessionState = (currentData?.session_data && typeof currentData.session_data === 'object' && !Array.isArray(currentData.session_data))
+        ? currentData.session_data as Record<string, any>
+        : {};
+
+      // Update user preferences
+      const userPreferences = (currentSessionState.userPreferences && typeof currentSessionState.userPreferences === 'object' && !Array.isArray(currentSessionState.userPreferences))
+        ? currentSessionState.userPreferences as Record<string, any>
+        : {};
+      userPreferences[userId] = {
+        ...userPreferences[userId],
+        [key]: value
+      };
+
+      // Save updated session data
+      const updatedSessionState = {
+        ...currentSessionState,
+        userPreferences,
+        savedAt: new Date().toISOString()
+      };
+
+      await upsertSessionData(eventId, updatedSessionState);
+    } catch (error) {
+      console.error("Error saving user preference:", error);
+    }
+  };
+
   // Save session state periodically
   const saveSessionState = async () => {
     if (!eventId) return;
     
-    const sessionState = {
-      currentSpeakerIndex,
-      seconds,
-      addedTime,
-      hasStarted,
-      isRunning: false, // Don't persist running state
-      timerPausedAt: isRunning ? null : new Date().toISOString(), // Track when timer was paused
-      savedAt: new Date().toISOString()
-    };
-
     try {
+      // Get current session data to preserve user preferences
+      const { sessionData: currentData } = await fetchEventSessionAll(eventId);
+      const currentSessionState = (currentData?.session_data && typeof currentData.session_data === 'object' && !Array.isArray(currentData.session_data))
+        ? currentData.session_data as Record<string, any>
+        : {};
+      const existingUserPreferences = (currentSessionState.userPreferences && typeof currentSessionState.userPreferences === 'object' && !Array.isArray(currentSessionState.userPreferences))
+        ? currentSessionState.userPreferences
+        : {};
+
+      const sessionState = {
+        currentSpeakerIndex,
+        seconds,
+        addedTime,
+        hasStarted,
+        isRunning: false, // Don't persist running state
+        timerPausedAt: isRunning ? null : new Date().toISOString(), // Track when timer was paused
+        userPreferences: existingUserPreferences, // Preserve existing user preferences
+        savedAt: new Date().toISOString()
+      };
+
       await upsertSessionData(eventId, sessionState);
     } catch (error) {
       console.error("Error saving session state:", error);
@@ -504,6 +679,11 @@ export default function RunEventPage() {
     toast.success(`Downloaded ${selectedPhotos.size} photo${selectedPhotos.size > 1 ? 's' : ''}`);
   };
 
+  const openGallery = (index: number) => {
+    setGalleryInitialIndex(index);
+    setGalleryOpen(true);
+  };
+
   const deleteSelectedPhotos = async () => {
     if (selectedPhotos.size === 0) return;
     
@@ -528,16 +708,111 @@ export default function RunEventPage() {
   };
 
 
+  // Poll functions
+  const handleCreatePoll = async (pollData: {
+    title: string;
+    description: string;
+    options: string[];
+    anonymous: boolean;
+  }) => {
+    if (!eventId) return;
+
+    setLoadingPolls(true);
+    try {
+      const newPoll = await createPoll({
+        eventId,
+        title: pollData.title,
+        description: pollData.description,
+        options: pollData.options,
+        anonymous: pollData.anonymous,
+      });
+      setPolls((prev) => [newPoll, ...prev]);
+      toast.success("Poll created successfully");
+    } catch (error) {
+      console.error("Error creating poll:", error);
+      toast.error("Failed to create poll");
+    } finally {
+      setLoadingPolls(false);
+    }
+  };
+
+  const handleVotePoll = async (pollId: string, optionId: string) => {
+    setLoadingPolls(true);
+    try {
+      await submitPollVote(pollId, optionId);
+      
+      // Update local state
+      setUserVotes((prev) => ({ ...prev, [pollId]: optionId }));
+      setPolls((prev) =>
+        prev.map((poll) => {
+          if (poll.id === pollId) {
+            return {
+              ...poll,
+              options: poll.options.map((option) => ({
+                ...option,
+                vote_count:
+                  option.id === optionId
+                    ? (option.vote_count || 0) + 1
+                    : option.vote_count,
+              })),
+            };
+          }
+          return poll;
+        })
+      );
+      toast.success("Vote submitted");
+    } catch (error) {
+      console.error("Error voting on poll:", error);
+      toast.error("Failed to submit vote");
+    } finally {
+      setLoadingPolls(false);
+    }
+  };
+
+  const handleTogglePollActive = async (pollId: string, active: boolean) => {
+    try {
+      const updatedPoll = await updatePoll(pollId, { active });
+      setPolls((prev) =>
+        prev.map((poll) => (poll.id === pollId ? { ...poll, active } : poll))
+      );
+      toast.success(`Poll ${active ? "activated" : "deactivated"}`);
+    } catch (error) {
+      console.error("Error toggling poll:", error);
+      toast.error("Failed to update poll");
+    }
+  };
+
+  const handleDeletePoll = async (pollId: string) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this poll?");
+    if (!confirmDelete) return;
+
+    try {
+      await deletePoll(pollId);
+      setPolls((prev) => prev.filter((poll) => poll.id !== pollId));
+      toast.success("Poll deleted");
+    } catch (error) {
+      console.error("Error deleting poll:", error);
+      toast.error("Failed to delete poll");
+    }
+  };
+
   // Load session data on mount
   useEffect(() => {
     const loadSessionData = async () => {
       if (!eventId) return;
       
       try {
-        const { questions, photos: sessionPhotos, sessionData } = await fetchEventSessionAll(eventId);
+        const { questions, photos: sessionPhotos, polls: sessionPolls, sessionData } = await fetchEventSessionAll(eventId);
         
         // Load Q&A questions
         setQnaMessages(questions);
+        
+        // Load polls
+        setPolls(sessionPolls);
+        
+        // Load user votes
+        const votes = await getUserPollVotes(eventId);
+        setUserVotes(votes);
         
         // Load photos with public URLs
         if (sessionPhotos.length > 0) {
@@ -555,10 +830,10 @@ export default function RunEventPage() {
         }
         
         // Restore session state if available
-        if (sessionData?.session_data) {
-          const state = sessionData.session_data as any;
+        if (sessionData?.session_data && typeof sessionData.session_data === 'object' && !Array.isArray(sessionData.session_data)) {
+          const state = sessionData.session_data as Record<string, any>;
           console.log('Restoring session state:', state);
-          
+
           if (state.currentSpeakerIndex !== undefined) {
             setCurrentSpeakerIndex(state.currentSpeakerIndex);
           }
@@ -568,17 +843,28 @@ export default function RunEventPage() {
           if (state.hasStarted !== undefined) {
             setHasStarted(state.hasStarted);
           }
-          
+
           // Restore timer with consideration for pause time
           if (state.seconds !== undefined) {
             let restoredSeconds = state.seconds;
-            
+
             // If timer was paused and we have a pause timestamp, don't add elapsed time
             // If timer was running, we would need to calculate elapsed time, but since we save
             // isRunning as false, we assume it was paused
             setSeconds(restoredSeconds);
-            
+
             console.log(`Timer restored to: ${restoredSeconds} seconds`);
+          }
+
+          // Restore user preferences if available
+          if (state.userPreferences && typeof state.userPreferences === 'object' && !Array.isArray(state.userPreferences) && user?.id) {
+            const userPrefs = (state.userPreferences as Record<string, any>)[user.id];
+            if (userPrefs) {
+              if (userPrefs.hideTimeDetails !== undefined) {
+                setHideTimeDetails(userPrefs.hideTimeDetails);
+                console.log(`Hide time details preference restored: ${userPrefs.hideTimeDetails}`);
+              }
+            }
           }
         }
       } catch (error) {
@@ -588,7 +874,7 @@ export default function RunEventPage() {
     };
 
     loadSessionData();
-  }, [eventId]);
+  }, [eventId, user?.id]);
 
   // Timer effect
   useEffect(() => {
@@ -699,10 +985,18 @@ export default function RunEventPage() {
             </div>
           </div>
           <div className="flex items-center justify-end gap-2">
-            <Button variant="outline" size="sm">
-              Settings
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/page/${pageId}/event/${eventId}/edit`)}
+            >
+              Modify Event
             </Button>
-            <Button variant="destructive" size="sm">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleEndMeeting}
+            >
               End Meeting
             </Button>
           </div>
@@ -726,8 +1020,11 @@ export default function RunEventPage() {
             onToggleFullscreen={() => setIsFullscreen(true)}
             timerBackgroundColor={timerBackgroundColor}
             timerTextColor={timerTextColor}
+            min={min}
             target={target}
             max={max}
+            hideTimeDetails={hideTimeDetails}
+            onToggleHideDetails={handleToggleHideDetails}
           />
 
           {/* Agenda */}
@@ -784,19 +1081,15 @@ export default function RunEventPage() {
                           <div className="text-xs mt-1 flex gap-2">
                             <p className="text-green-500">
                               Min:{" "}
-                              {formatSeconds(
-                                (item.allocatedMinutes || 4) * 60 * 0.75,
-                              )}
+                              {formatSeconds((item.minMinutes || 3) * 60)}
                             </p>
                             <p className="text-yellow-500">
                               Target:{" "}
-                              {formatSeconds((item.allocatedMinutes || 4) * 60)}
+                              {formatSeconds((item.targetMinutes || item.allocatedMinutes || 5) * 60)}
                             </p>
                             <p className="text-red-500">
                               Max:{" "}
-                              {formatSeconds(
-                                (item.allocatedMinutes || 4) * 60 * 1.25,
-                              )}
+                              {formatSeconds((item.maxMinutes || 7) * 60)}
                             </p>
                           </div>
                           {idx < currentSpeakerIndex && (
@@ -864,9 +1157,21 @@ export default function RunEventPage() {
                 >
                   <Camera className="h-4 w-4 mr-1" /> Photos
                 </Button>
+                <Button
+                  variant={activeToolTab === "polls" ? "secondary" : "outline"}
+                  size="sm"
+                  className={
+                    activeToolTab === "polls"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : ""
+                  }
+                  onClick={() => setActiveToolTab("polls")}
+                >
+                  <CheckSquare className="h-4 w-4 mr-1" /> Polls
+                </Button>
               </div>
 
-              {activeToolTab === "qna" ? (
+              {activeToolTab === "qna" && (
                 <div className="mt-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="font-medium">Q&A Session</div>
@@ -945,7 +1250,9 @@ export default function RunEventPage() {
                     )}
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {activeToolTab === "photos" && (
                 <div className="mt-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -1054,7 +1361,7 @@ export default function RunEventPage() {
 
                   {/* Thumbs */}
                   <div className="mt-4 grid grid-cols-4 gap-3">
-                    {(photos || []).map((photo) => {
+                    {(photos || []).map((photo, index) => {
                       const isSelected = selectedPhotos.has(photo.id);
                       return (
                         <div
@@ -1062,7 +1369,7 @@ export default function RunEventPage() {
                           className={`relative aspect-square rounded-md overflow-hidden border group cursor-pointer ${
                             isSelected ? 'border-blue-500 border-2 bg-blue-50' : 'border-gray-200'
                           }`}
-                          onClick={() => togglePhotoSelection(photo.id)}
+                          onClick={() => openGallery(index)}
                         >
                           <img
                             src={photo.url}
@@ -1070,11 +1377,17 @@ export default function RunEventPage() {
                             className="h-full w-full object-cover"
                           />
                           {/* Selection indicator */}
-                          <div className={`absolute top-1 left-1 w-5 h-5 rounded border flex items-center justify-center ${
-                            isSelected 
-                              ? 'bg-blue-500 border-blue-500' 
-                              : 'bg-white/80 border-gray-300 opacity-0 group-hover:opacity-100'
-                          } transition-opacity`}>
+                          <div
+                            className={`absolute top-1 left-1 w-5 h-5 rounded border flex items-center justify-center ${
+                              isSelected
+                                ? 'bg-blue-500 border-blue-500'
+                                : 'bg-white/80 border-gray-300 opacity-0 group-hover:opacity-100'
+                            } transition-opacity`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePhotoSelection(photo.id);
+                            }}
+                          >
                             {isSelected && (
                               <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -1096,6 +1409,21 @@ export default function RunEventPage() {
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {activeToolTab === "polls" && (
+                <div className="mt-4">
+                  <PollsSection
+                    polls={polls}
+                    onCreatePoll={handleCreatePoll}
+                    onVote={handleVotePoll}
+                    onToggleActive={handleTogglePollActive}
+                    onDeletePoll={handleDeletePoll}
+                    userVotes={userVotes}
+                    isLoading={loadingPolls}
+                    canManage={true}
+                  />
                 </div>
               )}
             </CardContent>
@@ -1127,8 +1455,11 @@ export default function RunEventPage() {
               onToggleFullscreen={() => setIsFullscreen(false)}
               timerBackgroundColor={timerBackgroundColor}
               timerTextColor={timerTextColor}
+              min={min}
               target={target}
               max={max}
+              hideTimeDetails={hideTimeDetails}
+              onToggleHideDetails={handleToggleHideDetails}
             />
           </div>
         </div>
@@ -1198,6 +1529,35 @@ export default function RunEventPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Image Gallery */}
+      <ImageGallery
+        photos={photos || []}
+        initialIndex={galleryInitialIndex}
+        isOpen={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+      />
+
+      {/* Modals */}
+      <AddTimeModal
+        isOpen={showAddTimeModal}
+        onClose={handleCloseAddTimeModal}
+        onConfirm={handleAddTimeFromModal}
+        currentTime={stoppedTime}
+      />
+
+      <EndMeetingModal
+        isOpen={showEndMeetingModal}
+        onClose={cancelEndMeeting}
+        onConfirm={confirmEndMeeting}
+        pendingItems={
+          details?.schedule.filter(item => !item.status || item.status === "pending").map(item => ({
+            id: item.id,
+            title: item.title,
+            role: item.role,
+          })) || []
+        }
+      />
     </main>
   );
 }

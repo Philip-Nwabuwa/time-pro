@@ -25,7 +25,7 @@ export interface Event {
   time: string;
   location: string;
   attendees: number;
-  status: "upcoming" | "ongoing" | "completed";
+  status: "upcoming" | "ongoing" | "completed" | "draft";
 }
 
 export interface EventScheduleItem {
@@ -34,12 +34,24 @@ export interface EventScheduleItem {
   title: string;
   role: string;
   allocatedMinutes: number;
+  minMinutes?: number;
+  targetMinutes?: number;
+  maxMinutes?: number;
+  status?: "pending" | "completed" | "cancelled";
+  speakerName?: string;
+  speakerEmail?: string;
+  speakerBio?: string;
+  speakerAvatar?: string;
+  socialMediaLinks?: any;
 }
 
 export interface EventDetails extends Event {
   estimatedMinutes: number;
   rolesCount: number;
   configured: boolean;
+  allowFeedback?: boolean;
+  anonymousFeedback?: boolean;
+  detailedSpeakerProfiles?: boolean;
   schedule: EventScheduleItem[];
 }
 

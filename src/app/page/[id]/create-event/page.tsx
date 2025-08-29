@@ -32,10 +32,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { usePage } from "@/lib/api/hooks";
 import DateTimePickerForm from "@/components/DateTimePickerForm";
+import TimeInput from "@/components/TimeInput";
 import { createEvent, createScheduleItem } from "@/lib/api/events";
 import type { EventInsert, EventScheduleItemInsert } from "@/lib/api/types";
 
@@ -224,8 +224,8 @@ export default function CreateEventPage() {
 
   const parseTimeToMinutes = (timeString: string): number => {
     if (!timeString) return 0;
-    const [hours, minutes] = timeString.split(":").map(Number);
-    return (hours || 0) * 60 + (minutes || 0);
+    const [minutes, seconds] = timeString.split(":").map(Number);
+    return (minutes || 0) + (seconds || 0) / 60;
   };
 
   const transformFormDataToEventInsert = (): EventInsert => {
@@ -486,40 +486,31 @@ export default function CreateEventPage() {
         {/* Event Schedule & Roles */}
         <Card>
           <CardHeader>
-            <Tabs defaultValue="schedule" className="w-full">
-              <div className="flex items-center justify-between mb-4">
-                <TabsList>
-                  <TabsTrigger value="schedule">
-                    Event Schedule & Roles
-                  </TabsTrigger>
-                  <TabsTrigger value="polls">Polls</TabsTrigger>
-                </TabsList>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Clock className="h-4 w-4" />
-                    {formatTime(calculateTotalTime())} total
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={addRole}
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Role
-                  </Button>
-                </div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <CardTitle>Event Schedule & Roles</CardTitle>
+                <p className="text-sm text-gray-600 mt-2">
+                  Manage speakers and time allocations.
+                </p>
               </div>
-
-              <TabsContent value="schedule" className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    Event Schedule & Roles
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Manage speakers and time allocations.
-                  </p>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Clock className="h-4 w-4" />
+                  {formatTime(calculateTotalTime())} total
                 </div>
+                <Button
+                  type="button"
+                  onClick={addRole}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Role
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
 
                 {formData.roles.map((role, index) => (
                   <div
@@ -582,38 +573,26 @@ export default function CreateEventPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Min Time</Label>
-                        <Input
-                          value={role.minTime}
-                          onChange={(e) =>
-                            updateRole(role.id, "minTime", e.target.value)
-                          }
-                          placeholder="0:00"
-                        />
-                      </div>
+                      <TimeInput
+                        label="Min Time"
+                        value={role.minTime}
+                        onChange={(value) => updateRole(role.id, "minTime", value)}
+                        placeholder="3:00"
+                      />
 
-                      <div className="space-y-2">
-                        <Label>Target Time</Label>
-                        <Input
-                          value={role.targetTime}
-                          onChange={(e) =>
-                            updateRole(role.id, "targetTime", e.target.value)
-                          }
-                          placeholder="0:00"
-                        />
-                      </div>
+                      <TimeInput
+                        label="Target Time"
+                        value={role.targetTime}
+                        onChange={(value) => updateRole(role.id, "targetTime", value)}
+                        placeholder="5:00"
+                      />
 
-                      <div className="space-y-2">
-                        <Label>Max Time</Label>
-                        <Input
-                          value={role.maxTime}
-                          onChange={(e) =>
-                            updateRole(role.id, "maxTime", e.target.value)
-                          }
-                          placeholder="0:00"
-                        />
-                      </div>
+                      <TimeInput
+                        label="Max Time"
+                        value={role.maxTime}
+                        onChange={(value) => updateRole(role.id, "maxTime", value)}
+                        placeholder="7:00"
+                      />
                     </div>
 
                     {formData.detailedSpeakerProfiles && (
@@ -729,110 +708,7 @@ export default function CreateEventPage() {
                     )}
                   </div>
                 ))}
-              </TabsContent>
-
-              <TabsContent value="polls" className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <Checkbox id="eventPolls" checked={true} />
-                        <Label
-                          htmlFor="eventPolls"
-                          className="text-lg font-semibold"
-                        >
-                          Event Polls
-                        </Label>
-                      </div>
-                      <div className="px-3 py-1 bg-gray-100 text-gray-600 text-sm rounded-full">
-                        Anonymous
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={() => {}}
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      New Poll
-                    </Button>
-                  </div>
-
-                  {/* Create New Poll Form */}
-                  <Card className="bg-green-50 border-green-200">
-                    <CardHeader className="pb-4">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">
-                          Create New Poll
-                        </CardTitle>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="pollTitle">Poll Title</Label>
-                        <Input
-                          id="pollTitle"
-                          placeholder="What's your favorite session?"
-                          className="bg-white"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="pollDescription">
-                          Description (optional)
-                        </Label>
-                        <Textarea
-                          id="pollDescription"
-                          placeholder="Additional details about the poll..."
-                          className="min-h-[100px] resize-none bg-white"
-                        />
-                      </div>
-
-                      <div className="space-y-3">
-                        <Label>Poll Options</Label>
-                        <div className="space-y-2">
-                          <Input placeholder="Option 1" className="bg-white" />
-                          <Input placeholder="Option 2" className="bg-white" />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add Option
-                        </Button>
-                      </div>
-
-                      <div className="flex gap-3 pt-4">
-                        <Button
-                          type="button"
-                          className="bg-green-600 hover:bg-green-700 flex-1"
-                        >
-                          Create Poll
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="flex-1"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            </Tabs>
+            </div>
           </CardHeader>
         </Card>
 

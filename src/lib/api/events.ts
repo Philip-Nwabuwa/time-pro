@@ -25,7 +25,7 @@ export async function fetchEventsByPageId(pageId: string): Promise<Event[]> {
     time: event.event_time,
     location: event.location || "",
     attendees: event.attendees_count || 0,
-    status: event.status as "upcoming" | "ongoing" | "completed",
+    status: event.status as "upcoming" | "ongoing" | "completed" | "draft",
   }));
 }
 
@@ -59,16 +59,27 @@ export async function fetchEventDetails(
     time: event.event_time,
     location: event.location || "",
     attendees: event.attendees_count || 0,
-    status: event.status as "upcoming" | "ongoing" | "completed",
+    status: event.status as "upcoming" | "ongoing" | "completed" | "draft",
     estimatedMinutes: event.estimated_minutes || 60,
     rolesCount: event.roles_count || 0,
     configured: event.configured || false,
+    allowFeedback: event.allow_feedback ?? true,
+    anonymousFeedback: event.anonymous_feedback ?? false,
+    detailedSpeakerProfiles: event.detailed_speaker_profiles ?? true,
     schedule: scheduleItems.map((item) => ({
       id: item.id,
       order: item.order_index,
       title: item.title,
       role: item.role,
       allocatedMinutes: item.allocated_minutes,
+      minMinutes: item.min_minutes || undefined,
+      targetMinutes: item.target_minutes || undefined,
+      maxMinutes: item.max_minutes || undefined,
+      speakerName: item.speaker_name || undefined,
+      speakerEmail: item.speaker_email || undefined,
+      speakerBio: item.speaker_bio || undefined,
+      speakerAvatar: item.speaker_avatar || undefined,
+      socialMediaLinks: item.social_media_links || undefined,
     })),
   };
 }
@@ -98,7 +109,7 @@ export async function createEvent(
     time: event.event_time,
     location: event.location || "",
     attendees: event.attendees_count || 0,
-    status: event.status as "upcoming" | "ongoing" | "completed",
+    status: event.status as "upcoming" | "ongoing" | "completed" | "draft",
   };
 }
 
@@ -123,7 +134,7 @@ export async function updateEvent(
     time: event.event_time,
     location: event.location || "",
     attendees: event.attendees_count || 0,
-    status: event.status as "upcoming" | "ongoing" | "completed",
+    status: event.status as "upcoming" | "ongoing" | "completed" | "draft",
   };
 }
 
