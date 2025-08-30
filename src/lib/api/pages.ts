@@ -16,7 +16,8 @@ export async function fetchPages(): Promise<PageData[]> {
   // Get pages where user is a member
   const { data: membershipData, error: memberError } = await supabase
     .from("page_members")
-    .select(`
+    .select(
+      `
       page_id,
       role,
       pages!inner (
@@ -26,7 +27,8 @@ export async function fetchPages(): Promise<PageData[]> {
         created_by,
         image_url
       )
-    `)
+    `
+    )
     .eq("user_id", user.user.id);
 
   if (memberError) throw memberError;
@@ -63,14 +65,14 @@ export async function fetchPages(): Promise<PageData[]> {
     }
   });
 
-  console.log('🔄 Transforming pages data, found pages:', allPages.length);
+  console.log("🔄 Transforming pages data, found pages:", allPages.length);
   allPages.forEach((page, index) => {
     console.log(`📄 Page ${index + 1}:`, {
       id: page.id,
       title: page.title,
       image_url: page.image_url,
       hasImageUrl: !!page.image_url,
-      imageUrlLength: page.image_url?.length || 0
+      imageUrlLength: page.image_url?.length || 0,
     });
   });
 
@@ -98,25 +100,28 @@ export async function fetchPages(): Promise<PageData[]> {
         role: page.userRole as "admin" | "member",
         imageUrl: page.image_url || undefined,
       };
-      
-      console.log('🔄 Transformed page:', {
+
+      console.log("🔄 Transformed page:", {
         id: transformedPage.id,
         title: transformedPage.title,
         imageUrl: transformedPage.imageUrl,
-        hasImageUrl: !!transformedPage.imageUrl
+        hasImageUrl: !!transformedPage.imageUrl,
       });
-      
+
       return transformedPage;
-    }),
+    })
   );
 
-  console.log('✅ Final transformed pages:', transformedPages.map(p => ({
-    id: p.id,
-    title: p.title,
-    imageUrl: p.imageUrl,
-    hasImageUrl: !!p.imageUrl
-  })));
-  
+  console.log(
+    "✅ Final transformed pages:",
+    transformedPages.map((p) => ({
+      id: p.id,
+      title: p.title,
+      imageUrl: p.imageUrl,
+      hasImageUrl: !!p.imageUrl,
+    }))
+  );
+
   return transformedPages;
 }
 
@@ -136,25 +141,27 @@ export async function fetchAllPages(): Promise<
   // Fetch all pages (public discovery)
   const { data: pages, error } = await supabase
     .from("pages")
-    .select(`
+    .select(
+      `
       id,
       title,
       description,
       created_at,
       is_private,
       image_url
-    `)
+    `
+    )
     .order("created_at", { ascending: false });
 
   if (error) throw error;
 
-  console.log('🌐 Processing all pages for discovery, found:', pages.length);
+  console.log("🌐 Processing all pages for discovery, found:", pages.length);
   pages.forEach((page, index) => {
     console.log(`🌐 Discovery page ${index + 1}:`, {
       id: page.id,
       title: page.title,
       image_url: page.image_url,
-      hasImageUrl: !!page.image_url
+      hasImageUrl: !!page.image_url,
     });
   });
 
@@ -184,24 +191,29 @@ export async function fetchAllPages(): Promise<
         isPrivate: page.is_private || false,
         imageUrl: page.image_url || undefined,
       };
-      
-      console.log('🌐 Processed discovery page:', {
+
+      console.log("🌐 Processed discovery page:", {
         id: processedPage.id,
         title: processedPage.title,
         imageUrl: processedPage.imageUrl,
-        hasImageUrl: !!processedPage.imageUrl
+        hasImageUrl: !!processedPage.imageUrl,
       });
-      
+
       return processedPage;
-    }),
+    })
   );
 
-  console.log('✅ Final discovery pages with images:', pagesWithCounts.filter(p => p.imageUrl).map(p => ({
-    id: p.id,
-    title: p.title,
-    imageUrl: p.imageUrl
-  })));
-  
+  console.log(
+    "✅ Final discovery pages with images:",
+    pagesWithCounts
+      .filter((p) => p.imageUrl)
+      .map((p) => ({
+        id: p.id,
+        title: p.title,
+        imageUrl: p.imageUrl,
+      }))
+  );
+
   return pagesWithCounts;
 }
 
@@ -211,13 +223,15 @@ export async function fetchPageById(id: string): Promise<PageData | null> {
 
   const { data: page, error } = await supabase
     .from("pages")
-    .select(`
+    .select(
+      `
       id,
       title,
       description,
       created_by,
       image_url
-    `)
+    `
+    )
     .eq("id", id)
     .single();
 
@@ -261,74 +275,76 @@ export async function fetchPageById(id: string): Promise<PageData | null> {
 
 export async function uploadPageImage(
   file: File,
-  pageId?: string,
+  pageId?: string
 ): Promise<{ filePath: string; publicUrl: string }> {
   const { data: user, error: authError } = await supabase.auth.getUser();
-  
-  console.log('🔐 Auth check result:', {
+
+  console.log("🔐 Auth check result:", {
     hasUser: !!user?.user,
     userId: user?.user?.id,
     userEmail: user?.user?.email,
-    authError: authError?.message || 'no error'
+    authError: authError?.message || "no error",
   });
-  
+
   if (authError) {
-    console.error('❌ Auth error:', authError);
+    console.error("❌ Auth error:", authError);
     throw new Error(`Authentication error: ${authError.message}`);
   }
-  
+
   if (!user.user) {
-    console.error('❌ No authenticated user found');
+    console.error("❌ No authenticated user found");
     throw new Error("Not authenticated");
   }
 
   const fileExt = file.name.split(".").pop();
-  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+  const fileName = `${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(2)}.${fileExt}`;
   const filePath = `${pageId || "temp"}/${fileName}`;
 
-  console.log('📤 Starting file upload to Supabase storage:', {
+  console.log("📤 Starting file upload to Supabase storage:", {
     fileName,
     filePath,
     fileSize: file.size,
     fileType: file.type,
     pageId: pageId || "temp",
-    userId: user.user.id
+    userId: user.user.id,
   });
 
   // Skip bucket listing check - just proceed with upload since we know bucket exists
 
   // Upload file to storage
-  console.log('📤 Attempting upload to page-images bucket...');
-  console.log('🔍 Upload details:', {
-    bucket: 'page-images',
+  console.log("📤 Attempting upload to page-images bucket...");
+  console.log("🔍 Upload details:", {
+    bucket: "page-images",
     filePath,
     fileName,
     fileType: file.type,
     fileSize: file.size,
     userAuth: !!user.user?.id,
-    userId: user.user?.id
+    userId: user.user?.id,
   });
 
   // First, let's test if we can even access the bucket
-  console.log('🧪 Testing bucket access...');
+  console.log("🧪 Testing bucket access...");
   try {
     const { data: bucketData, error: bucketError } = await supabase.storage
       .from("page-images")
-      .list('', {
-        limit: 1
+      .list("", {
+        limit: 1,
       });
-    
-    console.log('🧪 Bucket test result:', {
+
+    console.log("🧪 Bucket test result:", {
       canAccess: !bucketError,
-      error: bucketError?.message || 'no error',
-      hasFiles: !!bucketData?.length
+      error: bucketError?.message || "no error",
+      hasFiles: !!bucketData?.length,
     });
-    
+
     if (bucketError) {
-      console.error('❌ Cannot access bucket:', bucketError);
+      console.error("❌ Cannot access bucket:", bucketError);
     }
   } catch (bucketTestError) {
-    console.error('❌ Bucket test failed:', bucketTestError);
+    console.error("❌ Bucket test failed:", bucketTestError);
   }
 
   let uploadResult;
@@ -339,88 +355,94 @@ export async function uploadPageImage(
       .upload(filePath, file, {
         upsert: true, // Allow overwrite to avoid conflicts
       });
-    
-    console.log('📤 Upload result received:', {
+
+    console.log("📤 Upload result received:", {
       hasData: !!uploadResult.data,
       hasError: !!uploadResult.error,
-      dataKeys: uploadResult.data ? Object.keys(uploadResult.data) : 'none',
-      errorKeys: uploadResult.error ? Object.keys(uploadResult.error) : 'none'
+      dataKeys: uploadResult.data ? Object.keys(uploadResult.data) : "none",
+      errorKeys: uploadResult.error ? Object.keys(uploadResult.error) : "none",
     });
   } catch (uploadException) {
-    console.error('❌ Upload threw exception:', uploadException);
+    console.error("❌ Upload threw exception:", uploadException);
     throw uploadException;
   }
 
   const { data: uploadData, error: uploadError } = uploadResult;
 
   if (uploadError) {
-    console.error('❌ File upload failed with error:', uploadError);
-    console.error('❌ Error details:', {
-      message: uploadError.message || 'No message',
-      error: uploadError.error || 'No error field',
-      statusCode: uploadError.statusCode || 'No status code',
-      details: uploadError.details || 'No details',
-      hint: uploadError.hint || 'No hint',
-      code: uploadError.code || 'No code'
+    console.error("❌ File upload failed with error:", uploadError);
+    console.error("❌ Error details:", {
+      message: uploadError.message || "No message",
     });
-    console.error('❌ Full error object:', JSON.stringify(uploadError, null, 2));
-    
+    console.error(
+      "❌ Full error object:",
+      JSON.stringify(uploadError, null, 2)
+    );
+
     // Check for specific error types
-    if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('bucket')) {
-      throw new Error('Storage bucket not found. Please check your Supabase storage configuration.');
+    if (
+      uploadError.message?.includes("Bucket not found") ||
+      uploadError.message?.includes("bucket")
+    ) {
+      throw new Error(
+        "Storage bucket not found. Please check your Supabase storage configuration."
+      );
     }
-    
-    if (uploadError.message?.includes('permission') || uploadError.message?.includes('unauthorized')) {
-      throw new Error('Permission denied. Check your storage RLS policies.');
+
+    if (
+      uploadError.message?.includes("permission") ||
+      uploadError.message?.includes("unauthorized")
+    ) {
+      throw new Error("Permission denied. Check your storage RLS policies.");
     }
-    
-    throw new Error(`Upload failed: ${uploadError.message || 'Unknown error'}`);
+
+    throw new Error(`Upload failed: ${uploadError.message || "Unknown error"}`);
   }
 
-  console.log('✅ File uploaded successfully:', uploadData);
+  console.log("✅ File uploaded successfully:", uploadData);
 
   // Get public URL
   const {
     data: { publicUrl },
   } = supabase.storage.from("page-images").getPublicUrl(filePath);
 
-  console.log('🔗 Generated public URL:', {
+  console.log("🔗 Generated public URL:", {
     publicUrl,
     filePath,
     urlLength: publicUrl.length,
-    isHttps: publicUrl.startsWith('https://')
+    isHttps: publicUrl.startsWith("https://"),
   });
-  
+
   // Test the URL accessibility
   try {
-    const testResponse = await fetch(publicUrl, { method: 'HEAD' });
-    console.log('🔍 URL accessibility test result:', {
+    const testResponse = await fetch(publicUrl, { method: "HEAD" });
+    console.log("🔍 URL accessibility test result:", {
       status: testResponse.status,
       statusText: testResponse.statusText,
       accessible: testResponse.ok,
-      contentType: testResponse.headers.get('content-type'),
-      contentLength: testResponse.headers.get('content-length')
+      contentType: testResponse.headers.get("content-type"),
+      contentLength: testResponse.headers.get("content-length"),
     });
   } catch (testError) {
-    console.warn('⚠️ Could not test URL accessibility:', testError);
+    console.warn("⚠️ Could not test URL accessibility:", testError);
   }
-  
+
   return { filePath, publicUrl };
 }
 
 export async function createPage(
   pageData: Omit<PageInsert, "created_by">,
-  imageFile?: File,
+  imageFile?: File
 ): Promise<PageData> {
   const { data: user } = await supabase.auth.getUser();
   if (!user.user) throw new Error("Not authenticated");
 
-  console.log('🚀 Creating page with data:', {
+  console.log("🚀 Creating page with data:", {
     title: pageData.title,
     hasImage: !!imageFile,
     imageSize: imageFile?.size,
     imageType: imageFile?.type,
-    userId: user.user.id
+    userId: user.user.id,
   });
 
   // Create page first without image - this isolates the RLS issue
@@ -434,45 +456,48 @@ export async function createPage(
     .single();
 
   if (error) {
-    console.error('❌ Page creation failed:', error);
+    console.error("❌ Page creation failed:", error);
     throw error;
   }
 
-  console.log('✅ Page created successfully:', {
+  console.log("✅ Page created successfully:", {
     id: page.id,
     title: page.title,
-    created_by: page.created_by
+    created_by: page.created_by,
   });
 
   // Handle image upload after page creation if provided
   if (imageFile) {
     try {
-      console.log('📤 Starting image upload for page:', page.id);
-      console.log('📤 Image file details:', {
+      console.log("📤 Starting image upload for page:", page.id);
+      console.log("📤 Image file details:", {
         name: imageFile.name,
         size: imageFile.size,
         type: imageFile.type,
-        lastModified: imageFile.lastModified
+        lastModified: imageFile.lastModified,
       });
-      
+
       const { filePath, publicUrl } = await uploadPageImage(imageFile, page.id);
-      console.log('✅ Image uploaded successfully:', { filePath, publicUrl });
-      
+      console.log("✅ Image uploaded successfully:", { filePath, publicUrl });
+
       // Verify the image URL is accessible before updating database
       try {
-        const response = await fetch(publicUrl, { method: 'HEAD' });
-        console.log('🔍 Image URL accessibility test:', {
+        const response = await fetch(publicUrl, { method: "HEAD" });
+        console.log("🔍 Image URL accessibility test:", {
           url: publicUrl,
           status: response.status,
           accessible: response.ok,
-          headers: Object.fromEntries(response.headers.entries())
+          headers: Object.fromEntries(response.headers.entries()),
         });
       } catch (fetchError) {
-        console.warn('⚠️ Could not verify image URL accessibility:', fetchError);
+        console.warn(
+          "⚠️ Could not verify image URL accessibility:",
+          fetchError
+        );
       }
-      
+
       // Update the page with the image information
-      console.log('💾 Updating page with image URL in database...');
+      console.log("💾 Updating page with image URL in database...");
       const { data: updatedPage, error: updateError } = await supabase
         .from("pages")
         .update({
@@ -480,28 +505,28 @@ export async function createPage(
           image_file_path: filePath,
         })
         .eq("id", page.id)
-        .select('id, image_url, image_file_path')
+        .select("id, image_url, image_file_path")
         .single();
 
       if (updateError) {
         console.error("❌ Failed to update page with image:", updateError);
       } else {
-        console.log('✅ Page updated with image successfully:', updatedPage);
+        console.log("✅ Page updated with image successfully:", updatedPage);
         // Update the local page object with the new image data
         page.image_url = publicUrl;
         page.image_file_path = filePath;
-        
+
         // Verify the database update worked
         const { data: verifyPage, error: verifyError } = await supabase
           .from("pages")
-          .select('id, title, image_url')
+          .select("id, title, image_url")
           .eq("id", page.id)
           .single();
-        
+
         if (verifyError) {
-          console.error('❌ Failed to verify page update:', verifyError);
+          console.error("❌ Failed to verify page update:", verifyError);
         } else {
-          console.log('🔍 Database verification after update:', verifyPage);
+          console.log("🔍 Database verification after update:", verifyPage);
         }
       }
     } catch (uploadError) {
@@ -522,22 +547,22 @@ export async function createPage(
   }
 
   // Wait a brief moment to ensure database consistency
-  console.log('⏳ Waiting for database consistency...');
-  await new Promise(resolve => setTimeout(resolve, 100));
-  
+  console.log("⏳ Waiting for database consistency...");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
   // Fetch the updated page data to ensure we have the latest image information
-  console.log('🔄 Fetching updated page data...');
+  console.log("🔄 Fetching updated page data...");
   const updatedPage = await fetchPageById(page.id);
-  console.log('🔍 Final page data after creation:', {
+  console.log("🔍 Final page data after creation:", {
     id: updatedPage?.id,
     title: updatedPage?.title,
     imageUrl: updatedPage?.imageUrl,
     hasImageUrl: !!updatedPage?.imageUrl,
-    imageUrlLength: updatedPage?.imageUrl?.length || 0
+    imageUrlLength: updatedPage?.imageUrl?.length || 0,
   });
-  
+
   if (updatedPage) {
-    console.log('✅ Returning updated page data with image');
+    console.log("✅ Returning updated page data with image");
     return updatedPage;
   }
 
@@ -555,7 +580,7 @@ export async function createPage(
 
 export async function updatePage(
   id: string,
-  updates: PageUpdate,
+  updates: PageUpdate
 ): Promise<PageData> {
   const { error } = await supabase.from("pages").update(updates).eq("id", id);
 
