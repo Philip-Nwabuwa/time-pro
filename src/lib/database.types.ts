@@ -179,7 +179,6 @@ export type Database = {
           target_minutes: number | null
           title: string
           updated_at: string | null
-          status: string | null
         }
         Insert: {
           allocated_minutes?: number
@@ -198,7 +197,6 @@ export type Database = {
           target_minutes?: number | null
           title: string
           updated_at?: string | null
-          status?: string | null
         }
         Update: {
           allocated_minutes?: number
@@ -217,7 +215,6 @@ export type Database = {
           target_minutes?: number | null
           title?: string
           updated_at?: string | null
-          status?: string | null
         }
         Relationships: [
           {
@@ -271,9 +268,6 @@ export type Database = {
           id: string
           mime_type: string | null
           uploaded_by: string | null
-          approved: boolean | null
-          approved_by: string | null
-          approved_at: string | null
         }
         Insert: {
           created_at?: string | null
@@ -284,9 +278,6 @@ export type Database = {
           id?: string
           mime_type?: string | null
           uploaded_by?: string | null
-          approved?: boolean | null
-          approved_by?: string | null
-          approved_at?: string | null
         }
         Update: {
           created_at?: string | null
@@ -297,9 +288,6 @@ export type Database = {
           id?: string
           mime_type?: string | null
           uploaded_by?: string | null
-          approved?: boolean | null
-          approved_by?: string | null
-          approved_at?: string | null
         }
         Relationships: [
           {
@@ -420,6 +408,8 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          is_private: boolean | null
+          pin: string | null
           title: string
           updated_at: string | null
         }
@@ -428,6 +418,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_private?: boolean | null
+          pin?: string | null
           title: string
           updated_at?: string | null
         }
@@ -436,6 +428,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_private?: boolean | null
+          pin?: string | null
           title?: string
           updated_at?: string | null
         }
@@ -446,7 +440,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_page_members_with_user_data: {
+        Args: { page_id_param: string }
+        Returns: {
+          id: string
+          joined_at: string
+          role: string
+          user_avatar_url: string
+          user_email: string
+          user_first_name: string
+          user_id: string
+          user_last_name: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

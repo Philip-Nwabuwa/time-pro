@@ -1,143 +1,116 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
-  Search,
-  Monitor,
   Briefcase,
+  Globe,
   GraduationCap,
   Home,
-  Calendar,
-  Clock,
-  MapPin,
+  Lock,
+  Monitor,
+  Plus,
+  Search,
   Settings,
-  ArrowLeft,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useAllPages, useJoinPage } from "@/lib/api/hooks";
+import JoinPrivatePageModal from "@/components/modals/JoinPrivatePageModal";
 
-interface Event {
-  id: string;
-  category: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  location: string;
-  eventCode?: string;
-  status: string;
-}
-
-const mockEvents: Event[] = [
-  {
-    id: "1",
-    category: "Technology",
-    title: "Blockchain for Beginners",
-    description:
-      "Understanding cryptocurrency, smart contracts, and decentralized applications",
-    date: "Tue, Aug 26, 2025",
-    time: "18:30:00",
-    location: "Innovation Center",
-    status: "live",
-  },
-  {
-    id: "2",
-    category: "Business",
-    title: "Digital Marketing Trends 2025",
-    description:
-      "Latest strategies in social media, content marketing, and online advertising",
-    date: "Wed, Aug 27, 2025",
-    time: "09:00:00",
-    location: "Marketing Hub",
-    status: "live",
-  },
-  {
-    id: "3",
-    category: "Education",
-    title: "Public Speaking Masterclass",
-    description:
-      "Develop confidence and skills for effective public speaking and presentations",
-    date: "Thu, Aug 28, 2025",
-    time: "19:00:00",
-    location: "Community Learning Center",
-    status: "live",
-  },
-  {
-    id: "4",
-    category: "Education",
-    title: "Financial Literacy Workshop",
-    description:
-      "Personal finance, investing basics, and retirement planning for young professionals",
-    date: "Fri, Aug 29, 2025",
-    time: "18:00:00",
-    location: "Library Main Branch",
-    status: "live",
-  },
-  {
-    id: "5",
-    category: "Community",
-    title: "Local Food Festivalfjsdhbuyfbyuhbdyuedyucydsciwhduis",
-    description:
-      "Celebrate diverse cuisines from local restaurants and food trucks",
-    date: "Sat, Aug 30, 2025",
-    time: "11:00:00",
-    location: "Central Park",
-    status: "live",
-  },
-  {
-    id: "6",
-    category: "Community",
-    title: "Neighborhood Cleanup Drive",
-    description:
-      "Join neighbors in making our community cleaner and more beautiful",
-    date: "Sun, Aug 31, 2025",
-    time: "08:00:00",
-    location: "Main Street",
-    status: "live",
-  },
-];
+// Category icons mapping
+const categoryIcons = {
+  Technology: Monitor,
+  Business: Briefcase,
+  Education: GraduationCap,
+  Community: Home,
+  default: Settings,
+};
 
 export default function DiscoveryPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [filteredEvents, setFilteredEvents] = useState(mockEvents);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [selectedPage, setSelectedPage] = useState<{ id: string; title: string } | null>(null);
+
+  const { data: pages, isLoading, error } = useAllPages();
+  const joinPageMutation = useJoinPage();
+
+  // Filter pages based on search query
+  const filteredPages =
+    pages?.filter((page) => {
+      if (searchQuery.trim() === "") return true;
+
+      const query = searchQuery.toLowerCase();
+      return (
+        page.title.toLowerCase().includes(query) ||
+        page.description?.toLowerCase().includes(query) ||
+        (page.category && page.category.toLowerCase().includes(query))
+      );
+    }) || [];
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    if (query.trim() === "") {
-      setFilteredEvents(mockEvents);
+  };
+
+  const handleJoinPage = async (pageId: string, isPrivate: boolean, pageTitle: string) => {
+    if (isPrivate) {
+      setSelectedPage({ id: pageId, title: pageTitle });
+      setShowPinModal(true);
     } else {
-      const filtered = mockEvents.filter(
-        (event) =>
-          event.title.toLowerCase().includes(query.toLowerCase()) ||
-          event.description.toLowerCase().includes(query.toLowerCase()) ||
-          (event.eventCode && event.eventCode.includes(query)),
-      );
-      setFilteredEvents(filtered);
+      try {
+        await joinPageMutation.mutateAsync({ pageId });
+        router.push(`/page/${pageId}`);
+      } catch (_error) {
+        // Error is handled by the mutation hook
+      }
     }
   };
 
-  const handleJoinEvent = (eventId: string) => {
-    console.log(`Joining event: ${eventId}`);
-    // Add your join event logic here
+  const handleJoinPrivatePage = async (pin: string) => {
+    if (!selectedPage) return;
+    
+    try {
+      await joinPageMutation.mutateAsync({ pageId: selectedPage.id, pin });
+      router.push(`/page/${selectedPage.id}`);
+    } catch (_error) {
+      // Error is handled by the mutation hook
+      throw _error; // Re-throw to show error in modal
+    }
   };
 
-  const handleBackClick = () => {
-    router.push("/");
-  };
+  if (isLoading) {
+    return (
+      <main className="mx-auto max-w-6xl px-6 py-4">
+        <div className="text-center py-12">
+          <p className="text-gray-500">Loading pages...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="mx-auto max-w-6xl px-6 py-4">
+        <div className="text-center py-12">
+          <p className="text-red-500">Error loading pages. Please try again.</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-4">
       {/* Header Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Find or Join an Event
+          Discover Pages
         </h1>
         <p className="text-gray-600 mb-6">
-          Search by event name or enter event code (codes start with numbers).
+          Find and join pages that match your interests. Connect with
+          communities and participate in their events.
         </p>
 
         {/* Search Input */}
@@ -145,72 +118,111 @@ export default function DiscoveryPage() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
           <Input
             type="text"
-            placeholder="Search events or enter event code (starts with number)"
+            placeholder="Search pages by name, description, or category..."
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             className="pl-10 h-12 text-base"
           />
         </div>
 
-        <p className="text-gray-600">Found {filteredEvents.length} events</p>
+        <p className="text-gray-600">Found {filteredPages.length} pages</p>
       </div>
 
-      {/* Events Grid */}
+      {/* Pages Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredEvents.map((event) => (
-          <Card
-            key={event.id}
-            className="hover:shadow-lg transition-shadow duration-200"
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-4">
-                <h3 className="text-lg font-semibold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
-                  {event.title}
-                </h3>
-                <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-                  {event.status}
-                </Badge>
-              </div>
+        {filteredPages.map((page) => {
+          const CategoryIcon =
+            categoryIcons[(page.category || "default") as keyof typeof categoryIcons] ||
+            categoryIcons.default;
 
-              <p className="text-gray-600 text-sm leading-relaxed">
-                {event.description}
-              </p>
-            </CardHeader>
+          return (
+            <Card
+              key={page.id}
+              className="hover:shadow-lg transition-shadow duration-200 cursor-pointer"
+              onClick={() => router.push(`/page/${page.id}`)}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <CategoryIcon className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
+                        {page.title}
+                      </h3>
+                      <Badge variant="outline" className="text-xs">
+                        {page.category || "General"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
 
-            <CardContent className="pt-0">
-              <div className="space-y-3 mb-4">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Calendar className="h-4 w-4 text-gray-400" />
-                  <span>{event.date}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Clock className="h-4 w-4 text-gray-400" />
-                  <span>{event.time}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <MapPin className="h-4 w-4 text-gray-400" />
-                  <span>{event.location}</span>
-                </div>
-              </div>
+                {page.description && (
+                  <p className="text-gray-600 text-sm leading-relaxed line-clamp-2 mt-2">
+                    {page.description}
+                  </p>
+                )}
+              </CardHeader>
 
-              <Button
-                onClick={() => handleJoinEvent(event.id)}
-                className="w-full bg-green-600 hover:bg-green-700 text-white"
-              >
-                Join Event
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+              <CardContent className="pt-0">
+                <div className="space-y-3 mb-4">
+                  {/* Page Type - Show actual privacy status */}
+                  <div className={`flex items-center gap-2 text-sm ${
+                    page.isPrivate ? "text-orange-600" : "text-green-600"
+                  }`}>
+                    {page.isPrivate ? (
+                      <Lock className="h-4 w-4" />
+                    ) : (
+                      <Globe className="h-4 w-4" />
+                    )}
+                    <span className="font-medium">
+                      {page.isPrivate ? "Private - PIN required" : "Public - anyone can join"}
+                    </span>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleJoinPage(page.id, page.isPrivate, page.title);
+                  }}
+                  className={`w-full text-white ${
+                    page.isPrivate 
+                      ? "bg-orange-600 hover:bg-orange-700" 
+                      : "bg-green-600 hover:bg-green-700"
+                  }`}
+                  size="sm"
+                  disabled={joinPageMutation.isPending}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  {joinPageMutation.isPending ? "Joining..." : (page.isPrivate ? "Join Private Page" : "Join Page")}
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      {filteredEvents.length === 0 && (
+      {filteredPages.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500 text-lg">
-            No events found matching your search criteria.
+            No pages found matching your search criteria.
           </p>
         </div>
       )}
+
+      {/* PIN Modal for Private Pages */}
+      <JoinPrivatePageModal
+        isOpen={showPinModal}
+        onClose={() => {
+          setShowPinModal(false);
+          setSelectedPage(null);
+        }}
+        onJoin={handleJoinPrivatePage}
+        pageTitle={selectedPage?.title || ""}
+        isLoading={joinPageMutation.isPending}
+      />
     </main>
   );
 }

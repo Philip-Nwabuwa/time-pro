@@ -89,6 +89,61 @@ export async function fetchPages(): Promise<PageData[]> {
   return transformedPages;
 }
 
+export async function fetchAllPages(): Promise<Array<{
+  id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  createdAt: string;
+  membersCount: number;
+  eventsCount: number;
+  isPrivate: boolean;
+}>> {
+  // Fetch all pages (public discovery)
+  const { data: pages, error } = await supabase
+    .from("pages")
+    .select(`
+      id,
+      title,
+      description,
+      created_at,
+      is_private
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  // Get member and event counts for each page
+  const pagesWithCounts = await Promise.all(
+    pages.map(async (page) => {
+      // Get member count
+      const { count: memberCount } = await supabase
+        .from("page_members")
+        .select("*", { count: "exact", head: true })
+        .eq("page_id", page.id);
+
+      // Get event count
+      const { count: eventCount } = await supabase
+        .from("events")
+        .select("*", { count: "exact", head: true })
+        .eq("page_id", page.id);
+
+      return {
+        id: page.id,
+        title: page.title,
+        description: page.description,
+        category: "Community", // Default category until category field is added to database
+        createdAt: page.created_at || new Date().toISOString(),
+        membersCount: memberCount || 0,
+        eventsCount: eventCount || 0,
+        isPrivate: page.is_private || false,
+      };
+    })
+  );
+
+  return pagesWithCounts;
+}
+
 export async function fetchPageById(id: string): Promise<PageData | null> {
   const { data: user } = await supabase.auth.getUser();
   if (!user.user) throw new Error("Not authenticated");
@@ -142,17 +197,26 @@ export async function fetchPageById(id: string): Promise<PageData | null> {
 }
 
 export async function createPage(
-  pageData: Omit<PageInsert, "created_by">,
+  pageData: Omit<PageInsert, "created_by"> & { 
+    pageType?: "public" | "private";
+    pin?: string | null;
+  },
 ): Promise<PageData> {
   const { data: user } = await supabase.auth.getUser();
   if (!user.user) throw new Error("Not authenticated");
+
+  // Transform pageType to is_private boolean and handle PIN
+  const { pageType, pin, ...otherData } = pageData;
+  const is_private = pageType === "private";
 
   // Create page
   const { data: page, error } = await supabase
     .from("pages")
     .insert({
-      ...pageData,
+      ...otherData,
       created_by: user.user.id,
+      is_private,
+      pin: is_private ? pin : null,
     })
     .select()
     .single();

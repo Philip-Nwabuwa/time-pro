@@ -34,6 +34,7 @@ import type { EventUpdate, EventScheduleItemInsert, EventScheduleItemUpdate } fr
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/hooks";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import MemberSearchInput from "@/components/MemberSearchInput";
 import DateTimePickerForm from "@/components/DateTimePickerForm";
 import TimeInput from "@/components/TimeInput";
 
@@ -262,6 +263,22 @@ export default function EditEventPage() {
       ...prev,
       roles: prev.roles.map((role, i) =>
         i === index ? { ...role, [field]: value } : role
+      ),
+    }));
+  };
+
+  const handleMemberSelect = (index: number, member: any) => {
+    // Auto-fill speaker details from member profile
+    setFormData((prev) => ({
+      ...prev,
+      roles: prev.roles.map((role, i) =>
+        i === index ? {
+          ...role,
+          speakerName: member.name,
+          speakerEmail: member.email,
+          avatar: member.avatar || "",
+          // Keep existing bio and social media links as they might be role-specific
+        } : role
       ),
     }));
   };
@@ -622,16 +639,29 @@ export default function EditEventPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Speaker Name</Label>
-                        <Input
+                        <MemberSearchInput
+                          pageId={pageId}
                           value={role.speakerName}
-                          onChange={(e) =>
-                            updateRole(index, "speakerName", e.target.value)
-                          }
-                          placeholder="Speaker's full name"
+                          onChange={(value) => updateRole(index, "speakerName", value)}
+                          onMemberSelect={(member) => handleMemberSelect(index, member)}
+                          label="Speaker Name"
+                          placeholder="Search members or enter name..."
                           disabled={isLoading}
                         />
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Speaker Email</Label>
+                      <Input
+                        value={role.speakerEmail}
+                        onChange={(e) =>
+                          updateRole(index, "speakerEmail", e.target.value)
+                        }
+                        placeholder="Speaker's email address"
+                        disabled={isLoading}
+                        type="email"
+                      />
                     </div>
 
                     <div className="grid grid-cols-3 gap-4">

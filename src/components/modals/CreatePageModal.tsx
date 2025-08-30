@@ -14,11 +14,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCreatePage } from "@/lib/api/hooks";
 
 interface PageFormData {
   title: string;
   description: string;
+  pageType: "public" | "private";
+  pin: string;
 }
 
 export default function CreatePageModal() {
@@ -27,6 +30,8 @@ export default function CreatePageModal() {
   const [formData, setFormData] = useState<PageFormData>({
     title: "",
     description: "",
+    pageType: "public",
+    pin: "",
   });
 
   const handleInputChange = (
@@ -39,6 +44,14 @@ export default function CreatePageModal() {
     }));
   };
 
+  const handlePageTypeChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      pageType: value as "public" | "private",
+      pin: value === "public" ? "" : prev.pin,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -46,16 +59,24 @@ export default function CreatePageModal() {
       return;
     }
 
+    if (formData.pageType === "private" && !formData.pin.trim()) {
+      return;
+    }
+
     try {
       await createPage.mutateAsync({
         title: formData.title.trim(),
         description: formData.description.trim() || null,
+        pageType: formData.pageType,
+        pin: formData.pageType === "private" ? formData.pin.trim() : null,
       });
 
       // Reset form
       setFormData({
         title: "",
         description: "",
+        pageType: "public",
+        pin: "",
       });
 
       // Close modal
@@ -71,6 +92,8 @@ export default function CreatePageModal() {
       setFormData({
         title: "",
         description: "",
+        pageType: "public",
+        pin: "",
       });
       closeModal();
     }
@@ -114,6 +137,45 @@ export default function CreatePageModal() {
             />
           </div>
 
+          <div className="space-y-3">
+            <Label>Page Type</Label>
+            <RadioGroup
+              value={formData.pageType}
+              onValueChange={handlePageTypeChange}
+              disabled={createPage.isPending}
+              className="flex flex-col gap-3"
+            >
+              <div className="flex items-center space-x-3">
+                <RadioGroupItem value="public" id="public" />
+                <Label htmlFor="public" className="cursor-pointer">
+                  Public
+                </Label>
+              </div>
+              <div className="flex items-center space-x-3">
+                <RadioGroupItem value="private" id="private" />
+                <Label htmlFor="private" className="cursor-pointer">
+                  Private (requires PIN)
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {formData.pageType === "private" && (
+            <div className="space-y-2">
+              <Label htmlFor="pin">Enter PIN</Label>
+              <Input
+                id="pin"
+                name="pin"
+                type="text"
+                placeholder="Enter PIN for private page"
+                value={formData.pin}
+                onChange={handleInputChange}
+                disabled={createPage.isPending}
+                required
+              />
+            </div>
+          )}
+
           <DialogFooter className="gap-2">
             <Button
               type="button"
@@ -125,7 +187,11 @@ export default function CreatePageModal() {
             </Button>
             <Button
               type="submit"
-              disabled={createPage.isPending || !formData.title.trim()}
+              disabled={
+                createPage.isPending || 
+                !formData.title.trim() || 
+                (formData.pageType === "private" && !formData.pin.trim())
+              }
               className="bg-green-600 hover:bg-green-700 focus:ring-green-500"
             >
               {createPage.isPending ? "Creating..." : "Create Page"}

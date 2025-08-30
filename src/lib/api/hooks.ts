@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   fetchPages,
+  fetchAllPages,
   fetchPageById,
   createPage,
   updatePage,
@@ -19,12 +20,15 @@ import {
   addPageMember,
   updatePageMemberRole,
   removePageMember,
+  joinPage,
+  leavePage,
 } from "./members";
 import type { PageInsert, PageUpdate, EventInsert, EventUpdate } from "./types";
 
 // Query keys
 export const queryKeys = {
   pages: ["pages"] as const,
+  allPages: ["pages", "all"] as const,
   page: (id: string) => ["pages", id] as const,
   pageEvents: (pageId: string) => ["pages", pageId, "events"] as const,
   pageMembers: (pageId: string) => ["pages", pageId, "members"] as const,
@@ -37,6 +41,13 @@ export function usePages() {
   return useQuery({
     queryKey: queryKeys.pages,
     queryFn: fetchPages,
+  });
+}
+
+export function useAllPages() {
+  return useQuery({
+    queryKey: queryKeys.allPages,
+    queryFn: fetchAllPages,
   });
 }
 
@@ -236,6 +247,41 @@ export function useRemovePageMember() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to remove member: ${error.message}`);
+    },
+  });
+}
+
+export function useJoinPage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ pageId, pin }: { pageId: string; pin?: string }) => 
+      joinPage(pageId, pin),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.pages });
+      queryClient.invalidateQueries({ queryKey: queryKeys.page(variables.pageId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.pageMembers(variables.pageId) });
+      toast.success("Successfully joined the page!");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to join page: ${error.message}`);
+    },
+  });
+}
+
+export function useLeavePage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: leavePage,
+    onSuccess: (data, pageId) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.pages });
+      queryClient.invalidateQueries({ queryKey: queryKeys.page(pageId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.pageMembers(pageId) });
+      toast.success("Successfully left the page!");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to leave page: ${error.message}`);
     },
   });
 }

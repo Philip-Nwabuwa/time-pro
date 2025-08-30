@@ -38,6 +38,7 @@ import DateTimePickerForm from "@/components/DateTimePickerForm";
 import TimeInput from "@/components/TimeInput";
 import { createEvent, createScheduleItem } from "@/lib/api/events";
 import type { EventInsert, EventScheduleItemInsert } from "@/lib/api/types";
+import MemberSearchInput from "@/components/MemberSearchInput";
 
 interface SpeakerRole {
   id: string;
@@ -151,6 +152,22 @@ export default function CreateEventPage() {
       ...prev,
       roles: prev.roles.map((role) =>
         role.id === roleId ? { ...role, [field]: value } : role,
+      ),
+    }));
+  };
+
+  const handleMemberSelect = (roleId: string, member: any) => {
+    // Auto-fill speaker details from member profile
+    setFormData((prev) => ({
+      ...prev,
+      roles: prev.roles.map((role) =>
+        role.id === roleId ? {
+          ...role,
+          speakerName: member.name,
+          speakerEmail: member.email,
+          avatar: member.avatar || "",
+          // Keep existing bio and social media links as they might be role-specific
+        } : role
       ),
     }));
   };
@@ -533,13 +550,25 @@ export default function CreateEventPage() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Speaker Name</Label>
-                          <Input
+                          <MemberSearchInput
+                            pageId={pageId}
                             value={role.speakerName}
+                            onChange={(value) => updateRole(role.id, "speakerName", value)}
+                            onMemberSelect={(member) => handleMemberSelect(role.id, member)}
+                            label="Speaker Name"
+                            placeholder="Search members or enter name..."
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Speaker Email</Label>
+                          <Input
+                            value={role.speakerEmail}
                             onChange={(e) =>
-                              updateRole(role.id, "speakerName", e.target.value)
+                              updateRole(role.id, "speakerEmail", e.target.value)
                             }
-                            placeholder="Speaker name"
+                            placeholder="Speaker's email address"
+                            type="email"
                           />
                         </div>
 
