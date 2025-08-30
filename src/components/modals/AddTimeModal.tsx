@@ -34,17 +34,18 @@ export default function AddTimeModal({
 
   const handleConfirm = () => {
     const seconds = Number(additionalTime);
-    
+
     if (isNaN(seconds) || seconds < 0) {
       setError("Please enter a valid number of seconds");
       return;
     }
-    
-    if (seconds > 3600) { // Max 1 hour
+
+    if (seconds > 3600) {
+      // Max 1 hour
       setError("Maximum additional time is 3600 seconds (1 hour)");
       return;
     }
-    
+
     setError("");
     onConfirm(seconds);
   };
@@ -73,7 +74,7 @@ export default function AddTimeModal({
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const presetTimes = [15, 30, 60, 120, 300]; // 15s, 30s, 1m, 2m, 5m
@@ -91,11 +92,11 @@ export default function AddTimeModal({
             </DialogTitle>
           </div>
           <DialogDescription className="text-gray-600 mt-2">
-            Timer stopped at <span className="font-medium">{currentTime}</span>. 
+            Timer stopped at <span className="font-medium">{currentTime}</span>.
             Would you like to add additional time to the clock?
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="additionalTime">Additional time (seconds)</Label>
@@ -110,9 +111,7 @@ export default function AddTimeModal({
               disabled={isLoading}
               className={error ? "border-red-500 focus:ring-red-500" : ""}
             />
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
+            {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
 
           <div className="space-y-2">
@@ -135,7 +134,7 @@ export default function AddTimeModal({
             </div>
           </div>
         </div>
-        
+
         <DialogFooter className="flex gap-2 sm:gap-2">
           <Button
             type="button"

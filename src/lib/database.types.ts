@@ -252,7 +252,7 @@ export type Database = {
           {
             foreignKeyName: "event_session_data_event_id_fkey"
             columns: ["event_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -417,6 +417,8 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          image_file_path: string | null
+          image_url: string | null
           is_private: boolean | null
           pin: string | null
           title: string
@@ -427,6 +429,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          image_file_path?: string | null
+          image_url?: string | null
           is_private?: boolean | null
           pin?: string | null
           title: string
@@ -437,6 +441,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          image_file_path?: string | null
+          image_url?: string | null
           is_private?: boolean | null
           pin?: string | null
           title?: string

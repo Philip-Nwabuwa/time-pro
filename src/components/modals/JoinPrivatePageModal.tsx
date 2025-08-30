@@ -34,7 +34,7 @@ export default function JoinPrivatePageModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!pin.trim()) {
       setError("PIN is required");
       return;
@@ -92,9 +92,7 @@ export default function JoinPrivatePageModal({
               required
               autoFocus
             />
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
+            {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
 
           <DialogFooter className="gap-2">

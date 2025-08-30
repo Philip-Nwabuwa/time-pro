@@ -76,15 +76,10 @@ export default function PollsSection({
             <Checkbox
               id="eventPolls"
               checked={pollsEnabled}
-              onCheckedChange={(checked) => 
-                setPollsEnabled(checked === true)
-              }
+              onCheckedChange={(checked) => setPollsEnabled(checked === true)}
               disabled={!canManage}
             />
-            <Label
-              htmlFor="eventPolls"
-              className="text-lg font-semibold"
-            >
+            <Label htmlFor="eventPolls" className="text-lg font-semibold">
               Event Polls
             </Label>
           </div>

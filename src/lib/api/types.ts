@@ -15,6 +15,7 @@ export interface PageData {
   members: number;
   events: number;
   role: "admin" | "member";
+  imageUrl?: string;
 }
 
 export interface Event {

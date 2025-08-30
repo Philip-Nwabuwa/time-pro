@@ -49,7 +49,9 @@ export default function EndMeetingModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className={`flex-shrink-0 ${hasPendingItems ? 'text-yellow-500' : 'text-green-500'}`}>
+            <div
+              className={`flex-shrink-0 ${hasPendingItems ? "text-yellow-500" : "text-green-500"}`}
+            >
               {hasPendingItems ? (
                 <AlertTriangle className="h-6 w-6" />
               ) : (
@@ -60,22 +62,29 @@ export default function EndMeetingModal({
               End Meeting
             </DialogTitle>
           </div>
-          
+
           {hasPendingItems ? (
             <DialogDescription className="text-gray-600 mt-2">
-              This meeting still has <span className="font-medium text-yellow-600">{pendingItems.length} pending item(s)</span>. 
-              Ending the meeting will automatically mark these items as cancelled.
+              This meeting still has{" "}
+              <span className="font-medium text-yellow-600">
+                {pendingItems.length} pending item(s)
+              </span>
+              . Ending the meeting will automatically mark these items as
+              cancelled.
             </DialogDescription>
           ) : (
             <DialogDescription className="text-gray-600 mt-2">
-              All agenda items have been completed. Are you sure you want to end this meeting?
+              All agenda items have been completed. Are you sure you want to end
+              this meeting?
             </DialogDescription>
           )}
         </DialogHeader>
-        
+
         {hasPendingItems && (
           <div className="space-y-3">
-            <div className="text-sm font-medium text-gray-700">Pending items:</div>
+            <div className="text-sm font-medium text-gray-700">
+              Pending items:
+            </div>
             <div className="max-h-32 overflow-y-auto space-y-2">
               {pendingItems.map((item) => (
                 <div
@@ -86,18 +95,22 @@ export default function EndMeetingModal({
                     <Clock className="h-4 w-4 text-yellow-600" />
                     <span className="text-sm text-gray-900">{item.title}</span>
                   </div>
-                  <Badge variant="outline" className="text-xs text-yellow-700 border-yellow-300">
+                  <Badge
+                    variant="outline"
+                    className="text-xs text-yellow-700 border-yellow-300"
+                  >
                     {item.role}
                   </Badge>
                 </div>
               ))}
             </div>
             <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded-md">
-              💡 These items will be marked as "Cancelled" and can be reviewed later.
+              💡 These items will be marked as "Cancelled" and can be reviewed
+              later.
             </div>
           </div>
         )}
-        
+
         <DialogFooter className="flex gap-3 sm:gap-3">
           <Button
             type="button"
@@ -113,9 +126,9 @@ export default function EndMeetingModal({
             onClick={handleConfirm}
             disabled={isLoading}
             className={`flex-1 sm:flex-none ${
-              hasPendingItems 
-                ? 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500' 
-                : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+              hasPendingItems
+                ? "bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500"
+                : "bg-red-600 hover:bg-red-700 focus:ring-red-500"
             }`}
           >
             {isLoading ? "Ending Meeting..." : "End Meeting"}

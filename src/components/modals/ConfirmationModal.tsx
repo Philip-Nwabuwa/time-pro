@@ -38,7 +38,8 @@ const variantConfig = {
   warning: {
     icon: AlertTriangle,
     iconColor: "text-yellow-500",
-    confirmButtonClass: "bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500",
+    confirmButtonClass:
+      "bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500",
   },
   success: {
     icon: CheckCircle,
@@ -87,7 +88,7 @@ export default function ConfirmationModal({
             {description}
           </DialogDescription>
         </DialogHeader>
-        
+
         <DialogFooter className="flex gap-3 sm:gap-3">
           <Button
             type="button"

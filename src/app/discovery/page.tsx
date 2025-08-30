@@ -33,7 +33,10 @@ export default function DiscoveryPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [showPinModal, setShowPinModal] = useState(false);
-  const [selectedPage, setSelectedPage] = useState<{ id: string; title: string } | null>(null);
+  const [selectedPage, setSelectedPage] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
 
   const { data: pages, isLoading, error } = useAllPages();
   const joinPageMutation = useJoinPage();
@@ -55,7 +58,11 @@ export default function DiscoveryPage() {
     setSearchQuery(query);
   };
 
-  const handleJoinPage = async (pageId: string, isPrivate: boolean, pageTitle: string) => {
+  const handleJoinPage = async (
+    pageId: string,
+    isPrivate: boolean,
+    pageTitle: string,
+  ) => {
     if (isPrivate) {
       setSelectedPage({ id: pageId, title: pageTitle });
       setShowPinModal(true);
@@ -71,7 +78,7 @@ export default function DiscoveryPage() {
 
   const handleJoinPrivatePage = async (pin: string) => {
     if (!selectedPage) return;
-    
+
     try {
       await joinPageMutation.mutateAsync({ pageId: selectedPage.id, pin });
       router.push(`/page/${selectedPage.id}`);
@@ -132,29 +139,48 @@ export default function DiscoveryPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredPages.map((page) => {
           const CategoryIcon =
-            categoryIcons[(page.category || "default") as keyof typeof categoryIcons] ||
-            categoryIcons.default;
+            categoryIcons[
+              (page.category || "default") as keyof typeof categoryIcons
+            ] || categoryIcons.default;
 
           return (
             <Card
               key={page.id}
-              className="hover:shadow-lg transition-shadow duration-200 cursor-pointer"
+              className="hover:shadow-lg transition-shadow duration-200 cursor-pointer overflow-hidden"
               onClick={() => router.push(`/page/${page.id}`)}
             >
+              <div className="aspect-video w-full relative overflow-hidden">
+                {page.imageUrl ? (
+                  <img
+                    src={page.imageUrl}
+                    alt={page.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
+                    <div className="text-center text-green-600">
+                      <div className="p-4 bg-green-200/50 rounded-lg mb-2 inline-block">
+                        {(() => {
+                          const CategoryIcon = categoryIcons[
+                            (page.category || "default") as keyof typeof categoryIcons
+                          ] || categoryIcons.default;
+                          return <CategoryIcon className="h-8 w-8" />;
+                        })()}
+                      </div>
+                      <p className="text-sm font-medium">{page.category || "General"}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <CategoryIcon className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
-                        {page.title}
-                      </h3>
-                      <Badge variant="outline" className="text-xs">
-                        {page.category || "General"}
-                      </Badge>
-                    </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
+                      {page.title}
+                    </h3>
+                    <Badge variant="outline" className="text-xs">
+                      {page.category || "General"}
+                    </Badge>
                   </div>
                 </div>
 
@@ -168,16 +194,20 @@ export default function DiscoveryPage() {
               <CardContent className="pt-0">
                 <div className="space-y-3 mb-4">
                   {/* Page Type - Show actual privacy status */}
-                  <div className={`flex items-center gap-2 text-sm ${
-                    page.isPrivate ? "text-orange-600" : "text-green-600"
-                  }`}>
+                  <div
+                    className={`flex items-center gap-2 text-sm ${
+                      page.isPrivate ? "text-orange-600" : "text-green-600"
+                    }`}
+                  >
                     {page.isPrivate ? (
                       <Lock className="h-4 w-4" />
                     ) : (
                       <Globe className="h-4 w-4" />
                     )}
                     <span className="font-medium">
-                      {page.isPrivate ? "Private - PIN required" : "Public - anyone can join"}
+                      {page.isPrivate
+                        ? "Private - PIN required"
+                        : "Public - anyone can join"}
                     </span>
                   </div>
                 </div>
@@ -188,15 +218,19 @@ export default function DiscoveryPage() {
                     handleJoinPage(page.id, page.isPrivate, page.title);
                   }}
                   className={`w-full text-white ${
-                    page.isPrivate 
-                      ? "bg-orange-600 hover:bg-orange-700" 
+                    page.isPrivate
+                      ? "bg-orange-600 hover:bg-orange-700"
                       : "bg-green-600 hover:bg-green-700"
                   }`}
                   size="sm"
                   disabled={joinPageMutation.isPending}
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  {joinPageMutation.isPending ? "Joining..." : (page.isPrivate ? "Join Private Page" : "Join Page")}
+                  {joinPageMutation.isPending
+                    ? "Joining..."
+                    : page.isPrivate
+                      ? "Join Private Page"
+                      : "Join Page"}
                 </Button>
               </CardContent>
             </Card>

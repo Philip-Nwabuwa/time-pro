@@ -161,13 +161,15 @@ export default function CreateEventPage() {
     setFormData((prev) => ({
       ...prev,
       roles: prev.roles.map((role) =>
-        role.id === roleId ? {
-          ...role,
-          speakerName: member.name,
-          speakerEmail: member.email,
-          avatar: member.avatar || "",
-          // Keep existing bio and social media links as they might be role-specific
-        } : role
+        role.id === roleId
+          ? {
+              ...role,
+              speakerName: member.name,
+              speakerEmail: member.email,
+              avatar: member.avatar || "",
+              // Keep existing bio and social media links as they might be role-specific
+            }
+          : role,
       ),
     }));
   };
@@ -528,215 +530,217 @@ export default function CreateEventPage() {
             </div>
 
             <div className="space-y-4">
+              {formData.roles.map((role, index) => (
+                <div key={role.id} className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-center gap-4">
+                    <GripVertical className="h-4 w-4 text-gray-400 cursor-move" />
 
-                {formData.roles.map((role, index) => (
-                  <div
-                    key={role.id}
-                    className="border rounded-lg p-4 space-y-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <GripVertical className="h-4 w-4 text-gray-400 cursor-move" />
-
-                      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label>Role Name</Label>
-                          <Input
-                            value={role.roleName}
-                            onChange={(e) =>
-                              updateRole(role.id, "roleName", e.target.value)
-                            }
-                            placeholder="Role name"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <MemberSearchInput
-                            pageId={pageId}
-                            value={role.speakerName}
-                            onChange={(value) => updateRole(role.id, "speakerName", value)}
-                            onMemberSelect={(member) => handleMemberSelect(role.id, member)}
-                            label="Speaker Name"
-                            placeholder="Search members or enter name..."
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Speaker Email</Label>
-                          <Input
-                            value={role.speakerEmail}
-                            onChange={(e) =>
-                              updateRole(role.id, "speakerEmail", e.target.value)
-                            }
-                            placeholder="Speaker's email address"
-                            type="email"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Avatar</Label>
-                          <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium">
-                              {role.avatar || "?"}
-                            </div>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="p-2"
-                            >
-                              <Camera className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Role Name</Label>
+                        <Input
+                          value={role.roleName}
+                          onChange={(e) =>
+                            updateRole(role.id, "roleName", e.target.value)
+                          }
+                          placeholder="Role name"
+                        />
                       </div>
 
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeRole(role.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
+                      <div className="space-y-2">
+                        <MemberSearchInput
+                          pageId={pageId}
+                          value={role.speakerName}
+                          onChange={(value) =>
+                            updateRole(role.id, "speakerName", value)
+                          }
+                          onMemberSelect={(member) =>
+                            handleMemberSelect(role.id, member)
+                          }
+                          label="Speaker Name"
+                          placeholder="Search members or enter name..."
+                        />
+                      </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <TimeInput
-                        label="Min Time"
-                        value={role.minTime}
-                        onChange={(value) => updateRole(role.id, "minTime", value)}
-                        placeholder="3:00"
-                      />
+                      <div className="space-y-2">
+                        <Label>Speaker Email</Label>
+                        <Input
+                          value={role.speakerEmail}
+                          onChange={(e) =>
+                            updateRole(role.id, "speakerEmail", e.target.value)
+                          }
+                          placeholder="Speaker's email address"
+                          type="email"
+                        />
+                      </div>
 
-                      <TimeInput
-                        label="Target Time"
-                        value={role.targetTime}
-                        onChange={(value) => updateRole(role.id, "targetTime", value)}
-                        placeholder="5:00"
-                      />
-
-                      <TimeInput
-                        label="Max Time"
-                        value={role.maxTime}
-                        onChange={(value) => updateRole(role.id, "maxTime", value)}
-                        placeholder="7:00"
-                      />
-                    </div>
-
-                    {formData.detailedSpeakerProfiles && (
-                      <div className="border-t pt-4 space-y-4">
-                        <h4 className="font-medium">Speaker Details</h4>
-
-                        <div className="space-y-2">
-                          <Label>
-                            <Mail className="h-4 w-4 inline mr-2" />
-                            Speaker Email (for feedback)
-                          </Label>
-                          <Input
-                            value={role.speakerEmail}
-                            onChange={(e) =>
-                              updateRole(
-                                role.id,
-                                "speakerEmail",
-                                e.target.value,
-                              )
-                            }
-                            placeholder="speaker@example.com"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Bio</Label>
-                          <Textarea
-                            value={role.bio}
-                            onChange={(e) =>
-                              updateRole(role.id, "bio", e.target.value)
-                            }
-                            placeholder="Speaker biography..."
-                            className="min-h-[80px]"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Social Media Links</Label>
-                          <div className="space-y-2">
-                            {role.socialMediaLinks.map((link, linkIndex) => (
-                              <div
-                                key={linkIndex}
-                                className="flex items-center gap-2"
-                              >
-                                <Select
-                                  value={link.platform}
-                                  onValueChange={(value) =>
-                                    updateSocialMediaLink(
-                                      role.id,
-                                      linkIndex,
-                                      "platform",
-                                      value,
-                                    )
-                                  }
-                                >
-                                  <SelectTrigger className="w-32">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="LinkedIn">
-                                      LinkedIn
-                                    </SelectItem>
-                                    <SelectItem value="Twitter">
-                                      Twitter
-                                    </SelectItem>
-                                    <SelectItem value="Instagram">
-                                      Instagram
-                                    </SelectItem>
-                                    <SelectItem value="Website">
-                                      Website
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Input
-                                  value={link.url}
-                                  onChange={(e) =>
-                                    updateSocialMediaLink(
-                                      role.id,
-                                      linkIndex,
-                                      "url",
-                                      e.target.value,
-                                    )
-                                  }
-                                  placeholder="https://..."
-                                  className="flex-1"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    removeSocialMediaLink(role.id, linkIndex)
-                                  }
-                                  className="text-red-500 hover:text-red-700 p-2"
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => addSocialMediaLink(role.id)}
-                              className="w-full"
-                            >
-                              <Plus className="h-4 w-4 mr-1" />
-                              Add Link
-                            </Button>
+                      <div className="space-y-2">
+                        <Label>Avatar</Label>
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium">
+                            {role.avatar || "?"}
                           </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="p-2"
+                          >
+                            <Camera className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
-                    )}
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeRole(role.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                ))}
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <TimeInput
+                      label="Min Time"
+                      value={role.minTime}
+                      onChange={(value) =>
+                        updateRole(role.id, "minTime", value)
+                      }
+                      placeholder="3:00"
+                    />
+
+                    <TimeInput
+                      label="Target Time"
+                      value={role.targetTime}
+                      onChange={(value) =>
+                        updateRole(role.id, "targetTime", value)
+                      }
+                      placeholder="5:00"
+                    />
+
+                    <TimeInput
+                      label="Max Time"
+                      value={role.maxTime}
+                      onChange={(value) =>
+                        updateRole(role.id, "maxTime", value)
+                      }
+                      placeholder="7:00"
+                    />
+                  </div>
+
+                  {formData.detailedSpeakerProfiles && (
+                    <div className="border-t pt-4 space-y-4">
+                      <h4 className="font-medium">Speaker Details</h4>
+
+                      <div className="space-y-2">
+                        <Label>
+                          <Mail className="h-4 w-4 inline mr-2" />
+                          Speaker Email (for feedback)
+                        </Label>
+                        <Input
+                          value={role.speakerEmail}
+                          onChange={(e) =>
+                            updateRole(role.id, "speakerEmail", e.target.value)
+                          }
+                          placeholder="speaker@example.com"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Bio</Label>
+                        <Textarea
+                          value={role.bio}
+                          onChange={(e) =>
+                            updateRole(role.id, "bio", e.target.value)
+                          }
+                          placeholder="Speaker biography..."
+                          className="min-h-[80px]"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Social Media Links</Label>
+                        <div className="space-y-2">
+                          {role.socialMediaLinks.map((link, linkIndex) => (
+                            <div
+                              key={linkIndex}
+                              className="flex items-center gap-2"
+                            >
+                              <Select
+                                value={link.platform}
+                                onValueChange={(value) =>
+                                  updateSocialMediaLink(
+                                    role.id,
+                                    linkIndex,
+                                    "platform",
+                                    value,
+                                  )
+                                }
+                              >
+                                <SelectTrigger className="w-32">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="LinkedIn">
+                                    LinkedIn
+                                  </SelectItem>
+                                  <SelectItem value="Twitter">
+                                    Twitter
+                                  </SelectItem>
+                                  <SelectItem value="Instagram">
+                                    Instagram
+                                  </SelectItem>
+                                  <SelectItem value="Website">
+                                    Website
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                value={link.url}
+                                onChange={(e) =>
+                                  updateSocialMediaLink(
+                                    role.id,
+                                    linkIndex,
+                                    "url",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="https://..."
+                                className="flex-1"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  removeSocialMediaLink(role.id, linkIndex)
+                                }
+                                className="text-red-500 hover:text-red-700 p-2"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addSocialMediaLink(role.id)}
+                            className="w-full"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Link
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </CardHeader>
         </Card>

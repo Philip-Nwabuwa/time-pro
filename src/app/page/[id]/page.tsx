@@ -9,6 +9,7 @@ import {
   MapPin,
   Loader2,
   Plus,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +22,18 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { usePage, usePageEvents, usePageMembers } from "@/lib/api/hooks";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { usePage, usePageEvents, usePageMembers, useDeletePage } from "@/lib/api/hooks";
 
 export default function PageDetailsPage() {
   const params = useParams();
@@ -36,6 +48,7 @@ export default function PageDetailsPage() {
   const { data: events = [], isLoading: eventsLoading } = usePageEvents(pageId);
   const { data: members = [], isLoading: membersLoading } =
     usePageMembers(pageId);
+  const deletePage = useDeletePage();
 
   const handleBackClick = () => {
     router.push("/");
@@ -43,6 +56,15 @@ export default function PageDetailsPage() {
 
   const handleCreateEvent = () => {
     router.push(`/page/${pageId}/create-event`);
+  };
+
+  const handleDeletePage = async () => {
+    try {
+      await deletePage.mutateAsync(pageId);
+      router.push("/");
+    } catch (error) {
+      console.error("Failed to delete page:", error);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -97,15 +119,50 @@ export default function PageDetailsPage() {
             <div className="text-2xl">{page.title}</div>
             <p className="text-base mt-2">{page.desc}</p>
           </div>
-          <Badge
-            className={
-              page.role === "admin"
-                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-100"
-            }
-          >
-            {page.role}
-          </Badge>
+          <div className="flex items-center gap-3">
+            <Badge
+              className={
+                page.role === "admin"
+                  ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-100"
+              }
+            >
+              {page.role}
+            </Badge>
+            {page.role === "admin" && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Page</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete "{page.title}"? This action
+                      cannot be undone. All events and data associated with this
+                      page will be permanently removed.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeletePage}
+                      disabled={deletePage.isPending}
+                      className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                    >
+                      {deletePage.isPending ? "Deleting..." : "Delete Page"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-6 text-sm text-gray-600 pt-4">
           <div className="flex items-center gap-2">
@@ -245,11 +302,17 @@ export default function PageDetailsPage() {
                         <Avatar className="h-12 w-12">
                           <AvatarImage src={member.avatar} alt={member.name} />
                           <AvatarFallback className="bg-green-100 text-green-600">
-                            {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            {member.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <CardTitle className="text-lg">{member.name}</CardTitle>
+                          <CardTitle className="text-lg">
+                            {member.name}
+                          </CardTitle>
                           <CardDescription>{member.email}</CardDescription>
                         </div>
                       </div>

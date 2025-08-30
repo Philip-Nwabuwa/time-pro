@@ -45,7 +45,10 @@ export default function PollCard({
 }: PollCardProps) {
   const [selectedOption, setSelectedOption] = useState<string>("");
 
-  const totalVotes = poll.options.reduce((sum, option) => sum + (option.vote_count || 0), 0);
+  const totalVotes = poll.options.reduce(
+    (sum, option) => sum + (option.vote_count || 0),
+    0,
+  );
 
   const handleVote = () => {
     if (selectedOption && onVote) {
@@ -104,7 +107,7 @@ export default function PollCard({
           )}
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {/* Voting Interface */}
         {(poll.active ?? false) && !hasVoted && (
@@ -144,17 +147,19 @@ export default function PollCard({
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Users className="h-4 w-4" />
-              <span>{totalVotes} {totalVotes === 1 ? "vote" : "votes"}</span>
+              <span>
+                {totalVotes} {totalVotes === 1 ? "vote" : "votes"}
+              </span>
               {hasVoted && userVote && (
                 <span className="text-green-600 font-medium">• You voted</span>
               )}
             </div>
-            
+
             <div className="space-y-2">
               {poll.options.map((option) => {
                 const percentage = getPercentage(option.vote_count || 0);
                 const isUserChoice = hasVoted && userVote === option.id;
-                
+
                 return (
                   <div
                     key={option.id}
@@ -177,8 +182,8 @@ export default function PollCard({
                         {percentage}% ({option.vote_count || 0})
                       </span>
                     </div>
-                    <Progress 
-                      value={percentage} 
+                    <Progress
+                      value={percentage}
                       className={`h-2 ${isUserChoice ? "bg-green-200" : ""}`}
                     />
                   </div>

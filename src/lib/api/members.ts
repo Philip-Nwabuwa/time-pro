@@ -93,7 +93,8 @@ export async function updatePageMemberRole(
     .eq("id", memberId)
     .single();
 
-  if (fetchError || !memberData) throw fetchError || new Error("Member not found");
+  if (fetchError || !memberData)
+    throw fetchError || new Error("Member not found");
 
   // Update the role
   const { error } = await supabase

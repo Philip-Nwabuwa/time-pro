@@ -91,13 +91,17 @@ export default function EventDetailsPage() {
                   details.status === "completed"
                     ? "bg-green-100 text-green-800 hover:bg-green-100"
                     : details.status === "upcoming"
-                    ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
-                    : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                      ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
+                      : "bg-gray-100 text-gray-800 hover:bg-gray-100"
                 }
               >
-                {details.status === "upcoming" ? "Upcoming" :
-                 details.status === "completed" ? "Completed" :
-                 details.status === "draft" ? "Draft" : "Unknown"}
+                {details.status === "upcoming"
+                  ? "Upcoming"
+                  : details.status === "completed"
+                    ? "Completed"
+                    : details.status === "draft"
+                      ? "Draft"
+                      : "Unknown"}
               </Badge>
             </div>
           </div>
@@ -112,7 +116,9 @@ export default function EventDetailsPage() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => router.push(`/page/${pageId}/event/${eventId}/edit`)}
+              onClick={() =>
+                router.push(`/page/${pageId}/event/${eventId}/edit`)
+              }
             >
               <Pencil className="h-4 w-4 mr-2" /> Edit Event
             </Button>

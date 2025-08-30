@@ -35,15 +35,16 @@ export default function MemberSearchInput({
   const { data: members, isLoading } = usePageMembers(pageId);
 
   // Filter members based on search query
-  const filteredMembers = members?.filter((member) => {
-    if (!searchQuery.trim()) return true;
-    
-    const query = searchQuery.toLowerCase();
-    return (
-      member.name.toLowerCase().includes(query) ||
-      member.email.toLowerCase().includes(query)
-    );
-  }) || [];
+  const filteredMembers =
+    members?.filter((member) => {
+      if (!searchQuery.trim()) return true;
+
+      const query = searchQuery.toLowerCase();
+      return (
+        member.name.toLowerCase().includes(query) ||
+        member.email.toLowerCase().includes(query)
+      );
+    }) || [];
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,16 +93,20 @@ export default function MemberSearchInput({
     setSearchQuery(value);
   }, [value]);
 
-  const showDropdown = isOpen && !disabled && (isLoading || filteredMembers.length > 0);
+  const showDropdown =
+    isOpen && !disabled && (isLoading || filteredMembers.length > 0);
 
   return (
     <div className="relative">
       {label && (
-        <Label htmlFor="member-search" className="text-sm font-medium text-gray-700">
+        <Label
+          htmlFor="member-search"
+          className="text-sm font-medium text-gray-700"
+        >
           {label}
         </Label>
       )}
-      
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
         <Input
@@ -138,16 +143,21 @@ export default function MemberSearchInput({
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={member.avatar} alt={member.name} />
                     <AvatarFallback className="bg-green-100 text-green-600">
-                      {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                      {member.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-900 truncate">
                         {member.name}
                       </span>
-                      {member.name.toLowerCase() === searchQuery.toLowerCase() && (
+                      {member.name.toLowerCase() ===
+                        searchQuery.toLowerCase() && (
                         <Check className="h-4 w-4 text-green-600" />
                       )}
                     </div>
@@ -155,7 +165,7 @@ export default function MemberSearchInput({
                       {member.email}
                     </span>
                   </div>
-                  
+
                   <div className="text-xs text-gray-400 capitalize">
                     {member.role}
                   </div>

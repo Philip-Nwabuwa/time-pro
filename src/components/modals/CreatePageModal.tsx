@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useModal } from "@/contexts/ModalContext";
 import {
   Dialog,
@@ -16,22 +16,27 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCreatePage } from "@/lib/api/hooks";
+import { ImageIcon, X } from "lucide-react";
 
 interface PageFormData {
   title: string;
   description: string;
   pageType: "public" | "private";
   pin: string;
+  image?: File;
 }
 
 export default function CreatePageModal() {
   const { isModalOpen, closeModal } = useModal();
   const createPage = useCreatePage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [formData, setFormData] = useState<PageFormData>({
     title: "",
     description: "",
     pageType: "public",
     pin: "",
+    image: undefined,
   });
 
   const handleInputChange = (
@@ -52,6 +57,35 @@ export default function CreatePageModal() {
     }));
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        return;
+      }
+
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        return;
+      }
+
+      setFormData((prev) => ({ ...prev, image: file }));
+
+      // Create preview URL
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+  };
+
+  const removeImage = () => {
+    setFormData((prev) => ({ ...prev, image: undefined }));
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -65,10 +99,13 @@ export default function CreatePageModal() {
 
     try {
       await createPage.mutateAsync({
-        title: formData.title.trim(),
-        description: formData.description.trim() || null,
-        is_private: formData.pageType === "private",
-        pin: formData.pageType === "private" ? formData.pin.trim() : null,
+        pageData: {
+          title: formData.title.trim(),
+          description: formData.description.trim() || null,
+          is_private: formData.pageType === "private",
+          pin: formData.pageType === "private" ? formData.pin.trim() : null,
+        },
+        imageFile: formData.image,
       });
 
       // Reset form
@@ -77,7 +114,12 @@ export default function CreatePageModal() {
         description: "",
         pageType: "public",
         pin: "",
+        image: undefined,
       });
+      setPreviewUrl(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
 
       // Close modal
       closeModal();
@@ -94,7 +136,12 @@ export default function CreatePageModal() {
         description: "",
         pageType: "public",
         pin: "",
+        image: undefined,
       });
+      setPreviewUrl(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       closeModal();
     }
   };
@@ -135,6 +182,51 @@ export default function CreatePageModal() {
               disabled={createPage.isPending}
               className="min-h-[80px]"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="image">Page Image (Optional)</Label>
+            <div className="space-y-2">
+              {previewUrl ? (
+                <div className="relative inline-block">
+                  <img
+                    src={previewUrl}
+                    alt="Page preview"
+                    className="h-24 w-24 rounded-lg object-cover border"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    disabled={createPage.isPending}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <ImageIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-500">
+                    Click to upload an image
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Max 5MB • JPG, PNG, GIF
+                  </p>
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                id="image"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                disabled={createPage.isPending}
+                className="hidden"
+              />
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -188,8 +280,8 @@ export default function CreatePageModal() {
             <Button
               type="submit"
               disabled={
-                createPage.isPending || 
-                !formData.title.trim() || 
+                createPage.isPending ||
+                !formData.title.trim() ||
                 (formData.pageType === "private" && !formData.pin.trim())
               }
               className="bg-green-600 hover:bg-green-700 focus:ring-green-500"

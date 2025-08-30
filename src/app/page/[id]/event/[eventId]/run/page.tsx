@@ -603,10 +603,10 @@ export default function RunEventPage() {
         answered: !question.answered,
       });
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg))
+        prev.map((msg) => (msg.id === questionId ? updated : msg)),
       );
       toast.success(
-        updated.answered ? "Marked as answered" : "Marked as unanswered"
+        updated.answered ? "Marked as answered" : "Marked as unanswered",
       );
     } catch (error) {
       console.error("Error updating question:", error);
@@ -624,7 +624,7 @@ export default function RunEventPage() {
       const isAdmin = false; // Placeholder - implement admin check
 
       const uploadPromises = files.map((file) =>
-        uploadSessionPhoto(eventId, file, isAdmin)
+        uploadSessionPhoto(eventId, file, isAdmin),
       );
       const results = await Promise.all(uploadPromises);
 
@@ -641,13 +641,13 @@ export default function RunEventPage() {
         toast.success(
           `Uploaded ${files.length} photo${
             files.length > 1 ? "s" : ""
-          } successfully!`
+          } successfully!`,
         );
       } else {
         toast.success(
           `Uploaded ${files.length} photo${
             files.length > 1 ? "s" : ""
-          } - awaiting admin approval`
+          } - awaiting admin approval`,
         );
       }
     } catch (error) {
@@ -673,7 +673,7 @@ export default function RunEventPage() {
   const saveUserPreference = async (
     userId: string,
     key: string,
-    value: any
+    value: any,
   ) => {
     if (!eventId) return;
 
@@ -811,7 +811,7 @@ export default function RunEventPage() {
     if (!photos || selectedPhotos.size === 0) return;
 
     const selectedPhotoData = photos.filter((photo) =>
-      selectedPhotos.has(photo.id)
+      selectedPhotos.has(photo.id),
     );
 
     // For multiple photos, create a zip file or download individually
@@ -835,7 +835,7 @@ export default function RunEventPage() {
     toast.success(
       `Downloaded ${selectedPhotos.size} photo${
         selectedPhotos.size > 1 ? "s" : ""
-      }`
+      }`,
     );
   };
 
@@ -850,14 +850,16 @@ export default function RunEventPage() {
     const confirmDelete = window.confirm(
       `Are you sure you want to delete ${selectedPhotos.size} selected photo${
         selectedPhotos.size > 1 ? "s" : ""
-      }?`
+      }?`,
     );
 
     if (!confirmDelete) return;
 
     try {
       await Promise.all(
-        Array.from(selectedPhotos).map((photoId) => deleteSessionPhoto(photoId))
+        Array.from(selectedPhotos).map((photoId) =>
+          deleteSessionPhoto(photoId),
+        ),
       );
 
       setPhotos((prev) => prev?.filter((p) => !selectedPhotos.has(p.id)));
@@ -865,7 +867,7 @@ export default function RunEventPage() {
       toast.success(
         `Deleted ${selectedPhotos.size} photo${
           selectedPhotos.size > 1 ? "s" : ""
-        }`
+        }`,
       );
     } catch (error) {
       console.error("Error deleting photos:", error);
@@ -923,7 +925,7 @@ export default function RunEventPage() {
             };
           }
           return poll;
-        })
+        }),
       );
       toast.success("Vote submitted");
     } catch (error) {
@@ -938,7 +940,7 @@ export default function RunEventPage() {
     try {
       const updatedPoll = await updatePoll(pollId, { active });
       setPolls((prev) =>
-        prev.map((poll) => (poll.id === pollId ? { ...poll, active } : poll))
+        prev.map((poll) => (poll.id === pollId ? { ...poll, active } : poll)),
       );
       toast.success(`Poll ${active ? "activated" : "deactivated"}`);
     } catch (error) {
@@ -949,7 +951,7 @@ export default function RunEventPage() {
 
   const handleDeletePoll = async (pollId: string) => {
     const confirmDelete = window.confirm(
-      "Are you sure you want to delete this poll?"
+      "Are you sure you want to delete this poll?",
     );
     if (!confirmDelete) return;
 
@@ -1018,7 +1020,7 @@ export default function RunEventPage() {
             setIsTimerSynced(true);
             setLastTimerUpdate(new Date());
           }
-        }
+        },
       )
       .subscribe();
 
@@ -1058,7 +1060,7 @@ export default function RunEventPage() {
               url: await getPhotoPublicUrl(photo.file_path),
               photo,
               selected: false,
-            }))
+            })),
           );
           setPhotos(photosWithUrls);
         } else {
@@ -1110,7 +1112,7 @@ export default function RunEventPage() {
               if (userPrefs.hideTimeDetails !== undefined) {
                 setHideTimeDetails(userPrefs.hideTimeDetails);
                 console.log(
-                  `Hide time details preference restored: ${userPrefs.hideTimeDetails}`
+                  `Hide time details preference restored: ${userPrefs.hideTimeDetails}`,
                 );
               }
             }
@@ -1320,14 +1322,14 @@ export default function RunEventPage() {
                               idx === 0
                                 ? "Veteran Toastmaster with excellent opening skills."
                                 : idx === 1
-                                ? "Experienced leader facilitating effective business sessions."
-                                : "Dynamic speaker guiding impromptu topics.",
+                                  ? "Experienced leader facilitating effective business sessions."
+                                  : "Dynamic speaker guiding impromptu topics.",
                             email:
                               idx === 0
                                 ? "alex.wilson@toastmasters.com"
                                 : idx === 1
-                                ? "sarah.johnson@toastmasters.com"
-                                : "garimella@toastmasters.com",
+                                  ? "sarah.johnson@toastmasters.com"
+                                  : "garimella@toastmasters.com",
                             linkedin: "https://www.linkedin.com/in/example",
                             completed: idx < currentSpeakerIndex,
                           })
@@ -1354,7 +1356,7 @@ export default function RunEventPage() {
                               {formatSeconds(
                                 (item.targetMinutes ||
                                   item.allocatedMinutes ||
-                                  5) * 60
+                                  5) * 60,
                               )}
                             </p>
                             <p className="text-red-500">
@@ -1499,7 +1501,7 @@ export default function RunEventPage() {
                               </div>
                               <div className="text-xs text-gray-500 mt-1">
                                 {new Date(
-                                  msg.created_at || ""
+                                  msg.created_at || "",
                                 ).toLocaleTimeString()}
                               </div>
                             </div>
@@ -1604,7 +1606,7 @@ export default function RunEventPage() {
                       e.preventDefault();
                       const files = Array.from(e.dataTransfer.files || []);
                       const imageFiles = files.filter((file) =>
-                        file.type.startsWith("image/")
+                        file.type.startsWith("image/"),
                       );
                       if (imageFiles.length > 0) {
                         handleFileUpload(imageFiles);
@@ -1636,7 +1638,7 @@ export default function RunEventPage() {
                         onChange={(e) => {
                           const files = Array.from(e.target.files || []);
                           const imageFiles = files.filter((file) =>
-                            file.type.startsWith("image/")
+                            file.type.startsWith("image/"),
                           );
                           if (imageFiles.length > 0) {
                             handleFileUpload(imageFiles);

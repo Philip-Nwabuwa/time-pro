@@ -1,34 +1,51 @@
 import { supabase } from "../supabase";
 import type { Database } from "../database.types";
 
-export type QnaQuestion = Database["public"]["Tables"]["event_qna_questions"]["Row"];
-export type QnaQuestionInsert = Database["public"]["Tables"]["event_qna_questions"]["Insert"];
-export type QnaQuestionUpdate = Database["public"]["Tables"]["event_qna_questions"]["Update"];
+export type QnaQuestion =
+  Database["public"]["Tables"]["event_qna_questions"]["Row"];
+export type QnaQuestionInsert =
+  Database["public"]["Tables"]["event_qna_questions"]["Insert"];
+export type QnaQuestionUpdate =
+  Database["public"]["Tables"]["event_qna_questions"]["Update"];
 
-export type SessionPhoto = Database["public"]["Tables"]["event_session_photos"]["Row"];
-export type SessionPhotoInsert = Database["public"]["Tables"]["event_session_photos"]["Insert"];
+export type SessionPhoto =
+  Database["public"]["Tables"]["event_session_photos"]["Row"];
+export type SessionPhotoInsert =
+  Database["public"]["Tables"]["event_session_photos"]["Insert"];
 
-export type SessionData = Database["public"]["Tables"]["event_session_data"]["Row"];
-export type SessionDataInsert = Database["public"]["Tables"]["event_session_data"]["Insert"];
-export type SessionDataUpdate = Database["public"]["Tables"]["event_session_data"]["Update"];
+export type SessionData =
+  Database["public"]["Tables"]["event_session_data"]["Row"];
+export type SessionDataInsert =
+  Database["public"]["Tables"]["event_session_data"]["Insert"];
+export type SessionDataUpdate =
+  Database["public"]["Tables"]["event_session_data"]["Update"];
 
 export type EventPoll = Database["public"]["Tables"]["event_polls"]["Row"];
-export type EventPollInsert = Database["public"]["Tables"]["event_polls"]["Insert"];
-export type EventPollUpdate = Database["public"]["Tables"]["event_polls"]["Update"];
+export type EventPollInsert =
+  Database["public"]["Tables"]["event_polls"]["Insert"];
+export type EventPollUpdate =
+  Database["public"]["Tables"]["event_polls"]["Update"];
 
-export type PollOption = Database["public"]["Tables"]["event_poll_options"]["Row"];
-export type PollOptionInsert = Database["public"]["Tables"]["event_poll_options"]["Insert"];
-export type PollOptionUpdate = Database["public"]["Tables"]["event_poll_options"]["Update"];
+export type PollOption =
+  Database["public"]["Tables"]["event_poll_options"]["Row"];
+export type PollOptionInsert =
+  Database["public"]["Tables"]["event_poll_options"]["Insert"];
+export type PollOptionUpdate =
+  Database["public"]["Tables"]["event_poll_options"]["Update"];
 
-export type PollResponse = Database["public"]["Tables"]["event_poll_responses"]["Row"];
-export type PollResponseInsert = Database["public"]["Tables"]["event_poll_responses"]["Insert"];
+export type PollResponse =
+  Database["public"]["Tables"]["event_poll_responses"]["Row"];
+export type PollResponseInsert =
+  Database["public"]["Tables"]["event_poll_responses"]["Insert"];
 
 export interface PollWithOptions extends EventPoll {
   options: PollOption[];
 }
 
 // Q&A Questions
-export async function fetchQnaQuestions(eventId: string): Promise<QnaQuestion[]> {
+export async function fetchQnaQuestions(
+  eventId: string,
+): Promise<QnaQuestion[]> {
   const { data, error } = await supabase
     .from("event_qna_questions")
     .select("*")
@@ -39,7 +56,9 @@ export async function fetchQnaQuestions(eventId: string): Promise<QnaQuestion[]>
   return data || [];
 }
 
-export async function createQnaQuestion(question: Omit<QnaQuestionInsert, "id">): Promise<QnaQuestion> {
+export async function createQnaQuestion(
+  question: Omit<QnaQuestionInsert, "id">,
+): Promise<QnaQuestion> {
   const { data, error } = await supabase
     .from("event_qna_questions")
     .insert(question)
@@ -50,7 +69,10 @@ export async function createQnaQuestion(question: Omit<QnaQuestionInsert, "id">)
   return data;
 }
 
-export async function updateQnaQuestion(id: string, updates: QnaQuestionUpdate): Promise<QnaQuestion> {
+export async function updateQnaQuestion(
+  id: string,
+  updates: QnaQuestionUpdate,
+): Promise<QnaQuestion> {
   const { data, error } = await supabase
     .from("event_qna_questions")
     .update(updates)
@@ -72,7 +94,9 @@ export async function deleteQnaQuestion(id: string): Promise<void> {
 }
 
 // Session Photos
-export async function fetchSessionPhotos(eventId: string): Promise<SessionPhoto[]> {
+export async function fetchSessionPhotos(
+  eventId: string,
+): Promise<SessionPhoto[]> {
   const { data, error } = await supabase
     .from("event_session_photos")
     .select("*")
@@ -86,30 +110,30 @@ export async function fetchSessionPhotos(eventId: string): Promise<SessionPhoto[
 export async function uploadSessionPhoto(
   eventId: string,
   file: File,
-  isAdmin: boolean = false
+  isAdmin: boolean = false,
 ): Promise<{ photo: SessionPhoto; publicUrl: string }> {
   const { data: user } = await supabase.auth.getUser();
   if (!user.user) throw new Error("Not authenticated");
 
-  const fileExt = file.name.split('.').pop();
+  const fileExt = file.name.split(".").pop();
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
   const filePath = `${eventId}/${fileName}`;
 
   // Upload file to storage
   const { error: uploadError } = await supabase.storage
-    .from('event-photos')
+    .from("event-photos")
     .upload(filePath, file, {
       metadata: {
-        uploadedBy: user.user.id
-      }
+        uploadedBy: user.user.id,
+      },
     });
 
   if (uploadError) throw uploadError;
 
   // Get public URL
-  const { data: { publicUrl } } = supabase.storage
-    .from('event-photos')
-    .getPublicUrl(filePath);
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("event-photos").getPublicUrl(filePath);
 
   // Save photo metadata to database
   const { data: photo, error: dbError } = await supabase
@@ -123,7 +147,7 @@ export async function uploadSessionPhoto(
       uploaded_by: user.user.id,
       approved: isAdmin ? true : null, // Auto-approve admin uploads
       approved_by: isAdmin ? user.user.id : null,
-      approved_at: isAdmin ? new Date().toISOString() : null
+      approved_at: isAdmin ? new Date().toISOString() : null,
     })
     .select()
     .single();
@@ -145,7 +169,7 @@ export async function deleteSessionPhoto(photoId: string): Promise<void> {
 
   // Delete from storage
   const { error: storageError } = await supabase.storage
-    .from('event-photos')
+    .from("event-photos")
     .remove([photo.file_path]);
 
   if (storageError) throw storageError;
@@ -160,21 +184,22 @@ export async function deleteSessionPhoto(photoId: string): Promise<void> {
 }
 
 export async function getPhotoPublicUrl(filePath: string): Promise<string> {
-  const { data } = supabase.storage
-    .from('event-photos')
-    .getPublicUrl(filePath);
-  
+  const { data } = supabase.storage.from("event-photos").getPublicUrl(filePath);
+
   return data.publicUrl;
 }
 
 // Photo approval functions
-export async function approveSessionPhoto(photoId: string, approvedBy: string): Promise<SessionPhoto> {
+export async function approveSessionPhoto(
+  photoId: string,
+  approvedBy: string,
+): Promise<SessionPhoto> {
   const { data, error } = await supabase
     .from("event_session_photos")
     .update({
       approved: true,
       approved_by: approvedBy,
-      approved_at: new Date().toISOString()
+      approved_at: new Date().toISOString(),
     })
     .eq("id", photoId)
     .select()
@@ -190,7 +215,9 @@ export async function rejectSessionPhoto(photoId: string): Promise<void> {
 }
 
 // Fetch photos with approval status
-export async function fetchSessionPhotosWithApproval(eventId: string): Promise<SessionPhoto[]> {
+export async function fetchSessionPhotosWithApproval(
+  eventId: string,
+): Promise<SessionPhoto[]> {
   const { data, error } = await supabase
     .from("event_session_photos")
     .select("*")
@@ -202,7 +229,9 @@ export async function fetchSessionPhotosWithApproval(eventId: string): Promise<S
 }
 
 // Fetch only approved photos (for regular users)
-export async function fetchApprovedSessionPhotos(eventId: string): Promise<SessionPhoto[]> {
+export async function fetchApprovedSessionPhotos(
+  eventId: string,
+): Promise<SessionPhoto[]> {
   const { data, error } = await supabase
     .from("event_session_photos")
     .select("*")
@@ -215,57 +244,45 @@ export async function fetchApprovedSessionPhotos(eventId: string): Promise<Sessi
 }
 
 // Session Data (for storing timer states, notes, etc.)
-export async function fetchSessionData(eventId: string): Promise<SessionData | null> {
+export async function fetchSessionData(
+  eventId: string,
+): Promise<SessionData | null> {
   const { data, error } = await supabase
     .from("event_session_data")
     .select("*")
     .eq("event_id", eventId)
     .single();
 
-  if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
+  if (error && error.code !== "PGRST116") throw error; // PGRST116 = no rows returned
   return data;
 }
 
-export async function upsertSessionData(eventId: string, sessionData: any): Promise<SessionData> {
-  // First, try to find existing session data for this event
-  const { data: existingData } = await supabase
-    .from("event_session_data")
-    .select("id")
-    .eq("event_id", eventId)
-    .single();
-
+export async function upsertSessionData(
+  eventId: string,
+  sessionData: any,
+): Promise<SessionData> {
   const sessionRecord = {
     event_id: eventId,
     session_data: sessionData,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   };
 
-  if (existingData) {
-    // Update existing record
-    const { data, error } = await supabase
-      .from("event_session_data")
-      .update(sessionRecord)
-      .eq("event_id", eventId)
-      .select()
-      .single();
+  const { data, error } = await supabase
+    .from("event_session_data")
+    .upsert(sessionRecord, {
+      onConflict: "event_id",
+    })
+    .select()
+    .single();
 
-    if (error) throw error;
-    return data;
-  } else {
-    // Insert new record
-    const { data, error } = await supabase
-      .from("event_session_data")
-      .insert(sessionRecord)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
+  if (error) throw error;
+  return data;
 }
 
 // Event Polls
-export async function fetchEventPolls(eventId: string): Promise<PollWithOptions[]> {
+export async function fetchEventPolls(
+  eventId: string,
+): Promise<PollWithOptions[]> {
   const { data, error } = await supabase
     .from("event_polls")
     .select(`
@@ -305,12 +322,14 @@ export async function createPoll(pollData: {
   if (pollError) throw pollError;
 
   // Create poll options
-  const optionsData: PollOptionInsert[] = pollData.options.map((option, index) => ({
-    poll_id: poll.id,
-    option_text: option,
-    order_index: index,
-    vote_count: 0,
-  }));
+  const optionsData: PollOptionInsert[] = pollData.options.map(
+    (option, index) => ({
+      poll_id: poll.id,
+      option_text: option,
+      order_index: index,
+      vote_count: 0,
+    }),
+  );
 
   const { data: options, error: optionsError } = await supabase
     .from("event_poll_options")
@@ -322,7 +341,10 @@ export async function createPoll(pollData: {
   return { ...poll, options: options || [] };
 }
 
-export async function updatePoll(pollId: string, updates: EventPollUpdate): Promise<EventPoll> {
+export async function updatePoll(
+  pollId: string,
+  updates: EventPollUpdate,
+): Promise<EventPoll> {
   const { data, error } = await supabase
     .from("event_polls")
     .update(updates)
@@ -345,9 +367,9 @@ export async function deletePoll(pollId: string): Promise<void> {
 }
 
 export async function submitPollVote(
-  pollId: string, 
-  optionId: string, 
-  respondentId?: string
+  pollId: string,
+  optionId: string,
+  respondentId?: string,
 ): Promise<void> {
   const { data: user } = await supabase.auth.getUser();
   const actualRespondentId = respondentId || user.user?.id || null;
@@ -380,7 +402,10 @@ export async function submitPollVote(
   if (incrementError) throw incrementError;
 }
 
-export async function getUserPollVotes(eventId: string, userId?: string): Promise<Record<string, string>> {
+export async function getUserPollVotes(
+  eventId: string,
+  userId?: string,
+): Promise<Record<string, string>> {
   const { data: user } = await supabase.auth.getUser();
   const actualUserId = userId || user.user?.id;
 
@@ -413,17 +438,20 @@ export async function fetchEventSessionAll(eventId: string): Promise<{
   polls: PollWithOptions[];
   sessionData: SessionData | null;
 }> {
-  const [questionsResult, photosResult, pollsResult, sessionDataResult] = await Promise.allSettled([
-    fetchQnaQuestions(eventId),
-    fetchSessionPhotos(eventId),
-    fetchEventPolls(eventId),
-    fetchSessionData(eventId)
-  ]);
+  const [questionsResult, photosResult, pollsResult, sessionDataResult] =
+    await Promise.allSettled([
+      fetchQnaQuestions(eventId),
+      fetchSessionPhotos(eventId),
+      fetchEventPolls(eventId),
+      fetchSessionData(eventId),
+    ]);
 
   return {
-    questions: questionsResult.status === 'fulfilled' ? questionsResult.value : [],
-    photos: photosResult.status === 'fulfilled' ? photosResult.value : [],
-    polls: pollsResult.status === 'fulfilled' ? pollsResult.value : [],
-    sessionData: sessionDataResult.status === 'fulfilled' ? sessionDataResult.value : null
+    questions:
+      questionsResult.status === "fulfilled" ? questionsResult.value : [],
+    photos: photosResult.status === "fulfilled" ? photosResult.value : [],
+    polls: pollsResult.status === "fulfilled" ? pollsResult.value : [],
+    sessionData:
+      sessionDataResult.status === "fulfilled" ? sessionDataResult.value : null,
   };
 }

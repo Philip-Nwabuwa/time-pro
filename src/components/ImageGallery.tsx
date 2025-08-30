@@ -18,11 +18,11 @@ interface ImageGalleryProps {
   onClose: () => void;
 }
 
-export default function ImageGallery({ 
-  photos, 
-  initialIndex = 0, 
-  isOpen, 
-  onClose 
+export default function ImageGallery({
+  photos,
+  initialIndex = 0,
+  isOpen,
+  onClose,
 }: ImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
@@ -68,7 +68,8 @@ export default function ImageGallery({
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = photos[currentIndex].photo.file_name || `photo-${currentIndex + 1}`;
+      link.download =
+        photos[currentIndex].photo.file_name || `photo-${currentIndex + 1}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -167,10 +168,7 @@ export default function ImageGallery({
       )}
 
       {/* Click outside to close */}
-      <div
-        className="absolute inset-0 -z-10"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 -z-10" onClick={onClose} />
     </div>
   );
 }

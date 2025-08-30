@@ -63,10 +63,23 @@ export function useCreatePage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (pageData: Omit<PageInsert, "created_by">) =>
-      createPage(pageData),
-    onSuccess: () => {
+    mutationFn: ({
+      pageData,
+      imageFile,
+    }: {
+      pageData: Omit<PageInsert, "created_by">;
+      imageFile?: File;
+    }) => createPage(pageData, imageFile),
+    onSuccess: (data) => {
+      // Invalidate all page-related queries to ensure fresh data
       queryClient.invalidateQueries({ queryKey: queryKeys.pages });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allPages });
+      
+      // Also invalidate the specific page query if we have the ID
+      if (data?.id) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.page(data.id) });
+      }
+      
       toast.success("Page created successfully!");
     },
     onError: (error: Error) => {
@@ -255,12 +268,16 @@ export function useJoinPage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ pageId, pin }: { pageId: string; pin?: string }) => 
+    mutationFn: ({ pageId, pin }: { pageId: string; pin?: string }) =>
       joinPage(pageId, pin),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.pages });
-      queryClient.invalidateQueries({ queryKey: queryKeys.page(variables.pageId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.pageMembers(variables.pageId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.page(variables.pageId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.pageMembers(variables.pageId),
+      });
       toast.success("Successfully joined the page!");
     },
     onError: (error: Error) => {
@@ -277,7 +294,9 @@ export function useLeavePage() {
     onSuccess: (data, pageId) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.pages });
       queryClient.invalidateQueries({ queryKey: queryKeys.page(pageId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.pageMembers(pageId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.pageMembers(pageId),
+      });
       toast.success("Successfully left the page!");
     },
     onError: (error: Error) => {

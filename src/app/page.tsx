@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, Calendar, Plus, Loader2 } from "lucide-react";
+import { Users, Calendar, Plus, Loader2, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,7 +33,9 @@ export default function HomePage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle className="text-xl">My Pages</CardTitle>
-              <CardDescription>Pages you created or joined as a member</CardDescription>
+              <CardDescription>
+                Pages you created or joined as a member
+              </CardDescription>
             </div>
             <Button size="sm" className="gap-2" onClick={handleCreatePageClick}>
               <Plus className="h-4 w-4" />
@@ -58,7 +60,9 @@ export default function HomePage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle className="text-xl">My Pages</CardTitle>
-              <CardDescription>Pages you created or joined as a member</CardDescription>
+              <CardDescription>
+                Pages you created or joined as a member
+              </CardDescription>
             </div>
             <Button size="sm" className="gap-2" onClick={handleCreatePageClick}>
               <Plus className="h-4 w-4" />
@@ -95,12 +99,30 @@ export default function HomePage() {
             {pages.map((page) => (
               <Card
                 key={page.id}
-                className="hover:shadow-sm transition-shadow cursor-pointer"
+                className="hover:shadow-sm transition-shadow cursor-pointer overflow-hidden"
                 onClick={() => handlePageClick(page.id)}
               >
+                <div className="aspect-video w-full relative overflow-hidden">
+                  {page.imageUrl ? (
+                    <img
+                      src={page.imageUrl}
+                      alt={page.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                      <div className="text-center text-gray-500">
+                        <div className="p-4 bg-gray-200/50 rounded-lg mb-2 inline-block">
+                          <Image className="h-8 w-8" />
+                        </div>
+                        <p className="text-sm font-medium">Page Image</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center justify-between gap-2">
-                    {page.title}{" "}
+                    <span>{page.title}</span>
                     <span
                       className={
                         page.role === "admin"

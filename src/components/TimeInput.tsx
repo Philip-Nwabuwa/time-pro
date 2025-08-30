@@ -11,11 +11,11 @@ interface TimeInputProps {
   placeholder?: string;
 }
 
-export default function TimeInput({ 
-  label, 
-  value, 
-  onChange, 
-  placeholder = "5:00" 
+export default function TimeInput({
+  label,
+  value,
+  onChange,
+  placeholder = "5:00",
 }: TimeInputProps) {
   const [displayValue, setDisplayValue] = useState(value);
   const [isValid, setIsValid] = useState(true);
@@ -24,25 +24,27 @@ export default function TimeInput({
     setDisplayValue(value);
   }, [value]);
 
-  const parseAndFormatTime = (input: string): { formatted: string; isValid: boolean } => {
+  const parseAndFormatTime = (
+    input: string,
+  ): { formatted: string; isValid: boolean } => {
     if (!input.trim()) {
       return { formatted: "", isValid: true };
     }
 
     // Remove any non-digit and non-colon characters
     const cleaned = input.replace(/[^\d:]/g, "");
-    
+
     // Handle different input formats
     if (cleaned.includes(":")) {
       // Format: MM:SS or M:SS
       const parts = cleaned.split(":");
       const minutes = parseInt(parts[0] || "0", 10);
       const seconds = parseInt(parts[1] || "0", 10);
-      
+
       if (isNaN(minutes) || isNaN(seconds) || seconds >= 60 || minutes > 999) {
         return { formatted: input, isValid: false };
       }
-      
+
       return {
         formatted: `${minutes}:${seconds.toString().padStart(2, "0")}`,
         isValid: true,
@@ -50,11 +52,11 @@ export default function TimeInput({
     } else {
       // Just numbers - treat as minutes
       const totalMinutes = parseInt(cleaned, 10);
-      
+
       if (isNaN(totalMinutes) || totalMinutes > 999) {
         return { formatted: input, isValid: false };
       }
-      
+
       return {
         formatted: `${totalMinutes}:00`,
         isValid: true,
@@ -112,7 +114,8 @@ export default function TimeInput({
         </p>
       )}
       <p className="text-xs text-gray-500">
-        Format: MM:SS (e.g., "2:30" for 2 minutes 30 seconds, or just "5" for 5 minutes)
+        Format: MM:SS (e.g., "2:30" for 2 minutes 30 seconds, or just "5" for 5
+        minutes)
       </p>
     </div>
   );

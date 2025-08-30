@@ -29,8 +29,17 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useEventDetails, usePage } from "@/lib/api/hooks";
-import { updateEvent, updateScheduleItem, createScheduleItem, deleteScheduleItem } from "@/lib/api/events";
-import type { EventUpdate, EventScheduleItemInsert, EventScheduleItemUpdate } from "@/lib/api/types";
+import {
+  updateEvent,
+  updateScheduleItem,
+  createScheduleItem,
+  deleteScheduleItem,
+} from "@/lib/api/events";
+import type {
+  EventUpdate,
+  EventScheduleItemInsert,
+  EventScheduleItemUpdate,
+} from "@/lib/api/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/hooks";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
@@ -103,7 +112,9 @@ export default function EditEventPage() {
   // Modal states
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
-  const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
+  const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(
+    null,
+  );
 
   // Populate form data when event details are loaded
   useEffect(() => {
@@ -126,8 +137,12 @@ export default function EditEventPage() {
           bio: item.speakerBio || "",
           avatar: item.speakerAvatar || "",
           minTime: formatMinutesToTime(item.minMinutes || 3),
-          targetTime: formatMinutesToTime(item.targetMinutes || item.allocatedMinutes),
-          maxTime: formatMinutesToTime(item.maxMinutes || item.allocatedMinutes * 1.5),
+          targetTime: formatMinutesToTime(
+            item.targetMinutes || item.allocatedMinutes,
+          ),
+          maxTime: formatMinutesToTime(
+            item.maxMinutes || item.allocatedMinutes * 1.5,
+          ),
           socialMediaLinks: item.socialMediaLinks || [],
         })),
       });
@@ -248,8 +263,12 @@ export default function EditEventPage() {
     const roleToRemove = formData.roles[index];
 
     // If it's an existing role (not a new one), track it for deletion
-    if (roleToRemove && !roleToRemove.isNew && !roleToRemove.id.startsWith('new-')) {
-      setDeletedRoleIds(prev => [...prev, roleToRemove.id]);
+    if (
+      roleToRemove &&
+      !roleToRemove.isNew &&
+      !roleToRemove.id.startsWith("new-")
+    ) {
+      setDeletedRoleIds((prev) => [...prev, roleToRemove.id]);
     }
 
     setFormData((prev) => ({
@@ -262,7 +281,7 @@ export default function EditEventPage() {
     setFormData((prev) => ({
       ...prev,
       roles: prev.roles.map((role, i) =>
-        i === index ? { ...role, [field]: value } : role
+        i === index ? { ...role, [field]: value } : role,
       ),
     }));
   };
@@ -272,13 +291,15 @@ export default function EditEventPage() {
     setFormData((prev) => ({
       ...prev,
       roles: prev.roles.map((role, i) =>
-        i === index ? {
-          ...role,
-          speakerName: member.name,
-          speakerEmail: member.email,
-          avatar: member.avatar || "",
-          // Keep existing bio and social media links as they might be role-specific
-        } : role
+        i === index
+          ? {
+              ...role,
+              speakerName: member.name,
+              speakerEmail: member.email,
+              avatar: member.avatar || "",
+              // Keep existing bio and social media links as they might be role-specific
+            }
+          : role,
       ),
     }));
   };
@@ -307,7 +328,7 @@ export default function EditEventPage() {
     }
 
     // Validate roles
-    const invalidRoles = formData.roles.filter(role => !role.roleName.trim());
+    const invalidRoles = formData.roles.filter((role) => !role.roleName.trim());
     if (invalidRoles.length > 0) {
       toast.error("All roles must have a name");
       return;
@@ -317,7 +338,7 @@ export default function EditEventPage() {
 
     try {
       // Format date and time for the API
-      const eventDate = formData.date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const eventDate = formData.date.toISOString().split("T")[0]; // YYYY-MM-DD format
       const eventTime = formData.time;
 
       // Prepare event update data
@@ -361,10 +382,11 @@ export default function EditEventPage() {
           speaker_email: role.speakerEmail.trim() || null,
           speaker_bio: role.bio.trim() || null,
           speaker_avatar: role.avatar || null,
-          social_media_links: role.socialMediaLinks.length > 0 ? role.socialMediaLinks : null,
+          social_media_links:
+            role.socialMediaLinks.length > 0 ? role.socialMediaLinks : null,
         };
 
-        if (role.isNew || role.id.startsWith('new-')) {
+        if (role.isNew || role.id.startsWith("new-")) {
           // Create new schedule item
           await createScheduleItem(eventId, scheduleItemData);
         } else {
@@ -375,16 +397,15 @@ export default function EditEventPage() {
 
       // Invalidate queries to refresh the data
       await queryClient.invalidateQueries({
-        queryKey: queryKeys.eventDetails(pageId, eventId)
+        queryKey: queryKeys.eventDetails(pageId, eventId),
       });
       await queryClient.invalidateQueries({
-        queryKey: queryKeys.pageEvents(pageId)
+        queryKey: queryKeys.pageEvents(pageId),
       });
 
       toast.success("Event updated successfully!");
       setHasUnsavedChanges(false);
       handleBack();
-
     } catch (error) {
       console.error("Error updating event:", error);
       toast.error("Failed to update event. Please try again.");
@@ -407,11 +428,7 @@ export default function EditEventPage() {
         <p className="text-red-500">
           {pageError?.message || eventError?.message || "Event not found."}
         </p>
-        <Button
-          variant="outline"
-          onClick={handleBack}
-          className="mt-4"
-        >
+        <Button variant="outline" onClick={handleBack} className="mt-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Event
         </Button>
@@ -423,21 +440,14 @@ export default function EditEventPage() {
     <main className="mx-auto max-w-4xl px-6 py-8">
       {/* Header */}
       <div className="mb-8">
-        <Button
-          variant="ghost"
-          onClick={handleBack}
-          className="mb-4 gap-2"
-        >
+        <Button variant="ghost" onClick={handleBack} className="mb-4 gap-2">
           <ArrowLeft className="h-4 w-4" />
           Back to Event
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Edit Event
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Event</h1>
           <p className="text-gray-600">
-            Edit event for{" "}
-            <span className="font-medium">{page.title}</span>
+            Edit event for <span className="font-medium">{page.title}</span>
           </p>
         </div>
       </div>
@@ -503,7 +513,10 @@ export default function EditEventPage() {
 
             <div className="space-y-2">
               <Label>Event Status</Label>
-              <Select value={formData.status} onValueChange={handleStatusChange}>
+              <Select
+                value={formData.status}
+                onValueChange={handleStatusChange}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
@@ -642,8 +655,12 @@ export default function EditEventPage() {
                         <MemberSearchInput
                           pageId={pageId}
                           value={role.speakerName}
-                          onChange={(value) => updateRole(index, "speakerName", value)}
-                          onMemberSelect={(member) => handleMemberSelect(index, member)}
+                          onChange={(value) =>
+                            updateRole(index, "speakerName", value)
+                          }
+                          onMemberSelect={(member) =>
+                            handleMemberSelect(index, member)
+                          }
                           label="Speaker Name"
                           placeholder="Search members or enter name..."
                           disabled={isLoading}

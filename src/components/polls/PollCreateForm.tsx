@@ -60,7 +60,7 @@ export default function PollCreateForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!title.trim()) {
       return;
     }
