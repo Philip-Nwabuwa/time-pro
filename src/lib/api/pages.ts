@@ -5,10 +5,11 @@ export async function fetchPages(): Promise<PageData[]> {
   const { data: user } = await supabase.auth.getUser();
   if (!user.user) throw new Error("Not authenticated");
 
-  // Get pages the user created (these will be returned by RLS automatically)
+  // Get pages the user created (explicitly filter by created_by to avoid RLS confusion)
   const { data: ownedPages, error: ownedError } = await supabase
     .from("pages")
-    .select("id, title, description, created_by");
+    .select("id, title, description, created_by")
+    .eq("created_by", user.user.id);
 
   if (ownedError) throw ownedError;
 

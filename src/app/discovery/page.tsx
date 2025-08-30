@@ -46,7 +46,7 @@ export default function DiscoveryPage() {
       const query = searchQuery.toLowerCase();
       return (
         page.title.toLowerCase().includes(query) ||
-        page.description?.toLowerCase().includes(query) ||
+        (page.description && page.description.toLowerCase().includes(query)) ||
         (page.category && page.category.toLowerCase().includes(query))
       );
     }) || [];

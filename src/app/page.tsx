@@ -33,7 +33,7 @@ export default function HomePage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle className="text-xl">My Pages</CardTitle>
-              <CardDescription>Manage your event pages</CardDescription>
+              <CardDescription>Pages you created or joined as a member</CardDescription>
             </div>
             <Button size="sm" className="gap-2" onClick={handleCreatePageClick}>
               <Plus className="h-4 w-4" />
@@ -58,7 +58,7 @@ export default function HomePage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle className="text-xl">My Pages</CardTitle>
-              <CardDescription>Manage your event pages</CardDescription>
+              <CardDescription>Pages you created or joined as a member</CardDescription>
             </div>
             <Button size="sm" className="gap-2" onClick={handleCreatePageClick}>
               <Plus className="h-4 w-4" />
