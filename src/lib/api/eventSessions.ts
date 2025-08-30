@@ -227,23 +227,41 @@ export async function fetchSessionData(eventId: string): Promise<SessionData | n
 }
 
 export async function upsertSessionData(eventId: string, sessionData: any): Promise<SessionData> {
-  const { data, error } = await supabase
+  // First, try to find existing session data for this event
+  const { data: existingData } = await supabase
     .from("event_session_data")
-    .upsert(
-      {
-        event_id: eventId,
-        session_data: sessionData,
-        updated_at: new Date().toISOString()
-      },
-      { 
-        onConflict: "event_id" 
-      }
-    )
-    .select()
+    .select("id")
+    .eq("event_id", eventId)
     .single();
 
-  if (error) throw error;
-  return data;
+  const sessionRecord = {
+    event_id: eventId,
+    session_data: sessionData,
+    updated_at: new Date().toISOString()
+  };
+
+  if (existingData) {
+    // Update existing record
+    const { data, error } = await supabase
+      .from("event_session_data")
+      .update(sessionRecord)
+      .eq("event_id", eventId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } else {
+    // Insert new record
+    const { data, error } = await supabase
+      .from("event_session_data")
+      .insert(sessionRecord)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
 }
 
 // Event Polls
