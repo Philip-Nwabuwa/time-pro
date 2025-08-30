@@ -67,7 +67,7 @@ export default function CreatePageModal() {
       await createPage.mutateAsync({
         title: formData.title.trim(),
         description: formData.description.trim() || null,
-        pageType: formData.pageType,
+        is_private: formData.pageType === "private",
         pin: formData.pageType === "private" ? formData.pin.trim() : null,
       });
 

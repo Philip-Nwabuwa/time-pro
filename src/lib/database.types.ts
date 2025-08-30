@@ -260,6 +260,9 @@ export type Database = {
       }
       event_session_photos: {
         Row: {
+          approved: boolean | null
+          approved_at: string | null
+          approved_by: string | null
           created_at: string | null
           event_id: string | null
           file_name: string
@@ -270,6 +273,9 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string | null
           event_id?: string | null
           file_name: string
@@ -280,6 +286,9 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string | null
           event_id?: string | null
           file_name?: string

@@ -93,7 +93,7 @@ export async function updatePageMemberRole(
     .eq("id", memberId)
     .single();
 
-  if (fetchError) throw fetchError;
+  if (fetchError || !memberData) throw fetchError || new Error("Member not found");
 
   // Update the role
   const { error } = await supabase
@@ -102,6 +102,9 @@ export async function updatePageMemberRole(
     .eq("id", memberId);
 
   if (error) throw error;
+
+  // Ensure page_id is not null
+  if (!memberData.page_id) throw new Error("Member has no associated page");
 
   // Fetch the complete member data using our function
   const members = await fetchMembersByPageId(memberData.page_id);

@@ -197,26 +197,17 @@ export async function fetchPageById(id: string): Promise<PageData | null> {
 }
 
 export async function createPage(
-  pageData: Omit<PageInsert, "created_by"> & { 
-    pageType?: "public" | "private";
-    pin?: string | null;
-  },
+  pageData: Omit<PageInsert, "created_by">,
 ): Promise<PageData> {
   const { data: user } = await supabase.auth.getUser();
   if (!user.user) throw new Error("Not authenticated");
-
-  // Transform pageType to is_private boolean and handle PIN
-  const { pageType, pin, ...otherData } = pageData;
-  const is_private = pageType === "private";
 
   // Create page
   const { data: page, error } = await supabase
     .from("pages")
     .insert({
-      ...otherData,
+      ...pageData,
       created_by: user.user.id,
-      is_private,
-      pin: is_private ? pin : null,
     })
     .select()
     .single();
@@ -246,12 +237,10 @@ export async function updatePage(
   id: string,
   updates: PageUpdate,
 ): Promise<PageData> {
-  const { data: page, error } = await supabase
+  const { error } = await supabase
     .from("pages")
     .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
+    .eq("id", id);
 
   if (error) throw error;
 
