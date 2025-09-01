@@ -136,8 +136,12 @@ export async function fetchAllPages(): Promise<
     eventsCount: number;
     isPrivate: boolean;
     imageUrl?: string;
+    isMember?: boolean; // Add this field
   }>
 > {
+  const { data: user } = await supabase.auth.getUser();
+  if (!user.user) throw new Error("Not authenticated");
+
   // Fetch all pages (public discovery)
   const { data: pages, error } = await supabase
     .from("pages")
@@ -165,7 +169,7 @@ export async function fetchAllPages(): Promise<
     });
   });
 
-  // Get member and event counts for each page
+  // Get member and event counts for each page, plus check if current user is a member
   const pagesWithCounts = await Promise.all(
     pages.map(async (page) => {
       // Get member count
@@ -180,6 +184,14 @@ export async function fetchAllPages(): Promise<
         .select("*", { count: "exact", head: true })
         .eq("page_id", page.id);
 
+      // Check if current user is already a member
+      const { data: userMembership } = await supabase
+        .from("page_members")
+        .select("id")
+        .eq("page_id", page.id)
+        .eq("user_id", user.user.id)
+        .single();
+
       const processedPage = {
         id: page.id,
         title: page.title,
@@ -190,6 +202,7 @@ export async function fetchAllPages(): Promise<
         eventsCount: eventCount || 0,
         isPrivate: page.is_private || false,
         imageUrl: page.image_url || undefined,
+        isMember: !!userMembership, // Add membership status
       };
 
       console.log("🌐 Processed discovery page:", {
@@ -197,6 +210,7 @@ export async function fetchAllPages(): Promise<
         title: processedPage.title,
         imageUrl: processedPage.imageUrl,
         hasImageUrl: !!processedPage.imageUrl,
+        isMember: processedPage.isMember,
       });
 
       return processedPage;
@@ -211,6 +225,7 @@ export async function fetchAllPages(): Promise<
         id: p.id,
         title: p.title,
         imageUrl: p.imageUrl,
+        isMember: p.isMember,
       })),
   );
 

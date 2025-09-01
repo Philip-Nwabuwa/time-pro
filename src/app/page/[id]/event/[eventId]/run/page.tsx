@@ -83,6 +83,7 @@ interface TimerCardProps {
   currentSlot?: { title: string; role: string };
   currentSpeaker?: string;
   seconds: number;
+  addedTime: number;
   onTimeState: string;
   isRunning: boolean;
   hasStarted: boolean;
@@ -105,6 +106,7 @@ function TimerCard({
   currentSlot,
   currentSpeaker,
   seconds,
+  addedTime,
   onTimeState,
   isRunning,
   hasStarted,
@@ -183,7 +185,7 @@ function TimerCard({
                 isFullscreen ? "text-[128px]" : "text-[64px]"
               }`}
             >
-              {formatSeconds(seconds)}
+              {formatSeconds(seconds + addedTime)}
             </div>
             <div
               className={`mt-2 flex items-center justify-center gap-6 ${
@@ -1366,6 +1368,7 @@ export default function RunEventPage() {
               currentSlot={currentSlot}
               currentSpeaker={currentSpeaker}
               seconds={seconds}
+              addedTime={addedTime}
               onTimeState={onTimeState}
               isRunning={isRunning}
               hasStarted={hasStarted}
@@ -1454,7 +1457,7 @@ export default function RunEventPage() {
                           )}
                           {idx === currentSpeakerIndex && isRunning && (
                             <div className="text-xs text-gray-600">
-                              Current: {formatSeconds(seconds)}
+                              Current: {formatSeconds(seconds + addedTime)}
                             </div>
                           )}
                         </div>
@@ -1971,6 +1974,7 @@ export default function RunEventPage() {
               currentSlot={currentSlot}
               currentSpeaker={currentSpeaker}
               seconds={seconds}
+              addedTime={addedTime}
               onTimeState={onTimeState}
               isRunning={isRunning}
               hasStarted={hasStarted}

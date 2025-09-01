@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { BarChart3, Users, Settings, Trash2 } from "lucide-react";
+import React from "react";
+import { BarChart3, Users, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -43,17 +43,14 @@ export default function PollCard({
   isLoading = false,
   canManage = false,
 }: PollCardProps) {
-  const [selectedOption, setSelectedOption] = useState<string>("");
-
   const totalVotes = poll.options.reduce(
     (sum, option) => sum + (option.vote_count || 0),
-    0,
+    0
   );
 
-  const handleVote = () => {
-    if (selectedOption && onVote) {
-      onVote(poll.id, selectedOption);
-      setSelectedOption("");
+  const handleVote = (optionId: string) => {
+    if (onVote) {
+      onVote(poll.id, optionId);
     }
   };
 
@@ -63,7 +60,7 @@ export default function PollCard({
 
   return (
     <Card className={poll.active ? "border-green-200" : "border-gray-200"}>
-      <CardHeader className="pb-4">
+      {/* <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
@@ -91,8 +88,9 @@ export default function PollCard({
                 onClick={() => onToggleActive?.(poll.id, !poll.active)}
                 className="h-8 w-8 p-0"
                 disabled={isLoading}
+                title={poll.active ? "Deactivate poll" : "Activate poll"}
               >
-                <Settings className="h-4 w-4" />
+                <div className={`w-2 h-2 rounded-full ${poll.active ? 'bg-green-500' : 'bg-gray-400'}`} />
               </Button>
               <Button
                 variant="ghost"
@@ -100,98 +98,68 @@ export default function PollCard({
                 onClick={() => onDelete?.(poll.id)}
                 className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
                 disabled={isLoading}
+                title="Delete poll"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           )}
         </div>
-      </CardHeader>
+      </CardHeader> */}
 
       <CardContent className="space-y-4">
-        {/* Voting Interface */}
-        {(poll.active ?? false) && !hasVoted && (
-          <div className="space-y-3">
-            <div className="space-y-2">
-              {poll.options.map((option) => (
-                <label
+        {/* Results with clickable voting */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Users className="h-4 w-4" />
+            <span>
+              {totalVotes} {totalVotes === 1 ? "vote" : "votes"}
+            </span>
+            {hasVoted && userVote && (
+              <span className="text-green-600 font-medium">• You voted</span>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            {poll.options.map((option) => {
+              const percentage = getPercentage(option.vote_count || 0);
+              const isUserChoice = hasVoted && userVote === option.id;
+              const canVote = (poll.active ?? false) && !hasVoted;
+
+              return (
+                <div
                   key={option.id}
-                  className="flex items-center space-x-3 cursor-pointer p-2 rounded hover:bg-gray-50"
+                  onClick={canVote ? () => handleVote(option.id) : undefined}
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    isUserChoice
+                      ? "border-green-200 bg-green-50"
+                      : canVote
+                      ? "border-gray-200 bg-gray-50 hover:border-green-300 hover:bg-green-50"
+                      : "border-gray-200 bg-gray-50"
+                  }`}
                 >
-                  <input
-                    type="radio"
-                    name={`poll-${poll.id}`}
-                    value={option.id}
-                    checked={selectedOption === option.id}
-                    onChange={(e) => setSelectedOption(e.target.value)}
-                    className="text-green-600 focus:ring-green-500"
-                    disabled={isLoading}
-                  />
-                  <span className="text-sm flex-1">{option.option_text}</span>
-                </label>
-              ))}
-            </div>
-            <Button
-              onClick={handleVote}
-              disabled={!selectedOption || isLoading}
-              className="w-full bg-green-600 hover:bg-green-700"
-              size="sm"
-            >
-              {isLoading ? "Submitting..." : "Submit Vote"}
-            </Button>
-          </div>
-        )}
-
-        {/* Results */}
-        {(hasVoted || !(poll.active ?? false) || canManage) && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Users className="h-4 w-4" />
-              <span>
-                {totalVotes} {totalVotes === 1 ? "vote" : "votes"}
-              </span>
-              {hasVoted && userVote && (
-                <span className="text-green-600 font-medium">• You voted</span>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              {poll.options.map((option) => {
-                const percentage = getPercentage(option.vote_count || 0);
-                const isUserChoice = hasVoted && userVote === option.id;
-
-                return (
-                  <div
-                    key={option.id}
-                    className={`p-3 rounded-lg border ${
-                      isUserChoice
-                        ? "border-green-200 bg-green-50"
-                        : "border-gray-200 bg-gray-50"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium flex-1">
-                        {option.option_text}
-                        {isUserChoice && (
-                          <span className="text-green-600 text-xs ml-2">
-                            (Your vote)
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-sm text-gray-600 ml-2">
-                        {percentage}% ({option.vote_count || 0})
-                      </span>
-                    </div>
-                    <Progress
-                      value={percentage}
-                      className={`h-2 ${isUserChoice ? "bg-green-200" : ""}`}
-                    />
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium flex-1">
+                      {option.option_text}
+                      {isUserChoice && (
+                        <span className="text-green-600 text-xs ml-2">
+                          (Your vote)
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-sm text-gray-600 ml-2">
+                      {percentage}% ({option.vote_count || 0})
+                    </span>
                   </div>
-                );
-              })}
-            </div>
+                  <Progress
+                    value={percentage}
+                    className={`h-2 ${isUserChoice ? "bg-green-200" : ""}`}
+                  />
+                </div>
+              );
+            })}
           </div>
-        )}
+        </div>
 
         {/* Empty state for inactive polls with no votes */}
         {!(poll.active ?? false) && totalVotes === 0 && !canManage && (

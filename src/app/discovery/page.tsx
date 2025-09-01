@@ -17,6 +17,8 @@ export default function DiscoveryPage() {
     id: string;
     title: string;
   } | null>(null);
+  // Add this new state to track which pages are being joined
+  const [joiningPages, setJoiningPages] = useState<Set<string>>(new Set());
 
   const { data: pages, isLoading, error } = useAllPages();
   const joinPageMutation = useJoinPage();
@@ -41,17 +43,26 @@ export default function DiscoveryPage() {
   const handleJoinPage = async (
     pageId: string,
     isPrivate: boolean,
-    pageTitle: string,
+    pageTitle: string
   ) => {
     if (isPrivate) {
       setSelectedPage({ id: pageId, title: pageTitle });
       setShowPinModal(true);
     } else {
       try {
+        // Set this page as joining
+        setJoiningPages((prev) => new Set(prev).add(pageId));
         await joinPageMutation.mutateAsync({ pageId });
         router.push(`/page/${pageId}`);
       } catch (_error) {
         // Error is handled by the mutation hook
+      } finally {
+        // Remove this page from joining state
+        setJoiningPages((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(pageId);
+          return newSet;
+        });
       }
     }
   };
@@ -60,11 +71,20 @@ export default function DiscoveryPage() {
     if (!selectedPage) return;
 
     try {
+      // Set this page as joining
+      setJoiningPages((prev) => new Set(prev).add(selectedPage.id));
       await joinPageMutation.mutateAsync({ pageId: selectedPage.id, pin });
       router.push(`/page/${selectedPage.id}`);
     } catch (_error) {
       // Error is handled by the mutation hook
       throw _error; // Re-throw to show error in modal
+    } finally {
+      // Remove this page from joining state
+      setJoiningPages((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(selectedPage.id);
+        return newSet;
+      });
     }
   };
 
@@ -193,19 +213,23 @@ export default function DiscoveryPage() {
                     handleJoinPage(page.id, page.isPrivate, page.title);
                   }}
                   className={`w-full text-white ${
-                    page.isPrivate
+                    page.isMember
+                      ? "bg-gray-500 cursor-default"
+                      : page.isPrivate
                       ? "bg-orange-600 hover:bg-orange-700"
                       : "bg-green-600 hover:bg-green-700"
                   }`}
                   size="sm"
-                  disabled={joinPageMutation.isPending}
+                  disabled={page.isMember || joiningPages.has(page.id)}
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  {joinPageMutation.isPending
+                  {page.isMember
+                    ? "Already a member"
+                    : joiningPages.has(page.id)
                     ? "Joining..."
                     : page.isPrivate
-                      ? "Join Private Page"
-                      : "Join Page"}
+                    ? "Join Private Page"
+                    : "Join Page"}
                 </Button>
               </CardContent>
             </Card>
@@ -230,7 +254,7 @@ export default function DiscoveryPage() {
         }}
         onJoin={handleJoinPrivatePage}
         pageTitle={selectedPage?.title || ""}
-        isLoading={joinPageMutation.isPending}
+        isLoading={selectedPage ? joiningPages.has(selectedPage.id) : false}
       />
     </main>
   );

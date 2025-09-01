@@ -103,7 +103,6 @@ export default function PollsSection({
 
       {pollsEnabled && (
         <>
-          {/* Create Poll Form */}
           {showCreateForm && (
             <PollCreateForm
               onSubmit={handleCreatePoll}
