@@ -63,7 +63,7 @@ export async function createQnaQuestion(
     .from("event_qna_questions")
     .insert({
       ...question,
-      status: "pending" // New questions start as pending
+      status: "pending", // New questions start as pending
     })
     .select()
     .single();
@@ -313,7 +313,9 @@ export async function approveSessionPhoto(
   return data;
 }
 
-export async function rejectSessionPhoto(photoId: string): Promise<SessionPhoto> {
+export async function rejectSessionPhoto(
+  photoId: string,
+): Promise<SessionPhoto> {
   const { data, error } = await supabase
     .from("event_session_photos")
     .update({
@@ -631,7 +633,9 @@ export async function fetchEventSessionForUser(
   const [questionsResult, photosResult, pollsResult, sessionDataResult] =
     await Promise.allSettled([
       isAdmin ? fetchQnaQuestions(eventId) : fetchVisibleQnaQuestions(eventId),
-      isAdmin ? fetchSessionPhotos(eventId) : fetchVisibleSessionPhotos(eventId),
+      isAdmin
+        ? fetchSessionPhotos(eventId)
+        : fetchVisibleSessionPhotos(eventId),
       fetchEventPolls(eventId),
       fetchSessionData(eventId),
     ]);

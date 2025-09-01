@@ -100,6 +100,20 @@ export default function EditProfileModal() {
           url: user.user_metadata.instagram,
         });
       }
+      if (user.user_metadata?.facebook) {
+        existingLinks.push({
+          id: crypto.randomUUID(),
+          platform: "facebook",
+          url: user.user_metadata.facebook,
+        });
+      }
+      if (user.user_metadata?.github) {
+        existingLinks.push({
+          id: crypto.randomUUID(),
+          platform: "github",
+          url: user.user_metadata.github,
+        });
+      }
 
       setFormData({
         firstName: user.user_metadata?.first_name || "",
@@ -111,7 +125,7 @@ export default function EditProfileModal() {
   }, [user, isModalOpen]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -143,7 +157,7 @@ export default function EditProfileModal() {
     setFormData((prev) => ({
       ...prev,
       socialLinks: prev.socialLinks.map((link) =>
-        link.id === id ? { ...link, ...updates } : link,
+        link.id === id ? { ...link, ...updates } : link
       ),
     }));
   };
@@ -217,23 +231,20 @@ export default function EditProfileModal() {
           // Don't fail the whole update if avatar upload fails
           console.error("Avatar upload failed:", uploadResult.error);
           toast.error(
-            "Profile updated, but avatar upload failed. Please try again.",
+            "Profile updated, but avatar upload failed. Please try again."
           );
         }
       }
 
       // Prepare profile data for update
-      const socialLinksMap = formData.socialLinks.reduce(
-        (acc, link) => {
-          if (link.platform === "custom" && link.customName) {
-            acc[link.customName.toLowerCase()] = link.url;
-          } else {
-            acc[link.platform] = link.url;
-          }
-          return acc;
-        },
-        {} as Record<string, string>,
-      );
+      const socialLinksMap = formData.socialLinks.reduce((acc, link) => {
+        if (link.platform === "custom" && link.customName) {
+          acc[link.customName.toLowerCase()] = link.url;
+        } else {
+          acc[link.platform] = link.url;
+        }
+        return acc;
+      }, {} as Record<string, string>);
 
       const profileData = {
         firstName: formData.firstName,
@@ -252,7 +263,7 @@ export default function EditProfileModal() {
         closeModal();
       } else {
         toast.error(
-          result.error || "Failed to update profile. Please try again.",
+          result.error || "Failed to update profile. Please try again."
         );
       }
     } catch (error) {
@@ -297,6 +308,20 @@ export default function EditProfileModal() {
             id: crypto.randomUUID(),
             platform: "instagram",
             url: user.user_metadata.instagram,
+          });
+        }
+        if (user.user_metadata?.facebook) {
+          existingLinks.push({
+            id: crypto.randomUUID(),
+            platform: "facebook",
+            url: user.user_metadata.facebook,
+          });
+        }
+        if (user.user_metadata?.github) {
+          existingLinks.push({
+            id: crypto.randomUUID(),
+            platform: "github",
+            url: user.user_metadata.github,
           });
         }
 
@@ -523,7 +548,7 @@ export default function EditProfileModal() {
             )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t">
+          <DialogFooter className="gap-2 gap-2 pt-4 border-t">
             <Button
               type="button"
               variant="outline"

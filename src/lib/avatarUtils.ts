@@ -94,6 +94,56 @@ export function getUserAvatarUrl(user: any): string | null {
 }
 
 /**
+ * Upload a speaker's avatar to Supabase storage for events
+ * @param file - The image file or blob to upload
+ * @param eventId - The event's ID (for organizing files)
+ * @param roleId - The role's ID (for unique identification)
+ * @returns Promise with upload result including public URL
+ */
+export async function uploadSpeakerAvatar(
+  file: File | Blob,
+  eventId: string,
+  roleId: string,
+): Promise<AvatarUploadResult> {
+  try {
+    // Generate a unique filename for speaker avatar
+    const fileExt = file instanceof File ? file.name.split(".").pop() : "jpg";
+    const fileName = `speakers/${eventId}/role-${roleId}-${Date.now()}.${fileExt}`;
+
+    // Upload the file to the avatars bucket (reusing the same bucket)
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(fileName, file, {
+        upsert: true,
+        contentType: file instanceof File ? file.type : "image/jpeg",
+      });
+
+    if (uploadError) {
+      console.error("Speaker avatar upload error:", uploadError);
+      return { success: false, error: uploadError.message };
+    }
+
+    // Get the public URL for the uploaded file
+    const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
+
+    if (!data.publicUrl) {
+      return { success: false, error: "Failed to get public URL" };
+    }
+
+    return { success: true, url: data.publicUrl };
+  } catch (error) {
+    console.error("Speaker avatar upload error:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to upload speaker avatar",
+    };
+  }
+}
+
+/**
  * Check if the avatars bucket exists and create setup instructions
  * @returns Setup information for the storage bucket
  */
@@ -130,5 +180,13 @@ FOR DELETE USING (
 -- Allow public read access to avatars
 CREATE POLICY "Public avatar access" ON storage.objects 
 FOR SELECT USING (bucket_id = 'avatars');
+
+-- Allow authenticated users to upload speaker avatars for events
+CREATE POLICY "Users can upload speaker avatars" ON storage.objects 
+FOR INSERT WITH CHECK (
+  bucket_id = 'avatars' AND 
+  auth.uid() IS NOT NULL AND
+  (storage.foldername(name))[1] = 'speakers'
+);
 `;
 }

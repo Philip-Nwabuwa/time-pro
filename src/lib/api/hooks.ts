@@ -74,12 +74,12 @@ export function useCreatePage() {
       // Invalidate all page-related queries to ensure fresh data
       queryClient.invalidateQueries({ queryKey: queryKeys.pages });
       queryClient.invalidateQueries({ queryKey: queryKeys.allPages });
-      
+
       // Also invalidate the specific page query if we have the ID
       if (data?.id) {
         queryClient.invalidateQueries({ queryKey: queryKeys.page(data.id) });
       }
-      
+
       toast.success("Page created successfully!");
     },
     onError: (error: Error) => {

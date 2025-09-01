@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useModal } from "@/contexts/ModalContext";
 import {
   Dialog,
@@ -15,10 +15,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useCreatePage } from "@/lib/api/hooks";
+import { useUpdatePage } from "@/lib/api/hooks";
 import PageImagePicker from "@/components/PageImagePicker";
+import type { PageData } from "@/lib/api/types";
 
-interface PageFormData {
+interface EditPageFormData {
   title: string;
   description: string;
   pageType: "public" | "private";
@@ -26,16 +27,37 @@ interface PageFormData {
   imageBlob?: Blob | null;
 }
 
-export default function CreatePageModal() {
-  const { isModalOpen, closeModal } = useModal();
-  const createPage = useCreatePage();
-  const [formData, setFormData] = useState<PageFormData>({
+interface EditPageModalProps {
+  pageData: PageData | null;
+  onClose: () => void;
+}
+
+export default function EditPageModal({
+  pageData,
+  onClose,
+}: EditPageModalProps) {
+  const { isModalOpen } = useModal();
+  const updatePage = useUpdatePage();
+  const [formData, setFormData] = useState<EditPageFormData>({
     title: "",
     description: "",
     pageType: "public",
     pin: "",
     imageBlob: null,
   });
+
+  // Initialize form data when pageData changes
+  useEffect(() => {
+    if (pageData) {
+      setFormData({
+        title: pageData.title,
+        description: pageData.desc || "",
+        pageType: "public", // We'll need to determine this from the API
+        pin: "",
+        imageBlob: null,
+      });
+    }
+  }, [pageData]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -62,7 +84,7 @@ export default function CreatePageModal() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.title.trim()) {
+    if (!pageData || !formData.title.trim()) {
       return;
     }
 
@@ -71,21 +93,37 @@ export default function CreatePageModal() {
     }
 
     try {
-      await createPage.mutateAsync({
-        pageData: {
-          title: formData.title.trim(),
-          description: formData.description.trim() || null,
-          is_private: formData.pageType === "private",
-          pin: formData.pageType === "private" ? formData.pin.trim() : null,
-        },
-        imageFile: formData.imageBlob
-          ? new File([formData.imageBlob], "page-image.jpg", {
-              type: "image/jpeg",
-            })
-          : undefined,
+      // Prepare update data - only include fields that have changed
+      const updates: any = {};
+
+      if (formData.title.trim() !== pageData.title) {
+        updates.title = formData.title.trim();
+      }
+
+      if ((formData.description.trim() || null) !== pageData.desc) {
+        updates.description = formData.description.trim() || null;
+      }
+
+      // For now, we'll skip image updates as they need special handling
+      // This will be implemented when the updatePage API is enhanced
+      // if (formData.imageBlob) {
+      //   updates.imageFile = new File([formData.imageBlob], "page-image.jpg", {
+      //     type: "image/jpeg"
+      //   });
+      // }
+
+      // Add private page logic when needed
+      if (formData.pageType === "private" && formData.pin.trim()) {
+        updates.is_private = true;
+        updates.pin = formData.pin.trim();
+      }
+
+      await updatePage.mutateAsync({
+        id: pageData.id,
+        updates,
       });
 
-      // Reset form
+      // Reset form and close modal
       setFormData({
         title: "",
         description: "",
@@ -93,17 +131,15 @@ export default function CreatePageModal() {
         pin: "",
         imageBlob: null,
       });
-
-      // Close modal
-      closeModal();
+      onClose();
     } catch (error) {
       // Error handling is done in the hook with toast notifications
-      console.error("Failed to create page:", error);
+      console.error("Failed to update page:", error);
     }
   };
 
   const handleClose = () => {
-    if (!createPage.isPending) {
+    if (!updatePage.isPending) {
       setFormData({
         title: "",
         description: "",
@@ -111,17 +147,21 @@ export default function CreatePageModal() {
         pin: "",
         imageBlob: null,
       });
-      closeModal();
+      onClose();
     }
   };
 
+  if (!pageData) {
+    return null;
+  }
+
   return (
-    <Dialog open={isModalOpen("CREATE_PAGE")} onOpenChange={handleClose}>
+    <Dialog open={isModalOpen("EDIT_PAGE")} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create New Page</DialogTitle>
+          <DialogTitle>Edit Page</DialogTitle>
           <DialogDescription>
-            Create a new event page to start managing your events.
+            Update your event page information.
           </DialogDescription>
         </DialogHeader>
 
@@ -135,7 +175,7 @@ export default function CreatePageModal() {
               placeholder="Enter page title"
               value={formData.title}
               onChange={handleInputChange}
-              disabled={createPage.isPending}
+              disabled={updatePage.isPending}
               required
             />
           </div>
@@ -148,37 +188,39 @@ export default function CreatePageModal() {
               placeholder="Describe your event page..."
               value={formData.description}
               onChange={handleInputChange}
-              disabled={createPage.isPending}
+              disabled={updatePage.isPending}
               className="min-h-[80px]"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Page Banner (Optional)</Label>
+            <Label>Page Banner</Label>
             <PageImagePicker
+              initialImageUrl={pageData.imageUrl || null}
               onImageChange={handleImageChange}
               maxSize={5 * 1024 * 1024}
               aspectRatio={16 / 9}
             />
           </div>
 
+          {/* Future: Add page type section when private pages are fully implemented
           <div className="space-y-3">
             <Label>Page Type</Label>
             <RadioGroup
               value={formData.pageType}
               onValueChange={handlePageTypeChange}
-              disabled={createPage.isPending}
+              disabled={updatePage.isPending}
               className="flex flex-col gap-3"
             >
               <div className="flex items-center space-x-3">
-                <RadioGroupItem value="public" id="public" />
-                <Label htmlFor="public" className="cursor-pointer">
+                <RadioGroupItem value="public" id="edit-public" />
+                <Label htmlFor="edit-public" className="cursor-pointer">
                   Public
                 </Label>
               </div>
               <div className="flex items-center space-x-3">
-                <RadioGroupItem value="private" id="private" />
-                <Label htmlFor="private" className="cursor-pointer">
+                <RadioGroupItem value="private" id="edit-private" />
+                <Label htmlFor="edit-private" className="cursor-pointer">
                   Private (requires PIN)
                 </Label>
               </div>
@@ -187,7 +229,7 @@ export default function CreatePageModal() {
 
           {formData.pageType === "private" && (
             <div className="space-y-2">
-              <Label htmlFor="pin">Enter PIN</Label>
+              <Label htmlFor="pin">PIN</Label>
               <Input
                 id="pin"
                 name="pin"
@@ -195,31 +237,27 @@ export default function CreatePageModal() {
                 placeholder="Enter PIN for private page"
                 value={formData.pin}
                 onChange={handleInputChange}
-                disabled={createPage.isPending}
+                disabled={updatePage.isPending}
                 required
               />
             </div>
-          )}
+          )} */}
 
           <DialogFooter className="gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={handleClose}
-              disabled={createPage.isPending}
+              disabled={updatePage.isPending}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={
-                createPage.isPending ||
-                !formData.title.trim() ||
-                (formData.pageType === "private" && !formData.pin.trim())
-              }
+              disabled={updatePage.isPending || !formData.title.trim()}
               className="bg-green-600 hover:bg-green-700 focus:ring-green-500"
             >
-              {createPage.isPending ? "Creating..." : "Create Page"}
+              {updatePage.isPending ? "Updating..." : "Update Page"}
             </Button>
           </DialogFooter>
         </form>

@@ -6,7 +6,7 @@ export type EventRouteDestination = "upcoming" | "live" | "completed";
  * Determines the appropriate route destination based on event status
  */
 export function getEventRouteDestination(
-  event: EventDetails
+  event: EventDetails,
 ): EventRouteDestination {
   switch (event.status) {
     case "upcoming":
@@ -28,7 +28,7 @@ export function getEventRouteDestination(
 export function getEventRoutePath(
   pageId: string,
   eventId: string,
-  event: EventDetails
+  event: EventDetails,
 ): string {
   const destination = getEventRouteDestination(event);
 
@@ -49,7 +49,7 @@ export function isCorrectRouteForEventStatus(
   currentPath: string,
   pageId: string,
   eventId: string,
-  event: EventDetails
+  event: EventDetails,
 ): boolean {
   const expectedPath = getEventRoutePath(pageId, eventId, event);
   return currentPath === expectedPath || currentPath.startsWith(expectedPath);
@@ -98,7 +98,7 @@ export function getEventStatusBadgeClass(status: string): string {
 export function useEventRouting(
   pageId: string,
   eventId: string,
-  event: EventDetails | null
+  event: EventDetails | null,
 ) {
   // This would be used in components like event cards to ensure correct navigation
   return {

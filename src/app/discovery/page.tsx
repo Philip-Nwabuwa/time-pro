@@ -41,7 +41,7 @@ export default function DiscoveryPage() {
   const handleJoinPage = async (
     pageId: string,
     isPrivate: boolean,
-    pageTitle: string
+    pageTitle: string,
   ) => {
     if (isPrivate) {
       setSelectedPage({ id: pageId, title: pageTitle });
@@ -204,8 +204,8 @@ export default function DiscoveryPage() {
                   {joinPageMutation.isPending
                     ? "Joining..."
                     : page.isPrivate
-                    ? "Join Private Page"
-                    : "Join Page"}
+                      ? "Join Private Page"
+                      : "Join Page"}
                 </Button>
               </CardContent>
             </Card>

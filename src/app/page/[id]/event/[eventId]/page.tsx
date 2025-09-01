@@ -162,27 +162,27 @@ export default function EventDetailsPage() {
               </Badge>
             </div>
           </div>
-          {userRole === "admin" && 
-           (details.status === "upcoming" || details.status === "draft") && (
-            <div className="mt-6 flex items-center gap-3">
-              <Button
-                className="bg-green-600 hover:bg-green-700"
-                onClick={handleStartEvent}
-                disabled={isStarting}
-              >
-                <Play className="h-4 w-4 mr-2" />
-                {isStarting ? "Starting..." : "Start Event"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  router.push(`/page/${pageId}/event/${eventId}/edit`)
-                }
-              >
-                <Pencil className="h-4 w-4 mr-2" /> Edit Event
-              </Button>
-            </div>
-          )}
+          {userRole === "admin" &&
+            (details.status === "upcoming" || details.status === "draft") && (
+              <div className="mt-6 flex items-center gap-3">
+                <Button
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={handleStartEvent}
+                  disabled={isStarting}
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  {isStarting ? "Starting..." : "Start Event"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    router.push(`/page/${pageId}/event/${eventId}/edit`)
+                  }
+                >
+                  <Pencil className="h-4 w-4 mr-2" /> Edit Event
+                </Button>
+              </div>
+            )}
           {userRole === "admin" && details.status === "ongoing" && (
             <div className="mt-6 flex items-center gap-3">
               <Button
@@ -204,20 +204,22 @@ export default function EventDetailsPage() {
               </Button>
             </div>
           )}
-          {userRole === "member" && (details.status === "upcoming" || details.status === "draft") && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <h4 className="font-medium text-blue-900 mb-1">Event Status</h4>
-              <p className="text-sm text-blue-700">
-                This event hasn't started yet. You'll be automatically
-                redirected to the live event page when it begins.
-              </p>
-            </div>
-          )}
+          {userRole === "member" &&
+            (details.status === "upcoming" || details.status === "draft") && (
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="font-medium text-blue-900 mb-1">Event Status</h4>
+                <p className="text-sm text-blue-700">
+                  This event hasn't started yet. You'll be automatically
+                  redirected to the live event page when it begins.
+                </p>
+              </div>
+            )}
           {userRole === "member" && details.status === "ongoing" && (
             <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
               <h4 className="font-medium text-green-900 mb-1">Event Live!</h4>
               <p className="text-sm text-green-700">
-                This event is currently live. You'll be redirected to the live event page automatically.
+                This event is currently live. You'll be redirected to the live
+                event page automatically.
               </p>
             </div>
           )}
@@ -225,13 +227,16 @@ export default function EventDetailsPage() {
             <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <h4 className="font-medium text-gray-900 mb-1">Event Status</h4>
               <p className="text-sm text-gray-700">
-                This event has been completed. You can view session materials, photos, Q&A, and poll results in the completed event archive.
+                This event has been completed. You can view session materials,
+                photos, Q&A, and poll results in the completed event archive.
               </p>
               <Button
                 variant="outline"
                 size="sm"
                 className="mt-3"
-                onClick={() => router.push(`/page/${pageId}/event/${eventId}/completed`)}
+                onClick={() =>
+                  router.push(`/page/${pageId}/event/${eventId}/completed`)
+                }
               >
                 View Event Archive
               </Button>
@@ -311,12 +316,6 @@ export default function EventDetailsPage() {
                 <div className="text-gray-600">{details.location}</div>
               </div>
             )}
-            <div>
-              <div className="font-medium text-gray-700">Event Type</div>
-              <div className="text-gray-600">
-                {details.allowFeedback ? "Interactive" : "Presentation"}
-              </div>
-            </div>
           </div>
         </CardContent>
       </Card>

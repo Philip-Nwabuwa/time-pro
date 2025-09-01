@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, Calendar, Plus, Loader2, Image } from "lucide-react";
+import { Users, Calendar, Plus, Loader2, Image, Edit3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,6 +24,11 @@ export default function HomePage() {
 
   const handlePageClick = (pageId: string) => {
     router.push(`/page/${pageId}`);
+  };
+
+  const handleEditPage = (e: React.MouseEvent, page: any) => {
+    e.stopPropagation(); // Prevent navigation to page
+    openModal("EDIT_PAGE", { editPageData: page });
   };
 
   if (isLoading) {
@@ -122,15 +127,28 @@ export default function HomePage() {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center justify-between gap-2">
                     <span>{page.title}</span>
-                    <span
-                      className={
-                        page.role === "admin"
-                          ? "inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700"
-                          : "inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
-                      }
-                    >
-                      {page.role}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={
+                          page.role === "admin"
+                            ? "inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700"
+                            : "inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
+                        }
+                      >
+                        {page.role}
+                      </span>
+                      {page.role === "admin" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                          onClick={(e) => handleEditPage(e, page)}
+                          title="Edit page"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </CardTitle>
                   <CardDescription>{page.desc}</CardDescription>
                 </CardHeader>

@@ -1,12 +1,14 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useModal } from "@/contexts/ModalContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { Timer } from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import CreatePageModal from "@/components/modals/CreatePageModal";
+import EditPageModal from "@/components/modals/EditPageModal";
 import EditProfileModal from "@/components/modals/EditProfileModal";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
 
@@ -18,6 +20,7 @@ export default function RootLayoutClient({
   children: React.ReactNode;
 }) {
   const { user, loading, signOut } = useAuth();
+  const { modalData, closeModal } = useModal();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -67,6 +70,10 @@ export default function RootLayoutClient({
       <Navbar user={user} onSignOut={handleSignOut} />
       {children}
       <CreatePageModal />
+      <EditPageModal
+        pageData={modalData.editPageData || null}
+        onClose={closeModal}
+      />
       <EditProfileModal />
       <ChangePasswordModal />
     </div>

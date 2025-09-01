@@ -18,11 +18,9 @@ import {
   Calendar,
   MessageSquare,
   Camera,
-  Volume2,
   Maximize2,
   ArrowLeft,
   X,
-  Minimize2,
   Play,
   Download,
   Trash2,
@@ -343,6 +341,7 @@ export default function RunEventPage() {
     bio?: string;
     email?: string;
     linkedin?: string;
+    avatar?: string;
     completed?: boolean;
   } | null>(null);
 
@@ -352,15 +351,9 @@ export default function RunEventPage() {
   const target = baseAllocation + addedTime; // 100% of allocated time + added time
   const max = (baseAllocation + addedTime) * 1.25; // 125% of (allocated time + added time)
 
-  // Speaker names mapping
-  const speakerNames = [
-    "Alex Wilson",
-    "Sarah Johnson",
-    "Garimella",
-    "Speaker 4",
-    "Speaker 5",
-  ];
-  const currentSpeaker = speakerNames[currentSpeakerIndex] || "Unknown Speaker";
+  // Get current speaker from schedule data
+  const currentSpeaker =
+    details?.schedule[currentSpeakerIndex]?.speakerName || "Unknown Speaker";
 
   const onTimeState = useMemo(() => {
     if (seconds < min) return "On Time";
@@ -647,9 +640,10 @@ export default function RunEventPage() {
     try {
       await acceptSessionPhoto(photoId, user.id);
       // Refresh photos list - use role-based function
-      const updatedPhotos = userRole === "admin" 
-        ? await fetchSessionPhotos(eventId) 
-        : await fetchVisibleSessionPhotos(eventId);
+      const updatedPhotos =
+        userRole === "admin"
+          ? await fetchSessionPhotos(eventId)
+          : await fetchVisibleSessionPhotos(eventId);
       const photosWithUrls = await Promise.all(
         updatedPhotos.map(async (photo) => ({
           id: photo.id,
@@ -674,10 +668,11 @@ export default function RunEventPage() {
 
     try {
       await rejectSessionPhoto(photoId);
-      // Refresh photos list - use role-based function  
-      const updatedPhotos = userRole === "admin" 
-        ? await fetchSessionPhotos(eventId) 
-        : await fetchVisibleSessionPhotos(eventId);
+      // Refresh photos list - use role-based function
+      const updatedPhotos =
+        userRole === "admin"
+          ? await fetchSessionPhotos(eventId)
+          : await fetchVisibleSessionPhotos(eventId);
       const photosWithUrls = await Promise.all(
         updatedPhotos.map(async (photo) => ({
           id: photo.id,
@@ -1409,33 +1404,25 @@ export default function RunEventPage() {
                         className="flex items-center gap-3 text-left"
                         onClick={() =>
                           setSelectedUser({
-                            name: speakerNames[idx] || "Unknown Speaker",
+                            name: item.speakerName || "Unknown Speaker",
                             roleTitle: item.title,
-                            bio:
-                              idx === 0
-                                ? "Veteran Toastmaster with excellent opening skills."
-                                : idx === 1
-                                ? "Experienced leader facilitating effective business sessions."
-                                : "Dynamic speaker guiding impromptu topics.",
-                            email:
-                              idx === 0
-                                ? "alex.wilson@toastmasters.com"
-                                : idx === 1
-                                ? "sarah.johnson@toastmasters.com"
-                                : "garimella@toastmasters.com",
-                            linkedin: "https://www.linkedin.com/in/example",
+                            bio: item.speakerBio || "No biography provided.",
+                            email: item.speakerEmail || "No email provided.",
+                            linkedin:
+                              item.socialMediaLinks?.linkedin || undefined,
+                            avatar: item.speakerAvatar || undefined,
                             completed: idx < currentSpeakerIndex,
                           })
                         }
                       >
                         <img
-                          src="/next.svg"
+                          src={item.speakerAvatar || "/next.svg"}
                           alt="avatar"
                           className="h-8 w-8 rounded-full border-2 border-gray-300"
                         />
                         <div>
                           <div className="font-medium text-sm">
-                            {speakerNames[idx] || "Unknown Speaker"}
+                            {item.speakerName || "Unknown Speaker"}
                           </div>
                           <div className="text-xs text-gray-500">
                             {item.title}
@@ -1585,9 +1572,10 @@ export default function RunEventPage() {
                       qnaMessages.map((msg) => {
                         const isPending = msg.status === "pending";
                         const isRejected = msg.status === "rejected";
-                        const isAnswered = msg.status === "answered" || msg.answered;
+                        const isAnswered =
+                          msg.status === "answered" || msg.answered;
                         const isAccepted = msg.status === "accepted";
-                        
+
                         return (
                           <Card
                             key={msg.id}
@@ -1604,23 +1592,36 @@ export default function RunEventPage() {
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <div className={`text-sm font-medium ${
-                                    isPending && userRole !== "admin" ? "text-gray-500" : "text-gray-900"
-                                  }`}>
+                                  <div
+                                    className={`text-sm font-medium ${
+                                      isPending && userRole !== "admin"
+                                        ? "text-gray-500"
+                                        : "text-gray-900"
+                                    }`}
+                                  >
                                     {msg.question}
                                   </div>
                                   {isPending && (
-                                    <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200"
+                                    >
                                       Pending
                                     </Badge>
                                   )}
                                   {isAccepted && !isAnswered && (
-                                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                                    >
                                       Approved
                                     </Badge>
                                   )}
                                   {isRejected && (
-                                    <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs bg-red-50 text-red-700 border-red-200"
+                                    >
                                       Rejected
                                     </Badge>
                                   )}
@@ -1630,7 +1631,9 @@ export default function RunEventPage() {
                                     msg.created_at || ""
                                   ).toLocaleTimeString()}
                                   {isPending && userRole !== "admin" && (
-                                    <span className="ml-2 text-gray-400">• Awaiting admin approval</span>
+                                    <span className="ml-2 text-gray-400">
+                                      • Awaiting admin approval
+                                    </span>
                                   )}
                                 </div>
                               </div>
@@ -1640,7 +1643,9 @@ export default function RunEventPage() {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => handleAcceptQuestion(msg.id)}
+                                      onClick={() =>
+                                        handleAcceptQuestion(msg.id)
+                                      }
                                       className="text-green-600 border-green-300 hover:bg-green-50"
                                     >
                                       Accept
@@ -1648,23 +1653,29 @@ export default function RunEventPage() {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => handleRejectQuestion(msg.id)}
+                                      onClick={() =>
+                                        handleRejectQuestion(msg.id)
+                                      }
                                       className="text-red-600 border-red-300 hover:bg-red-50"
                                     >
                                       Reject
                                     </Button>
                                   </>
                                 )}
-                                {userRole === "admin" && isAccepted && !isAnswered && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleMarkAsAnswered(msg.id)}
-                                    className="text-green-600 border-green-300 hover:bg-green-50"
-                                  >
-                                    Mark Answered
-                                  </Button>
-                                )}
+                                {userRole === "admin" &&
+                                  isAccepted &&
+                                  !isAnswered && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() =>
+                                        handleMarkAsAnswered(msg.id)
+                                      }
+                                      className="text-green-600 border-green-300 hover:bg-green-50"
+                                    >
+                                      Mark Answered
+                                    </Button>
+                                  )}
                                 {isAnswered && (
                                   <Badge className="bg-green-100 text-green-700">
                                     ✓ Answered
@@ -1812,7 +1823,7 @@ export default function RunEventPage() {
                       const isPending = photo.photo.status === "pending";
                       const isRejected = photo.photo.status === "rejected";
                       const isAccepted = photo.photo.status === "accepted";
-                      
+
                       return (
                         <div
                           key={photo.id}
@@ -1831,10 +1842,12 @@ export default function RunEventPage() {
                             src={photo.url}
                             alt={photo.photo.file_name}
                             className={`h-full w-full object-cover ${
-                              isPending && userRole !== "admin" ? "grayscale" : ""
+                              isPending && userRole !== "admin"
+                                ? "grayscale"
+                                : ""
                             }`}
                           />
-                          
+
                           {/* Status overlay */}
                           {isPending && (
                             <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
@@ -1850,7 +1863,7 @@ export default function RunEventPage() {
                               </Badge>
                             </div>
                           )}
-                          
+
                           {/* Admin approval controls for pending photos */}
                           {userRole === "admin" && isPending && (
                             <div className="absolute bottom-1 left-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1876,7 +1889,7 @@ export default function RunEventPage() {
                               </Button>
                             </div>
                           )}
-                          
+
                           {/* Selection indicator */}
                           <div
                             className={`absolute top-1 left-1 w-5 h-5 rounded border flex items-center justify-center ${
@@ -1903,9 +1916,10 @@ export default function RunEventPage() {
                               </svg>
                             )}
                           </div>
-                          
+
                           {/* Individual delete button */}
-                          {(userRole === "admin" || photo.photo.uploaded_by === user?.id) && (
+                          {(userRole === "admin" ||
+                            photo.photo.uploaded_by === user?.id) && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1989,7 +2003,7 @@ export default function RunEventPage() {
               <DialogHeader>
                 <div className="flex flex-col items-center text-center w-full">
                   <img
-                    src="/next.svg"
+                    src={selectedUser.avatar || "/next.svg"}
                     alt="avatar"
                     className="h-16 w-16 rounded-full border-2 border-gray-300 mb-2"
                   />
@@ -2006,9 +2020,6 @@ export default function RunEventPage() {
                   <div className="font-medium mb-2">Role Details</div>
                   <div className="flex items-center justify-between rounded-md border p-3">
                     <div className="text-sm">{selectedUser.roleTitle}</div>
-                    <Badge className="bg-emerald-100 text-emerald-700">
-                      {selectedUser.completed ? "Completed" : "Pending"}
-                    </Badge>
                   </div>
                 </div>
                 <div>

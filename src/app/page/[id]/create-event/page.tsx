@@ -9,7 +9,6 @@ import {
   GripVertical,
   X,
   Plus,
-  Camera,
   Mail,
   Link as LinkIcon,
   MapPin,
@@ -39,6 +38,8 @@ import TimeInput from "@/components/TimeInput";
 import { createEvent, createScheduleItem } from "@/lib/api/events";
 import type { EventInsert, EventScheduleItemInsert } from "@/lib/api/types";
 import MemberSearchInput from "@/components/MemberSearchInput";
+import AvatarPicker from "@/components/AvatarPicker";
+import { uploadSpeakerAvatar } from "@/lib/avatarUtils";
 
 interface SpeakerRole {
   id: string;
@@ -47,6 +48,7 @@ interface SpeakerRole {
   speakerEmail: string;
   bio: string;
   avatar: string;
+  avatarBlob: Blob | null;
   minTime: string;
   targetTime: string;
   maxTime: string;
@@ -87,7 +89,7 @@ export default function CreateEventPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -112,7 +114,7 @@ export default function CreateEventPage() {
 
   const handleCheckboxChange = (
     name: string,
-    checked: boolean | "indeterminate",
+    checked: boolean | "indeterminate"
   ) => {
     if (checked === "indeterminate") return;
     setFormData((prev) => ({
@@ -129,6 +131,7 @@ export default function CreateEventPage() {
       speakerEmail: "",
       bio: "",
       avatar: "",
+      avatarBlob: null,
       minTime: "",
       targetTime: "",
       maxTime: "",
@@ -151,7 +154,7 @@ export default function CreateEventPage() {
     setFormData((prev) => ({
       ...prev,
       roles: prev.roles.map((role) =>
-        role.id === roleId ? { ...role, [field]: value } : role,
+        role.id === roleId ? { ...role, [field]: value } : role
       ),
     }));
   };
@@ -167,9 +170,10 @@ export default function CreateEventPage() {
               speakerName: member.name,
               speakerEmail: member.email,
               avatar: member.avatar || "",
+              avatarBlob: null, // Reset blob when selecting a member
               // Keep existing bio and social media links as they might be role-specific
             }
-          : role,
+          : role
       ),
     }));
   };
@@ -186,7 +190,7 @@ export default function CreateEventPage() {
                 { platform: "LinkedIn", url: "" },
               ],
             }
-          : role,
+          : role
       ),
     }));
   };
@@ -199,10 +203,10 @@ export default function CreateEventPage() {
           ? {
               ...role,
               socialMediaLinks: role.socialMediaLinks.filter(
-                (_, index) => index !== linkIndex,
+                (_, index) => index !== linkIndex
               ),
             }
-          : role,
+          : role
       ),
     }));
   };
@@ -211,7 +215,7 @@ export default function CreateEventPage() {
     roleId: string,
     linkIndex: number,
     field: "platform" | "url",
-    value: string,
+    value: string
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -220,10 +224,10 @@ export default function CreateEventPage() {
           ? {
               ...role,
               socialMediaLinks: role.socialMediaLinks.map((link, index) =>
-                index === linkIndex ? { ...link, [field]: value } : link,
+                index === linkIndex ? { ...link, [field]: value } : link
               ),
             }
-          : role,
+          : role
       ),
     }));
   };
@@ -266,8 +270,9 @@ export default function CreateEventPage() {
 
   const transformRolesToScheduleItems = (
     eventId: string,
+    roles: SpeakerRole[] = formData.roles
   ): EventScheduleItemInsert[] => {
-    return formData.roles.map((role, index) => ({
+    return roles.map((role, index) => ({
       event_id: eventId,
       title: role.roleName || "Untitled Role",
       role: role.roleName || "Speaker",
@@ -311,15 +316,46 @@ export default function CreateEventPage() {
       // Create the event first
       const createdEvent = await createEvent(eventData);
 
+      // Upload speaker avatars and update roles with uploaded URLs
+      const rolesWithUploadedAvatars = await Promise.all(
+        formData.roles.map(async (role) => {
+          let speakerAvatarUrl = role.avatar;
+
+          // If there's a blob (cropped image), upload it
+          if (role.avatarBlob) {
+            const uploadResult = await uploadSpeakerAvatar(
+              role.avatarBlob,
+              createdEvent.id,
+              role.id
+            );
+
+            if (uploadResult.success && uploadResult.url) {
+              speakerAvatarUrl = uploadResult.url;
+            } else {
+              console.warn(
+                `Failed to upload avatar for role ${role.roleName}: ${uploadResult.error}`
+              );
+              // Continue with the existing URL or empty string
+            }
+          }
+
+          return {
+            ...role,
+            avatar: speakerAvatarUrl,
+          };
+        })
+      );
+
       // Create schedule items if there are any roles
-      if (formData.roles.length > 0) {
-        const scheduleItems = transformRolesToScheduleItems(createdEvent.id);
+      if (rolesWithUploadedAvatars.length > 0) {
+        const scheduleItems = transformRolesToScheduleItems(
+          createdEvent.id,
+          rolesWithUploadedAvatars
+        );
 
         // Create all schedule items
         await Promise.all(
-          scheduleItems.map((item) =>
-            createScheduleItem(createdEvent.id, item),
-          ),
+          scheduleItems.map((item) => createScheduleItem(createdEvent.id, item))
         );
       }
 
@@ -330,7 +366,7 @@ export default function CreateEventPage() {
       toast.error(
         error instanceof Error
           ? `Failed to create event: ${error.message}`
-          : "Failed to create event. Please try again.",
+          : "Failed to create event. Please try again."
       );
     } finally {
       setIsLoading(false);
@@ -401,10 +437,7 @@ export default function CreateEventPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>
-                <Calendar className="h-4 w-4 inline mr-2" />
-                Date & Time *
-              </Label>
+              <Label>Date & Time*</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -418,8 +451,8 @@ export default function CreateEventPage() {
                           formData.time
                         }`
                       : formData.date
-                        ? `${formData.date.toLocaleDateString()} - Select time`
-                        : "Select date and time"}
+                      ? `${formData.date.toLocaleDateString()} - Select time`
+                      : "Select date and time"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -534,8 +567,22 @@ export default function CreateEventPage() {
                 <div key={role.id} className="border rounded-lg p-4 space-y-4">
                   <div className="flex items-center gap-4">
                     <GripVertical className="h-4 w-4 text-gray-400 cursor-move" />
-
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Avatar</Label>
+                      <AvatarPicker
+                        initialAvatarUrl={role.avatar || null}
+                        onAvatarChange={(blob) => {
+                          updateRole(role.id, "avatarBlob", blob);
+                          if (blob) {
+                            const url = URL.createObjectURL(blob);
+                            updateRole(role.id, "avatar", url);
+                          } else {
+                            updateRole(role.id, "avatar", "");
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Role Name</Label>
                         <Input
@@ -560,35 +607,6 @@ export default function CreateEventPage() {
                           label="Speaker Name"
                           placeholder="Search members or enter name..."
                         />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Speaker Email</Label>
-                        <Input
-                          value={role.speakerEmail}
-                          onChange={(e) =>
-                            updateRole(role.id, "speakerEmail", e.target.value)
-                          }
-                          placeholder="Speaker's email address"
-                          type="email"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Avatar</Label>
-                        <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium">
-                            {role.avatar || "?"}
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="p-2"
-                          >
-                            <Camera className="h-4 w-4" />
-                          </Button>
-                        </div>
                       </div>
                     </div>
 
@@ -677,7 +695,7 @@ export default function CreateEventPage() {
                                     role.id,
                                     linkIndex,
                                     "platform",
-                                    value,
+                                    value
                                   )
                                 }
                               >
@@ -706,7 +724,7 @@ export default function CreateEventPage() {
                                     role.id,
                                     linkIndex,
                                     "url",
-                                    e.target.value,
+                                    e.target.value
                                   )
                                 }
                                 placeholder="https://..."
