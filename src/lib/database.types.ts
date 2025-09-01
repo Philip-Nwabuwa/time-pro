@@ -129,26 +129,35 @@ export type Database = {
       event_qna_questions: {
         Row: {
           answered: boolean | null
+          approved_at: string | null
+          approved_by: string | null
           created_at: string | null
           event_id: string | null
           id: string
           question: string
+          status: Database["public"]["Enums"]["question_status"]
           updated_at: string | null
         }
         Insert: {
           answered?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string | null
           event_id?: string | null
           id?: string
           question: string
+          status?: Database["public"]["Enums"]["question_status"]
           updated_at?: string | null
         }
         Update: {
           answered?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string | null
           event_id?: string | null
           id?: string
           question?: string
+          status?: Database["public"]["Enums"]["question_status"]
           updated_at?: string | null
         }
         Relationships: [
@@ -270,6 +279,8 @@ export type Database = {
           file_size: number | null
           id: string
           mime_type: string | null
+          status: Database["public"]["Enums"]["photo_status"]
+          updated_at: string | null
           uploaded_by: string | null
         }
         Insert: {
@@ -283,6 +294,8 @@ export type Database = {
           file_size?: number | null
           id?: string
           mime_type?: string | null
+          status?: Database["public"]["Enums"]["photo_status"]
+          updated_at?: string | null
           uploaded_by?: string | null
         }
         Update: {
@@ -296,6 +309,8 @@ export type Database = {
           file_size?: number | null
           id?: string
           mime_type?: string | null
+          status?: Database["public"]["Enums"]["photo_status"]
+          updated_at?: string | null
           uploaded_by?: string | null
         }
         Relationships: [
@@ -470,7 +485,8 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      photo_status: "pending" | "accepted" | "rejected"
+      question_status: "pending" | "accepted" | "answered" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -597,6 +613,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      photo_status: ["pending", "accepted", "rejected"],
+      question_status: ["pending", "accepted", "answered", "rejected"],
+    },
   },
 } as const

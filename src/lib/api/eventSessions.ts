@@ -61,7 +61,10 @@ export async function createQnaQuestion(
 ): Promise<QnaQuestion> {
   const { data, error } = await supabase
     .from("event_qna_questions")
-    .insert(question)
+    .insert({
+      ...question,
+      status: "pending" // New questions start as pending
+    })
     .select()
     .single();
 
@@ -91,6 +94,105 @@ export async function deleteQnaQuestion(id: string): Promise<void> {
     .eq("id", id);
 
   if (error) throw error;
+}
+
+// Question approval functions
+export async function acceptQnaQuestion(
+  id: string,
+  approvedBy: string,
+): Promise<QnaQuestion> {
+  const { data, error } = await supabase
+    .from("event_qna_questions")
+    .update({
+      status: "accepted",
+      approved_by: approvedBy,
+      approved_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function rejectQnaQuestion(id: string): Promise<QnaQuestion> {
+  const { data, error } = await supabase
+    .from("event_qna_questions")
+    .update({
+      status: "rejected",
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function markQuestionAsAnswered(id: string): Promise<QnaQuestion> {
+  const { data, error } = await supabase
+    .from("event_qna_questions")
+    .update({
+      status: "answered",
+      answered: true,
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Fetch questions by status
+export async function fetchQnaQuestionsByStatus(
+  eventId: string,
+  status?: "pending" | "accepted" | "answered" | "rejected",
+): Promise<QnaQuestion[]> {
+  let query = supabase
+    .from("event_qna_questions")
+    .select("*")
+    .eq("event_id", eventId);
+
+  if (status) {
+    query = query.eq("status", status);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+// Fetch visible questions for regular users (accepted and answered)
+export async function fetchVisibleQnaQuestions(
+  eventId: string,
+): Promise<QnaQuestion[]> {
+  const { data, error } = await supabase
+    .from("event_qna_questions")
+    .select("*")
+    .eq("event_id", eventId)
+    .in("status", ["accepted", "answered"])
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+// Fetch questions needing approval (for admins)
+export async function fetchPendingQnaQuestions(
+  eventId: string,
+): Promise<QnaQuestion[]> {
+  const { data, error } = await supabase
+    .from("event_qna_questions")
+    .select("*")
+    .eq("event_id", eventId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
 }
 
 // Session Photos
@@ -145,7 +247,8 @@ export async function uploadSessionPhoto(
       file_size: file.size,
       mime_type: file.type,
       uploaded_by: user.user.id,
-      approved: isAdmin ? true : null, // Auto-approve admin uploads
+      status: isAdmin ? "accepted" : "pending", // New status-based approval
+      approved: isAdmin ? true : null, // Keep for backwards compatibility
       approved_by: isAdmin ? user.user.id : null,
       approved_at: isAdmin ? new Date().toISOString() : null,
     })
@@ -197,7 +300,8 @@ export async function approveSessionPhoto(
   const { data, error } = await supabase
     .from("event_session_photos")
     .update({
-      approved: true,
+      status: "accepted",
+      approved: true, // Keep for backwards compatibility
       approved_by: approvedBy,
       approved_at: new Date().toISOString(),
     })
@@ -209,9 +313,25 @@ export async function approveSessionPhoto(
   return data;
 }
 
-export async function rejectSessionPhoto(photoId: string): Promise<void> {
-  // For rejected photos, we'll delete them entirely
-  await deleteSessionPhoto(photoId);
+export async function rejectSessionPhoto(photoId: string): Promise<SessionPhoto> {
+  const { data, error } = await supabase
+    .from("event_session_photos")
+    .update({
+      status: "rejected",
+    })
+    .eq("id", photoId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function acceptSessionPhoto(
+  photoId: string,
+  approvedBy: string,
+): Promise<SessionPhoto> {
+  return approveSessionPhoto(photoId, approvedBy);
 }
 
 // Fetch photos with approval status
@@ -236,7 +356,49 @@ export async function fetchApprovedSessionPhotos(
     .from("event_session_photos")
     .select("*")
     .eq("event_id", eventId)
-    .eq("approved", true)
+    .eq("status", "accepted")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+// Fetch photos by status
+export async function fetchSessionPhotosByStatus(
+  eventId: string,
+  status?: "pending" | "accepted" | "rejected",
+): Promise<SessionPhoto[]> {
+  let query = supabase
+    .from("event_session_photos")
+    .select("*")
+    .eq("event_id", eventId);
+
+  if (status) {
+    query = query.eq("status", status);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+// Fetch visible photos for regular users (accepted only)
+export async function fetchVisibleSessionPhotos(
+  eventId: string,
+): Promise<SessionPhoto[]> {
+  return fetchApprovedSessionPhotos(eventId);
+}
+
+// Fetch photos needing approval (for admins)
+export async function fetchPendingSessionPhotos(
+  eventId: string,
+): Promise<SessionPhoto[]> {
+  const { data, error } = await supabase
+    .from("event_session_photos")
+    .select("*")
+    .eq("event_id", eventId)
+    .eq("status", "pending")
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -442,6 +604,34 @@ export async function fetchEventSessionAll(eventId: string): Promise<{
     await Promise.allSettled([
       fetchQnaQuestions(eventId),
       fetchSessionPhotos(eventId),
+      fetchEventPolls(eventId),
+      fetchSessionData(eventId),
+    ]);
+
+  return {
+    questions:
+      questionsResult.status === "fulfilled" ? questionsResult.value : [],
+    photos: photosResult.status === "fulfilled" ? photosResult.value : [],
+    polls: pollsResult.status === "fulfilled" ? pollsResult.value : [],
+    sessionData:
+      sessionDataResult.status === "fulfilled" ? sessionDataResult.value : null,
+  };
+}
+
+// Bulk operations with role-based filtering
+export async function fetchEventSessionForUser(
+  eventId: string,
+  isAdmin: boolean = false,
+): Promise<{
+  questions: QnaQuestion[];
+  photos: SessionPhoto[];
+  polls: PollWithOptions[];
+  sessionData: SessionData | null;
+}> {
+  const [questionsResult, photosResult, pollsResult, sessionDataResult] =
+    await Promise.allSettled([
+      isAdmin ? fetchQnaQuestions(eventId) : fetchVisibleQnaQuestions(eventId),
+      isAdmin ? fetchSessionPhotos(eventId) : fetchVisibleSessionPhotos(eventId),
       fetchEventPolls(eventId),
       fetchSessionData(eventId),
     ]);

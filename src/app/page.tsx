@@ -115,7 +115,6 @@ export default function HomePage() {
                         <div className="p-4 bg-gray-200/50 rounded-lg mb-2 inline-block">
                           <Image className="h-8 w-8" />
                         </div>
-                        <p className="text-sm font-medium">Page Image</p>
                       </div>
                     </div>
                   )}

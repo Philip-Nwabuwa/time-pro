@@ -144,6 +144,28 @@ export async function deleteEvent(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function startEvent(id: string): Promise<Event> {
+  const { data: event, error } = await supabase
+    .from("events")
+    .update({ status: "ongoing" })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: event.id,
+    title: event.title,
+    description: event.description || "",
+    date: event.event_date,
+    time: event.event_time,
+    location: event.location || "",
+    attendees: event.attendees_count || 0,
+    status: event.status as "upcoming" | "ongoing" | "completed" | "draft",
+  };
+}
+
 // Schedule items
 export async function createScheduleItem(
   eventId: string,

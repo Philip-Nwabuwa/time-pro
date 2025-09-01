@@ -1,33 +1,13 @@
 "use client";
 
-import {
-  Briefcase,
-  Globe,
-  GraduationCap,
-  Home,
-  Lock,
-  Monitor,
-  Plus,
-  Search,
-  Settings,
-} from "lucide-react";
+import { Globe, Lock, Plus, Search, Image, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAllPages, useJoinPage } from "@/lib/api/hooks";
 import JoinPrivatePageModal from "@/components/modals/JoinPrivatePageModal";
-
-// Category icons mapping
-const categoryIcons = {
-  Technology: Monitor,
-  Business: Briefcase,
-  Education: GraduationCap,
-  Community: Home,
-  default: Settings,
-};
 
 export default function DiscoveryPage() {
   const router = useRouter();
@@ -61,7 +41,7 @@ export default function DiscoveryPage() {
   const handleJoinPage = async (
     pageId: string,
     isPrivate: boolean,
-    pageTitle: string,
+    pageTitle: string
   ) => {
     if (isPrivate) {
       setSelectedPage({ id: pageId, title: pageTitle });
@@ -130,6 +110,15 @@ export default function DiscoveryPage() {
             onChange={(e) => handleSearch(e.target.value)}
             className="pl-10 h-12 text-base"
           />
+          {searchQuery && (
+            <button
+              onClick={() => handleSearch("")}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              type="button"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
         </div>
 
         <p className="text-gray-600">Found {filteredPages.length} pages</p>
@@ -138,11 +127,6 @@ export default function DiscoveryPage() {
       {/* Pages Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredPages.map((page) => {
-          const CategoryIcon =
-            categoryIcons[
-              (page.category || "default") as keyof typeof categoryIcons
-            ] || categoryIcons.default;
-
           return (
             <Card
               key={page.id}
@@ -157,17 +141,11 @@ export default function DiscoveryPage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
-                    <div className="text-center text-green-600">
-                      <div className="p-4 bg-green-200/50 rounded-lg mb-2 inline-block">
-                        {(() => {
-                          const CategoryIcon = categoryIcons[
-                            (page.category || "default") as keyof typeof categoryIcons
-                          ] || categoryIcons.default;
-                          return <CategoryIcon className="h-8 w-8" />;
-                        })()}
+                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                    <div className="text-center text-gray-500">
+                      <div className="p-4 bg-gray-200/50 rounded-lg mb-2 inline-block">
+                        <Image className="h-8 w-8" />
                       </div>
-                      <p className="text-sm font-medium">{page.category || "General"}</p>
                     </div>
                   </div>
                 )}
@@ -178,9 +156,6 @@ export default function DiscoveryPage() {
                     <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
                       {page.title}
                     </h3>
-                    <Badge variant="outline" className="text-xs">
-                      {page.category || "General"}
-                    </Badge>
                   </div>
                 </div>
 
@@ -229,8 +204,8 @@ export default function DiscoveryPage() {
                   {joinPageMutation.isPending
                     ? "Joining..."
                     : page.isPrivate
-                      ? "Join Private Page"
-                      : "Join Page"}
+                    ? "Join Private Page"
+                    : "Join Page"}
                 </Button>
               </CardContent>
             </Card>

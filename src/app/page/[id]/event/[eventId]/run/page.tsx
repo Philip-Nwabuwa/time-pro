@@ -32,21 +32,30 @@ import {
 import { useEventDetails } from "@/lib/api/hooks";
 import {
   fetchEventSessionAll,
+  fetchEventSessionForUser,
+  fetchQnaQuestions,
   createQnaQuestion,
   updateQnaQuestion,
   deleteQnaQuestion,
+  acceptQnaQuestion,
+  rejectQnaQuestion,
+  markQuestionAsAnswered,
+  fetchVisibleQnaQuestions,
+  fetchPendingQnaQuestions,
   uploadSessionPhoto,
   deleteSessionPhoto,
   getPhotoPublicUrl,
+  acceptSessionPhoto,
+  rejectSessionPhoto,
+  fetchSessionPhotos,
+  fetchVisibleSessionPhotos,
+  fetchPendingSessionPhotos,
   upsertSessionData,
   createPoll,
   updatePoll,
   deletePoll,
   submitPollVote,
   getUserPollVotes,
-  approveSessionPhoto,
-  rejectSessionPhoto,
-  fetchSessionPhotosWithApproval,
   type QnaQuestion,
   type SessionPhoto,
   type PollWithOptions,
@@ -218,7 +227,7 @@ function TimerCard({
             {/* Timer controls - only show for admins */}
             {isAdmin && (
               <div
-                className={`grid grid-cols-3 gap-3 w-full ${
+                className={`grid grid-cols-2 gap-3 w-full items-center justify-center ${
                   isFullscreen ? "gap-6" : ""
                 }`}
               >
@@ -237,49 +246,6 @@ function TimerCard({
                   className="bg-emerald-700 hover:bg-emerald-800"
                 >
                   {isRunning ? "Stop" : hasStarted ? "Resume" : "Start Timer"}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size={isFullscreen ? "default" : "default"}
-                  className="bg-white/10 text-white hover:bg-white/20"
-                >
-                  <Volume2
-                    className={`${isFullscreen ? "h-5 w-5" : "h-4 w-4"} mr-2`}
-                  />{" "}
-                  Sound On
-                </Button>
-              </div>
-            )}
-
-            {isAdmin && (
-              <div
-                className={`mt-4 flex items-center justify-center gap-3 ${
-                  isFullscreen ? "gap-6" : ""
-                }`}
-              >
-                <Button
-                  size={isFullscreen ? "default" : "sm"}
-                  variant="secondary"
-                  className="bg-white/10 text-white hover:bg-white/20"
-                  onClick={() => onAddTime(30)}
-                >
-                  +30s
-                </Button>
-                <Button
-                  size={isFullscreen ? "default" : "sm"}
-                  variant="secondary"
-                  className="bg-white/10 text-white hover:bg-white/20"
-                  onClick={() => onAddTime(60)}
-                >
-                  +1 min
-                </Button>
-                <Button
-                  size={isFullscreen ? "default" : "sm"}
-                  variant="secondary"
-                  className="bg-white/10 text-white hover:bg-white/20"
-                  onClick={() => onAddTime(120)}
-                >
-                  +2 min
                 </Button>
               </div>
             )}
@@ -346,15 +312,14 @@ export default function RunEventPage() {
   const [activeToolTab, setActiveToolTab] = useState<
     "qna" | "photos" | "polls"
   >("polls");
-  const [photos, setPhotos] =
-    useState<
-      Array<{
-        id: string;
-        url: string;
-        photo: SessionPhoto;
-        selected?: boolean;
-      }>
-    >();
+  const [photos, setPhotos] = useState<
+    Array<{
+      id: string;
+      url: string;
+      photo: SessionPhoto;
+      selected?: boolean;
+    }>
+  >();
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
@@ -585,7 +550,11 @@ export default function RunEventPage() {
       });
       setQnaMessages((prev) => [...prev, newQuestion]);
       setQnaQuestion("");
-      toast.success("Question added");
+      if (userRole === "admin") {
+        toast.success("Question added");
+      } else {
+        toast.success("Question submitted - awaiting admin approval");
+      }
     } catch (error) {
       console.error("Error creating question:", error);
       toast.error("Failed to add question");
@@ -603,14 +572,125 @@ export default function RunEventPage() {
         answered: !question.answered,
       });
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg)),
+        prev.map((msg) => (msg.id === questionId ? updated : msg))
       );
       toast.success(
-        updated.answered ? "Marked as answered" : "Marked as unanswered",
+        updated.answered ? "Marked as answered" : "Marked as unanswered"
       );
     } catch (error) {
       console.error("Error updating question:", error);
       toast.error("Failed to update question");
+    }
+  };
+
+  // New approval functions
+  const handleAcceptQuestion = async (questionId: string) => {
+    if (userRole !== "admin" || !user?.id) {
+      toast.error("Only administrators can accept questions");
+      return;
+    }
+
+    try {
+      const updated = await acceptQnaQuestion(questionId, user.id);
+      setQnaMessages((prev) =>
+        prev.map((msg) => (msg.id === questionId ? updated : msg))
+      );
+      toast.success("Question accepted");
+    } catch (error) {
+      console.error("Error accepting question:", error);
+      toast.error("Failed to accept question");
+    }
+  };
+
+  const handleRejectQuestion = async (questionId: string) => {
+    if (userRole !== "admin") {
+      toast.error("Only administrators can reject questions");
+      return;
+    }
+
+    try {
+      const updated = await rejectQnaQuestion(questionId);
+      setQnaMessages((prev) =>
+        prev.map((msg) => (msg.id === questionId ? updated : msg))
+      );
+      toast.success("Question rejected");
+    } catch (error) {
+      console.error("Error rejecting question:", error);
+      toast.error("Failed to reject question");
+    }
+  };
+
+  const handleMarkAsAnswered = async (questionId: string) => {
+    if (userRole !== "admin") {
+      toast.error("Only administrators can mark questions as answered");
+      return;
+    }
+
+    try {
+      const updated = await markQuestionAsAnswered(questionId);
+      setQnaMessages((prev) =>
+        prev.map((msg) => (msg.id === questionId ? updated : msg))
+      );
+      toast.success("Question marked as answered");
+    } catch (error) {
+      console.error("Error marking question as answered:", error);
+      toast.error("Failed to mark question as answered");
+    }
+  };
+
+  const handleAcceptPhoto = async (photoId: string) => {
+    if (userRole !== "admin" || !user?.id) {
+      toast.error("Only administrators can accept photos");
+      return;
+    }
+
+    try {
+      await acceptSessionPhoto(photoId, user.id);
+      // Refresh photos list - use role-based function
+      const updatedPhotos = userRole === "admin" 
+        ? await fetchSessionPhotos(eventId) 
+        : await fetchVisibleSessionPhotos(eventId);
+      const photosWithUrls = await Promise.all(
+        updatedPhotos.map(async (photo) => ({
+          id: photo.id,
+          url: await getPhotoPublicUrl(photo.file_path),
+          photo,
+          selected: false,
+        }))
+      );
+      setPhotos(photosWithUrls);
+      toast.success("Photo accepted");
+    } catch (error) {
+      console.error("Error accepting photo:", error);
+      toast.error("Failed to accept photo");
+    }
+  };
+
+  const handleRejectPhoto = async (photoId: string) => {
+    if (userRole !== "admin") {
+      toast.error("Only administrators can reject photos");
+      return;
+    }
+
+    try {
+      await rejectSessionPhoto(photoId);
+      // Refresh photos list - use role-based function  
+      const updatedPhotos = userRole === "admin" 
+        ? await fetchSessionPhotos(eventId) 
+        : await fetchVisibleSessionPhotos(eventId);
+      const photosWithUrls = await Promise.all(
+        updatedPhotos.map(async (photo) => ({
+          id: photo.id,
+          url: await getPhotoPublicUrl(photo.file_path),
+          photo,
+          selected: false,
+        }))
+      );
+      setPhotos(photosWithUrls);
+      toast.success("Photo rejected");
+    } catch (error) {
+      console.error("Error rejecting photo:", error);
+      toast.error("Failed to reject photo");
     }
   };
 
@@ -620,11 +700,10 @@ export default function RunEventPage() {
 
     setUploadingPhoto(true);
     try {
-      // TODO: Check if user is admin (this would need to be added to user context)
-      const isAdmin = false; // Placeholder - implement admin check
+      const isAdmin = userRole === "admin";
 
       const uploadPromises = files.map((file) =>
-        uploadSessionPhoto(eventId, file, isAdmin),
+        uploadSessionPhoto(eventId, file, isAdmin)
       );
       const results = await Promise.all(uploadPromises);
 
@@ -641,13 +720,13 @@ export default function RunEventPage() {
         toast.success(
           `Uploaded ${files.length} photo${
             files.length > 1 ? "s" : ""
-          } successfully!`,
+          } successfully!`
         );
       } else {
         toast.success(
           `Uploaded ${files.length} photo${
             files.length > 1 ? "s" : ""
-          } - awaiting admin approval`,
+          } - awaiting admin approval`
         );
       }
     } catch (error) {
@@ -673,7 +752,7 @@ export default function RunEventPage() {
   const saveUserPreference = async (
     userId: string,
     key: string,
-    value: any,
+    value: any
   ) => {
     if (!eventId) return;
 
@@ -811,7 +890,7 @@ export default function RunEventPage() {
     if (!photos || selectedPhotos.size === 0) return;
 
     const selectedPhotoData = photos.filter((photo) =>
-      selectedPhotos.has(photo.id),
+      selectedPhotos.has(photo.id)
     );
 
     // For multiple photos, create a zip file or download individually
@@ -835,7 +914,7 @@ export default function RunEventPage() {
     toast.success(
       `Downloaded ${selectedPhotos.size} photo${
         selectedPhotos.size > 1 ? "s" : ""
-      }`,
+      }`
     );
   };
 
@@ -850,16 +929,14 @@ export default function RunEventPage() {
     const confirmDelete = window.confirm(
       `Are you sure you want to delete ${selectedPhotos.size} selected photo${
         selectedPhotos.size > 1 ? "s" : ""
-      }?`,
+      }?`
     );
 
     if (!confirmDelete) return;
 
     try {
       await Promise.all(
-        Array.from(selectedPhotos).map((photoId) =>
-          deleteSessionPhoto(photoId),
-        ),
+        Array.from(selectedPhotos).map((photoId) => deleteSessionPhoto(photoId))
       );
 
       setPhotos((prev) => prev?.filter((p) => !selectedPhotos.has(p.id)));
@@ -867,7 +944,7 @@ export default function RunEventPage() {
       toast.success(
         `Deleted ${selectedPhotos.size} photo${
           selectedPhotos.size > 1 ? "s" : ""
-        }`,
+        }`
       );
     } catch (error) {
       console.error("Error deleting photos:", error);
@@ -925,7 +1002,7 @@ export default function RunEventPage() {
             };
           }
           return poll;
-        }),
+        })
       );
       toast.success("Vote submitted");
     } catch (error) {
@@ -940,7 +1017,7 @@ export default function RunEventPage() {
     try {
       const updatedPoll = await updatePoll(pollId, { active });
       setPolls((prev) =>
-        prev.map((poll) => (poll.id === pollId ? { ...poll, active } : poll)),
+        prev.map((poll) => (poll.id === pollId ? { ...poll, active } : poll))
       );
       toast.success(`Poll ${active ? "activated" : "deactivated"}`);
     } catch (error) {
@@ -951,7 +1028,7 @@ export default function RunEventPage() {
 
   const handleDeletePoll = async (pollId: string) => {
     const confirmDelete = window.confirm(
-      "Are you sure you want to delete this poll?",
+      "Are you sure you want to delete this poll?"
     );
     if (!confirmDelete) return;
 
@@ -1020,7 +1097,7 @@ export default function RunEventPage() {
             setIsTimerSynced(true);
             setLastTimerUpdate(new Date());
           }
-        },
+        }
       )
       .subscribe();
 
@@ -1040,7 +1117,7 @@ export default function RunEventPage() {
           photos: sessionPhotos,
           polls: sessionPolls,
           sessionData,
-        } = await fetchEventSessionAll(eventId);
+        } = await fetchEventSessionForUser(eventId, userRole === "admin");
 
         // Load Q&A questions
         setQnaMessages(questions);
@@ -1060,7 +1137,7 @@ export default function RunEventPage() {
               url: await getPhotoPublicUrl(photo.file_path),
               photo,
               selected: false,
-            })),
+            }))
           );
           setPhotos(photosWithUrls);
         } else {
@@ -1112,7 +1189,7 @@ export default function RunEventPage() {
               if (userPrefs.hideTimeDetails !== undefined) {
                 setHideTimeDetails(userPrefs.hideTimeDetails);
                 console.log(
-                  `Hide time details preference restored: ${userPrefs.hideTimeDetails}`,
+                  `Hide time details preference restored: ${userPrefs.hideTimeDetails}`
                 );
               }
             }
@@ -1125,7 +1202,7 @@ export default function RunEventPage() {
     };
 
     loadSessionData();
-  }, [eventId, user?.id]);
+  }, [eventId, user?.id, userRole]);
 
   // Timer effect - with real-time sync consideration
   useEffect(() => {
@@ -1250,51 +1327,67 @@ export default function RunEventPage() {
             <div className="text-2xl font-semibold">{details.title}</div>
             <div className="flex items-center gap-3 text-sm text-gray-600">
               <Calendar className="h-4 w-4" />
-              {new Date(details.date).toLocaleDateString("en-GB")} • 2/5
-              completed
+              {new Date(details.date).toLocaleDateString("en-GB")} • Live Event
             </div>
           </div>
-          <div className="flex items-center justify-end gap-2">
+          {userRole === "admin" && (
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  router.push(`/page/${pageId}/event/${eventId}/edit`)
+                }
+              >
+                Modify Event
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleEndMeeting}
+              >
+                End Meeting
+              </Button>
+            </div>
+          )}
+          {userRole === "member" && (
             <Button
-              variant="outline"
+              variant="destructive"
               size="sm"
-              onClick={() =>
-                router.push(`/page/${pageId}/event/${eventId}/edit`)
-              }
+              onClick={() => router.push(`/page/${pageId}`)}
             >
-              Modify Event
+              Leave Meeting
             </Button>
-            <Button variant="destructive" size="sm" onClick={handleEndMeeting}>
-              End Meeting
-            </Button>
-          </div>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-12 gap-6 flex-1 min-h-0">
         {/* Left: Timer and Agenda */}
         <div className="col-span-7 space-y-6 overflow-y-auto pr-2 h-full pb-6">
-          {/* Big Timer Card */}
-          <TimerCard
-            currentSlot={currentSlot}
-            currentSpeaker={currentSpeaker}
-            seconds={seconds}
-            onTimeState={onTimeState}
-            isRunning={isRunning}
-            hasStarted={hasStarted}
-            onToggleTimer={handleToggleTimer}
-            onNextSpeaker={handleNextSpeaker}
-            onAddTime={handleAddTime}
-            onToggleFullscreen={() => setIsFullscreen(true)}
-            timerBackgroundColor={timerBackgroundColor}
-            timerTextColor={timerTextColor}
-            min={min}
-            target={target}
-            max={max}
-            hideTimeDetails={hideTimeDetails}
-            onToggleHideDetails={handleToggleHideDetails}
-            isAdmin={userRole === "admin"}
-          />
+          {/* Big Timer Card - Only show for admins */}
+          {userRole === "admin" && (
+            <TimerCard
+              currentSlot={currentSlot}
+              currentSpeaker={currentSpeaker}
+              seconds={seconds}
+              onTimeState={onTimeState}
+              isRunning={isRunning}
+              hasStarted={hasStarted}
+              onToggleTimer={handleToggleTimer}
+              onNextSpeaker={handleNextSpeaker}
+              onAddTime={handleAddTime}
+              onToggleFullscreen={() => setIsFullscreen(true)}
+              timerBackgroundColor={timerBackgroundColor}
+              timerTextColor={timerTextColor}
+              min={min}
+              target={target}
+              max={max}
+              hideTimeDetails={hideTimeDetails}
+              onToggleHideDetails={handleToggleHideDetails}
+              isAdmin={userRole === "admin"}
+            />
+          )}
 
           {/* Agenda */}
           <div>
@@ -1322,14 +1415,14 @@ export default function RunEventPage() {
                               idx === 0
                                 ? "Veteran Toastmaster with excellent opening skills."
                                 : idx === 1
-                                  ? "Experienced leader facilitating effective business sessions."
-                                  : "Dynamic speaker guiding impromptu topics.",
+                                ? "Experienced leader facilitating effective business sessions."
+                                : "Dynamic speaker guiding impromptu topics.",
                             email:
                               idx === 0
                                 ? "alex.wilson@toastmasters.com"
                                 : idx === 1
-                                  ? "sarah.johnson@toastmasters.com"
-                                  : "garimella@toastmasters.com",
+                                ? "sarah.johnson@toastmasters.com"
+                                : "garimella@toastmasters.com",
                             linkedin: "https://www.linkedin.com/in/example",
                             completed: idx < currentSpeakerIndex,
                           })
@@ -1338,7 +1431,7 @@ export default function RunEventPage() {
                         <img
                           src="/next.svg"
                           alt="avatar"
-                          className="h-8 w-8 rounded-full"
+                          className="h-8 w-8 rounded-full border-2 border-gray-300"
                         />
                         <div>
                           <div className="font-medium text-sm">
@@ -1347,22 +1440,26 @@ export default function RunEventPage() {
                           <div className="text-xs text-gray-500">
                             {item.title}
                           </div>
-                          <div className="text-xs mt-1 flex gap-2">
-                            <p className="text-green-500">
-                              Min: {formatSeconds((item.minMinutes || 3) * 60)}
-                            </p>
-                            <p className="text-yellow-500">
-                              Target:{" "}
-                              {formatSeconds(
-                                (item.targetMinutes ||
-                                  item.allocatedMinutes ||
-                                  5) * 60,
-                              )}
-                            </p>
-                            <p className="text-red-500">
-                              Max: {formatSeconds((item.maxMinutes || 7) * 60)}
-                            </p>
-                          </div>
+                          {userRole === "admin" && (
+                            <div className="text-xs mt-1 flex gap-2">
+                              <p className="text-green-500">
+                                Min:{" "}
+                                {formatSeconds((item.minMinutes || 3) * 60)}
+                              </p>
+                              <p className="text-yellow-500">
+                                Target:{" "}
+                                {formatSeconds(
+                                  (item.targetMinutes ||
+                                    item.allocatedMinutes ||
+                                    5) * 60
+                                )}
+                              </p>
+                              <p className="text-red-500">
+                                Max:{" "}
+                                {formatSeconds((item.maxMinutes || 7) * 60)}
+                              </p>
+                            </div>
+                          )}
                           {idx < currentSpeakerIndex && (
                             <div className="text-xs text-gray-600">
                               Actual: Completed
@@ -1485,41 +1582,99 @@ export default function RunEventPage() {
                         </div>
                       </div>
                     ) : (
-                      qnaMessages.map((msg) => (
-                        <Card
-                          key={msg.id}
-                          className={`p-3 ${
-                            msg.answered
-                              ? "bg-green-50 border-green-200"
-                              : "bg-white"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1">
-                              <div className="text-sm font-medium text-gray-900">
-                                {msg.question}
+                      qnaMessages.map((msg) => {
+                        const isPending = msg.status === "pending";
+                        const isRejected = msg.status === "rejected";
+                        const isAnswered = msg.status === "answered" || msg.answered;
+                        const isAccepted = msg.status === "accepted";
+                        
+                        return (
+                          <Card
+                            key={msg.id}
+                            className={`p-3 ${
+                              isAnswered
+                                ? "bg-green-50 border-green-200"
+                                : isPending && userRole !== "admin"
+                                ? "opacity-50 bg-gray-50 border-gray-200"
+                                : isRejected
+                                ? "opacity-30 bg-red-50 border-red-200"
+                                : "bg-white"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className={`text-sm font-medium ${
+                                    isPending && userRole !== "admin" ? "text-gray-500" : "text-gray-900"
+                                  }`}>
+                                    {msg.question}
+                                  </div>
+                                  {isPending && (
+                                    <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                                      Pending
+                                    </Badge>
+                                  )}
+                                  {isAccepted && !isAnswered && (
+                                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                      Approved
+                                    </Badge>
+                                  )}
+                                  {isRejected && (
+                                    <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                      Rejected
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {new Date(
+                                    msg.created_at || ""
+                                  ).toLocaleTimeString()}
+                                  {isPending && userRole !== "admin" && (
+                                    <span className="ml-2 text-gray-400">• Awaiting admin approval</span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                {new Date(
-                                  msg.created_at || "",
-                                ).toLocaleTimeString()}
+                              <div className="flex items-center gap-1">
+                                {userRole === "admin" && isPending && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleAcceptQuestion(msg.id)}
+                                      className="text-green-600 border-green-300 hover:bg-green-50"
+                                    >
+                                      Accept
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleRejectQuestion(msg.id)}
+                                      className="text-red-600 border-red-300 hover:bg-red-50"
+                                    >
+                                      Reject
+                                    </Button>
+                                  </>
+                                )}
+                                {userRole === "admin" && isAccepted && !isAnswered && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleMarkAsAnswered(msg.id)}
+                                    className="text-green-600 border-green-300 hover:bg-green-50"
+                                  >
+                                    Mark Answered
+                                  </Button>
+                                )}
+                                {isAnswered && (
+                                  <Badge className="bg-green-100 text-green-700">
+                                    ✓ Answered
+                                  </Badge>
+                                )}
                               </div>
                             </div>
-                            <Button
-                              size="sm"
-                              variant={msg.answered ? "secondary" : "outline"}
-                              onClick={() => toggleQuestionAnswered(msg.id)}
-                              className={
-                                msg.answered
-                                  ? "bg-green-100 text-green-700"
-                                  : ""
-                              }
-                            >
-                              {msg.answered ? "✓ Answered" : "Mark Answered"}
-                            </Button>
-                          </div>
-                        </Card>
-                      ))
+                          </Card>
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -1606,7 +1761,7 @@ export default function RunEventPage() {
                       e.preventDefault();
                       const files = Array.from(e.dataTransfer.files || []);
                       const imageFiles = files.filter((file) =>
-                        file.type.startsWith("image/"),
+                        file.type.startsWith("image/")
                       );
                       if (imageFiles.length > 0) {
                         handleFileUpload(imageFiles);
@@ -1638,7 +1793,7 @@ export default function RunEventPage() {
                         onChange={(e) => {
                           const files = Array.from(e.target.files || []);
                           const imageFiles = files.filter((file) =>
-                            file.type.startsWith("image/"),
+                            file.type.startsWith("image/")
                           );
                           if (imageFiles.length > 0) {
                             handleFileUpload(imageFiles);
@@ -1654,12 +1809,20 @@ export default function RunEventPage() {
                   <div className="mt-4 grid grid-cols-4 gap-3">
                     {(photos || []).map((photo, index) => {
                       const isSelected = selectedPhotos.has(photo.id);
+                      const isPending = photo.photo.status === "pending";
+                      const isRejected = photo.photo.status === "rejected";
+                      const isAccepted = photo.photo.status === "accepted";
+                      
                       return (
                         <div
                           key={photo.id}
                           className={`relative aspect-square rounded-md overflow-hidden border group cursor-pointer ${
                             isSelected
                               ? "border-blue-500 border-2 bg-blue-50"
+                              : isPending && userRole !== "admin"
+                              ? "border-gray-200 opacity-50"
+                              : isRejected
+                              ? "border-red-200 opacity-30"
                               : "border-gray-200"
                           }`}
                           onClick={() => openGallery(index)}
@@ -1667,8 +1830,53 @@ export default function RunEventPage() {
                           <img
                             src={photo.url}
                             alt={photo.photo.file_name}
-                            className="h-full w-full object-cover"
+                            className={`h-full w-full object-cover ${
+                              isPending && userRole !== "admin" ? "grayscale" : ""
+                            }`}
                           />
+                          
+                          {/* Status overlay */}
+                          {isPending && (
+                            <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+                              <Badge className="bg-yellow-500 text-white text-xs">
+                                Pending
+                              </Badge>
+                            </div>
+                          )}
+                          {isRejected && (
+                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                              <Badge className="bg-red-500 text-white text-xs">
+                                Rejected
+                              </Badge>
+                            </div>
+                          )}
+                          
+                          {/* Admin approval controls for pending photos */}
+                          {userRole === "admin" && isPending && (
+                            <div className="absolute bottom-1 left-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAcceptPhoto(photo.id);
+                                }}
+                                className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs py-1 h-auto"
+                              >
+                                Accept
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRejectPhoto(photo.id);
+                                }}
+                                className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-1 h-auto"
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          )}
+                          
                           {/* Selection indicator */}
                           <div
                             className={`absolute top-1 left-1 w-5 h-5 rounded border flex items-center justify-center ${
@@ -1695,17 +1903,20 @@ export default function RunEventPage() {
                               </svg>
                             )}
                           </div>
+                          
                           {/* Individual delete button */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeletePhoto(photo.id);
-                            }}
-                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Delete photo"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
+                          {(userRole === "admin" || photo.photo.uploaded_by === user?.id) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePhoto(photo.id);
+                              }}
+                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Delete photo"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
                         </div>
                       );
                     })}
@@ -1723,7 +1934,7 @@ export default function RunEventPage() {
                     onDeletePoll={handleDeletePoll}
                     userVotes={userVotes}
                     isLoading={loadingPolls}
-                    canManage={true}
+                    canManage={userRole === "admin"}
                   />
                 </div>
               )}
@@ -1780,7 +1991,7 @@ export default function RunEventPage() {
                   <img
                     src="/next.svg"
                     alt="avatar"
-                    className="h-16 w-16 rounded-full mb-2"
+                    className="h-16 w-16 rounded-full border-2 border-gray-300 mb-2"
                   />
                   <DialogTitle className="text-xl">
                     {selectedUser.name}

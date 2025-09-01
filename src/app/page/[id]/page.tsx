@@ -33,7 +33,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { usePage, usePageEvents, usePageMembers, useDeletePage } from "@/lib/api/hooks";
+import {
+  usePage,
+  usePageEvents,
+  usePageMembers,
+  useDeletePage,
+} from "@/lib/api/hooks";
 
 export default function PageDetailsPage() {
   const params = useParams();
@@ -144,9 +149,9 @@ export default function PageDetailsPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete Page</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to delete "{page.title}"? This action
-                      cannot be undone. All events and data associated with this
-                      page will be permanently removed.
+                      Are you sure you want to delete "{page.title}"? This
+                      action cannot be undone. All events and data associated
+                      with this page will be permanently removed.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -258,10 +263,6 @@ export default function PageDetailsPage() {
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4" />
                         <span>{event.location}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        <span>{event.attendees} attendees</span>
                       </div>
                     </div>
                   </CardContent>
