@@ -1612,11 +1612,11 @@ export default function RunEventPage() {
                             : undefined
                         }
                       >
-                        <CardContent className="py-4">
+                        <CardContent className="!px-3 !py-4">
                           <div className="flex items-start justify-between">
                             <button
                               type="button"
-                              className="flex items-center gap-3 text-left"
+                              className="flex items-center gap-2 text-left"
                               onClick={() =>
                                 setSelectedUser({
                                   name: item.speakerName || "Unknown Speaker",
@@ -1636,7 +1636,7 @@ export default function RunEventPage() {
                               <img
                                 src={item.speakerAvatar || "/next.svg"}
                                 alt="avatar"
-                                className="h-6 w-6 sm:h-8 sm:w-8 rounded-full border-2 border-gray-300 flex-shrink-0"
+                                className="size-10 lg:size-20 rounded-full border-2 border-gray-300 flex-shrink-0"
                                 onError={(e) => {
                                   console.log(
                                     `Mobile image failed to load for ${item.speakerName}: ${item.speakerAvatar}`
