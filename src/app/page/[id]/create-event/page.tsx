@@ -177,8 +177,9 @@ export default function CreateEventPage() {
               ...role,
               speakerName: member.name,
               speakerEmail: member.email,
-              avatar: member.avatar || "",
-              avatarBlob: null, // Reset blob when selecting a member
+              // Only update avatar if no custom avatar/video has been uploaded
+              avatar: role.avatarBlob ? role.avatar : (member.avatar || ""),
+              avatarBlob: role.avatarBlob, // Preserve uploaded video/avatar
               // Keep existing bio and social media links as they might be role-specific
             }
           : role
@@ -343,8 +344,16 @@ export default function CreateEventPage() {
               console.warn(
                 `Failed to upload avatar for role ${role.roleName}: ${uploadResult.error}`
               );
+              toast.error(`Failed to upload avatar for ${role.roleName}: ${uploadResult.error}`);
               // Continue with the existing URL or empty string
             }
+          }
+
+          // Clean up object URLs to prevent memory leaks and ensure we don't save them
+          if (speakerAvatarUrl && speakerAvatarUrl.startsWith('blob:')) {
+            // If we still have an object URL, it means upload failed or wasn't attempted
+            // Reset to empty string to avoid saving invalid blob URLs
+            speakerAvatarUrl = '';
           }
 
           return {

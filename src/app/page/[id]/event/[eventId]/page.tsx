@@ -263,10 +263,10 @@ export default function EventDetailsPage() {
                     {item.order}
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-medium text-gray-900 truncate w-20 md:w-40">
                       {item.title}
                     </div>
-                    <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                    <div className="text-xs text-gray-500 flex items-center gap-1 mt-1 truncate w-20 md:w-40">
                       <BadgeCheck className="h-3 w-3" /> {item.role}
                     </div>
                     {item.speakerName && (

@@ -46,6 +46,7 @@ import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import MemberSearchInput from "@/components/MemberSearchInput";
 import DateTimePickerForm from "@/components/DateTimePickerForm";
 import TimeInput from "@/components/TimeInput";
+import { format } from "date-fns";
 
 interface SpeakerRole {
   id: string;
@@ -180,20 +181,6 @@ export default function EditEventPage() {
     }));
   };
 
-  const handleDateChange = (date: Date | null) => {
-    setFormData((prev) => ({
-      ...prev,
-      date,
-    }));
-  };
-
-  const handleTimeChange = (time: string | null) => {
-    setFormData((prev) => ({
-      ...prev,
-      time,
-    }));
-  };
-
   const handleStatusChange = (status: string) => {
     // Warn if changing to completed status
     if (status === "completed" && formData.status !== "completed") {
@@ -311,6 +298,55 @@ export default function EditEventPage() {
       return total + parseTimeToMinutes(role.targetTime);
     }, 0);
   };
+
+  const handleDateChange = (date: Date | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      date,
+    }));
+  };
+
+  const handleTimeChange = (time: string | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      time,
+    }));
+  };
+
+  // Dropdown options
+  const timeSlots = [
+    "09:00",
+    "09:30",
+    "10:00",
+    "10:30",
+    "11:00",
+    "11:30",
+    "12:00",
+    "12:30",
+    "13:00",
+    "13:30",
+    "14:00",
+    "14:30",
+    "15:00",
+    "15:30",
+    "16:00",
+    "16:30",
+    "17:00",
+    "17:30",
+    "18:00",
+    "18:30",
+    "19:00",
+    "19:30",
+    "20:00",
+    "20:30",
+  ];
+
+  const today = new Date();
+  const dateOptions = Array.from({ length: 60 }).map((_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    return d;
+  });
 
   const handleSaveEvent = async () => {
     // Validation
@@ -472,12 +508,47 @@ export default function EditEventPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label>Event Date & Time *</Label>
-                <DateTimePickerForm
-                  selectedDate={formData.date}
-                  selectedTime={formData.time}
-                  onDateChange={handleDateChange}
-                  onTimeChange={handleTimeChange}
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Select
+                    value={
+                      formData.date
+                        ? formData.date.toISOString().split("T")[0]
+                        : ""
+                    }
+                    onValueChange={(v) => handleDateChange(new Date(v))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dateOptions.map((d) => {
+                        const val = d.toISOString().split("T")[0];
+                        return (
+                          <SelectItem key={val} value={val}>
+                            {format(d, "EEE, MMM d, yyyy")}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={formData.time || ""}
+                    onValueChange={handleTimeChange}
+                    disabled={!formData.date}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeSlots.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 

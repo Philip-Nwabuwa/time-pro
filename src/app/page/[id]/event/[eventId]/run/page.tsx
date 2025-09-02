@@ -140,7 +140,13 @@ function TimerCard({
         <div className="flex items-start justify-between">
           {!hideTimeDetails && (
             <div>
-              <div className={isFullscreen ? "text-lg" : "text-sm"}>
+              <div
+                className={
+                  isFullscreen
+                    ? "text-lg truncate w-40"
+                    : "text-sm truncate w-40 "
+                }
+              >
                 {currentSlot?.title || "Table Topics Master"}
               </div>
               <div
@@ -280,6 +286,20 @@ export default function RunEventPage() {
     isLoading: loading,
     error,
   } = useEventDetails(pageId, eventId);
+
+  // Debug: Log the details when they change
+  useEffect(() => {
+    if (details) {
+      console.log("Event details loaded:", details);
+      console.log(
+        "Schedule items with speaker avatars:",
+        details.schedule.map((item) => ({
+          name: item.speakerName,
+          avatar: item.speakerAvatar,
+        }))
+      );
+    }
+  }, [details]);
 
   // User role state
   const [userRole, setUserRole] = useState<"admin" | "member" | null>(null);
@@ -1438,6 +1458,12 @@ export default function RunEventPage() {
                           src={item.speakerAvatar || "/next.svg"}
                           alt="avatar"
                           className="h-8 w-8 rounded-full border-2 border-gray-300"
+                          onError={(e) => {
+                            console.log(
+                              `Image failed to load for ${item.speakerName}: ${item.speakerAvatar}`
+                            );
+                            e.currentTarget.src = "/next.svg";
+                          }}
                         />
                         <div>
                           <div className="font-medium text-sm">
@@ -1611,12 +1637,18 @@ export default function RunEventPage() {
                                 src={item.speakerAvatar || "/next.svg"}
                                 alt="avatar"
                                 className="h-6 w-6 sm:h-8 sm:w-8 rounded-full border-2 border-gray-300 flex-shrink-0"
+                                onError={(e) => {
+                                  console.log(
+                                    `Mobile image failed to load for ${item.speakerName}: ${item.speakerAvatar}`
+                                  );
+                                  e.currentTarget.src = "/next.svg";
+                                }}
                               />
                               <div className="min-w-0 flex-1">
                                 <div className="font-medium text-xs sm:text-sm truncate">
                                   {item.speakerName || "Unknown Speaker"}
                                 </div>
-                                <div className="text-xs text-gray-500 truncate">
+                                <div className="w-40 text-xs text-gray-500 truncate">
                                   {item.title}
                                 </div>
                                 {userRole === "admin" && (

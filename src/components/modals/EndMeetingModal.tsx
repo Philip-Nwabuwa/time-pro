@@ -50,7 +50,9 @@ export default function EndMeetingModal({
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div
-              className={`flex-shrink-0 ${hasPendingItems ? "text-yellow-500" : "text-green-500"}`}
+              className={`flex-shrink-0 ${
+                hasPendingItems ? "text-yellow-500" : "text-green-500"
+              }`}
             >
               {hasPendingItems ? (
                 <AlertTriangle className="h-6 w-6" />
@@ -93,11 +95,13 @@ export default function EndMeetingModal({
                 >
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-yellow-600" />
-                    <span className="text-sm text-gray-900">{item.title}</span>
+                    <span className="text-sm text-gray-900 truncate w-[100px]">
+                      {item.title}
+                    </span>
                   </div>
                   <Badge
                     variant="outline"
-                    className="text-xs text-yellow-700 border-yellow-300"
+                    className="text-xs text-yellow-700 border-yellow-300 truncate w-[100px]"
                   >
                     {item.role}
                   </Badge>
