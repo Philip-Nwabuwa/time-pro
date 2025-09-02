@@ -183,13 +183,13 @@ export default function OTPVerification({
           <div className="text-center mb-8">
             <Image
               src={logo}
-              alt="TimePro"
+              alt="Oratoh"
               width={100}
               height={100}
               className="w-16 mb-4"
             />
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              Welcome to TimePro
+              Welcome to Oratoh
             </h1>
             <p className="text-gray-600">
               Professional event management platform
@@ -226,7 +226,7 @@ export default function OTPVerification({
             <Timer className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Welcome to TimePro
+            Welcome to Oratoh
           </h1>
           <p className="text-gray-600">
             Professional event management platform

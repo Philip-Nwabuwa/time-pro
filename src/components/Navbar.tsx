@@ -61,7 +61,7 @@ export default function Navbar({ user, onSignOut }: NavbarProps) {
             <Link href="/" className="flex items-center gap-1">
               <Image
                 src={logo}
-                alt="TimePro"
+                alt="Oratoh"
                 width={100}
                 height={100}
                 className="w-8"

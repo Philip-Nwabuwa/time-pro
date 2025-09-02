@@ -87,7 +87,7 @@ export default function LoginForm() {
         <div className="flex flex-col justify-center items-center mb-8">
           <Image
             src={logo}
-            alt="TimePro"
+            alt="Oratoh"
             width={100}
             height={100}
             className="w-16 mb-4"
@@ -96,7 +96,7 @@ export default function LoginForm() {
             Welcome Back
           </h1>
           <p className="text-muted-foreground text-lg">
-            Sign in to your TimePro account
+            Sign in to your Oratoh account
           </p>
         </div>
 

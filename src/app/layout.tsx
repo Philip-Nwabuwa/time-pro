@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TimePro - Professional Event Management",
+  title: "Oratoh - Professional Event Management",
   description:
     "Professional event management platform for organizing and managing events with ease.",
 };
