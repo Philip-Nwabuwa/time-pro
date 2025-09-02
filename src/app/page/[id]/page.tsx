@@ -38,6 +38,7 @@ import {
   usePageEvents,
   usePageMembers,
   useDeletePage,
+  useDeleteEvent,
 } from "@/lib/api/hooks";
 
 export default function PageDetailsPage() {
@@ -54,6 +55,7 @@ export default function PageDetailsPage() {
   const { data: members = [], isLoading: membersLoading } =
     usePageMembers(pageId);
   const deletePage = useDeletePage();
+  const deleteEventMutation = useDeleteEvent();
 
   const handleBackClick = () => {
     router.push("/");
@@ -69,6 +71,18 @@ export default function PageDetailsPage() {
       router.push("/");
     } catch (error) {
       console.error("Failed to delete page:", error);
+    }
+  };
+
+  const handleDeleteEvent = async (
+    eventId: string,
+    e?: React.MouseEvent<HTMLButtonElement | HTMLDivElement>
+  ) => {
+    if (e) e.stopPropagation();
+    try {
+      await deleteEventMutation.mutateAsync(eventId);
+    } catch (error) {
+      console.error("Failed to delete event:", error);
     }
   };
 
@@ -244,9 +258,56 @@ export default function PageDetailsPage() {
                           {event.description}
                         </CardDescription>
                       </div>
-                      <Badge className={getStatusColor(event.status)}>
-                        {event.status}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusColor(event.status)}>
+                          {event.status}
+                        </Badge>
+                        {page?.role === "admin" && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Delete Event
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{event.title}
+                                  "? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={(e) =>
+                                    handleDeleteEvent(event.id, e)
+                                  }
+                                  disabled={deleteEventMutation.isPending}
+                                  className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                                >
+                                  {deleteEventMutation.isPending
+                                    ? "Deleting..."
+                                    : "Delete Event"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
