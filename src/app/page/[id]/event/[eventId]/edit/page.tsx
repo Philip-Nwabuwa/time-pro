@@ -113,7 +113,7 @@ export default function EditEventPage() {
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(
-    null,
+    null
   );
 
   // Populate form data when event details are loaded
@@ -138,10 +138,10 @@ export default function EditEventPage() {
           avatar: item.speakerAvatar || "",
           minTime: formatMinutesToTime(item.minMinutes || 3),
           targetTime: formatMinutesToTime(
-            item.targetMinutes || item.allocatedMinutes,
+            item.targetMinutes || item.allocatedMinutes
           ),
           maxTime: formatMinutesToTime(
-            item.maxMinutes || item.allocatedMinutes * 1.5,
+            item.maxMinutes || item.allocatedMinutes * 1.5
           ),
           socialMediaLinks: item.socialMediaLinks || [],
         })),
@@ -159,7 +159,9 @@ export default function EditEventPage() {
   const formatMinutesToTime = (minutes: number): string => {
     const mins = Math.floor(minutes);
     const secs = Math.round((minutes - mins) * 60);
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   const parseTimeToMinutes = (timeString: string): number => {
@@ -169,7 +171,7 @@ export default function EditEventPage() {
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -281,7 +283,7 @@ export default function EditEventPage() {
     setFormData((prev) => ({
       ...prev,
       roles: prev.roles.map((role, i) =>
-        i === index ? { ...role, [field]: value } : role,
+        i === index ? { ...role, [field]: value } : role
       ),
     }));
   };
@@ -299,7 +301,7 @@ export default function EditEventPage() {
               avatar: member.avatar || "",
               // Keep existing bio and social media links as they might be role-specific
             }
-          : role,
+          : role
       ),
     }));
   };
@@ -440,16 +442,10 @@ export default function EditEventPage() {
     <main className="mx-auto max-w-4xl px-6 py-8">
       {/* Header */}
       <div className="mb-8">
-        <Button variant="ghost" onClick={handleBack} className="mb-4 gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Event
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Event</h1>
-          <p className="text-gray-600">
-            Edit event for <span className="font-medium">{page.title}</span>
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Event</h1>
+        <p className="text-gray-600">
+          Edit event for <span className="font-medium">{page.title}</span>
+        </p>
       </div>
 
       <div className="space-y-8">

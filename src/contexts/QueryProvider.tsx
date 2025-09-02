@@ -13,9 +13,11 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
             staleTime: 60 * 1000, // 1 minute
             gcTime: 10 * 60 * 1000, // 10 minutes
             retry: 1,
+            refetchOnWindowFocus: true,
+            refetchOnReconnect: true,
           },
         },
-      }),
+      })
   );
 
   return (

@@ -1106,52 +1106,6 @@ export default function RunEventPage() {
     };
   }, [eventId, user]);
 
-  // Fallback polling: refresh session state every 10 seconds so members see updates
-  useEffect(() => {
-    if (!eventId) return;
-
-    const intervalId = setInterval(async () => {
-      try {
-        const { sessionData: currentData } = await fetchEventSessionAll(
-          eventId
-        );
-        const sessionState =
-          currentData?.session_data &&
-          typeof currentData.session_data === "object" &&
-          !Array.isArray(currentData.session_data)
-            ? (currentData.session_data as Record<string, any>)
-            : null;
-
-        if (!sessionState) return;
-
-        // If the current user is the controller, skip applying (they already have local state)
-        if (sessionState.controlledBy && sessionState.controlledBy === user?.id)
-          return;
-
-        if (sessionState.currentSpeakerIndex !== undefined) {
-          setCurrentSpeakerIndex(sessionState.currentSpeakerIndex);
-        }
-        if (sessionState.seconds !== undefined) {
-          setSeconds(sessionState.seconds);
-        }
-        if (sessionState.addedTime !== undefined) {
-          setAddedTime(sessionState.addedTime);
-        }
-        if (sessionState.hasStarted !== undefined) {
-          setHasStarted(sessionState.hasStarted);
-        }
-        if (sessionState.isRunning !== undefined) {
-          setIsRunning(sessionState.isRunning);
-        }
-      } catch (err) {
-        // Silently ignore polling errors to avoid noisy toasts
-        console.error("Polling error (session refresh):", err);
-      }
-    }, 10000);
-
-    return () => clearInterval(intervalId);
-  }, [eventId, user?.id]);
-
   // Load session data on mount
   useEffect(() => {
     const loadSessionData = async () => {
@@ -1250,36 +1204,57 @@ export default function RunEventPage() {
     loadSessionData();
   }, [eventId, user?.id, userRole]);
 
-  // Timer effect - with real-time sync consideration
+  // Poll Q&A, Photos, Polls, and user votes every 10s (no timer state changes)
   useEffect(() => {
-    if (!isRunning) return;
+    if (!eventId) return;
 
-    intervalRef.current = window.setInterval(() => {
-      setSeconds((s) => {
-        const newSeconds = s + 1;
-        // Only broadcast if user is admin and timer is running
-        if (userRole === "admin") {
-          // Broadcast every 5 seconds to reduce network traffic
-          if (newSeconds % 5 === 0) {
-            broadcastTimerState({
-              isRunning: true,
-              hasStarted: true,
-              seconds: newSeconds,
-              currentSpeakerIndex,
-              addedTime,
-              lastUpdate: new Date().toISOString(),
-              controlledBy: user?.id,
-            });
-          }
-        }
-        return newSeconds;
-      });
-    }, 1000);
+    let cancelled = false;
+
+    const refetchSessionLists = async () => {
+      try {
+        const {
+          questions,
+          photos: sessionPhotos,
+          polls: sessionPolls,
+        } = await fetchEventSessionForUser(eventId, userRole === "admin");
+
+        if (cancelled) return;
+
+        // Q&A
+        setQnaMessages(questions);
+
+        // Polls
+        setPolls(sessionPolls);
+
+        // User votes
+        const votes = await getUserPollVotes(eventId);
+        if (!cancelled) setUserVotes(votes);
+
+        // Photos (map to public URLs)
+        const photosWithUrls = await Promise.all(
+          sessionPhotos.map(async (photo) => ({
+            id: photo.id,
+            url: await getPhotoPublicUrl(photo.file_path),
+            photo,
+            selected: false,
+          }))
+        );
+        if (!cancelled) setPhotos(photosWithUrls);
+      } catch (err) {
+        // Avoid noisy toasts during background refresh
+        console.error("Polling error (lists refresh):", err);
+      }
+    };
+
+    // initial fetch + interval
+    refetchSessionLists();
+    const intervalId = setInterval(refetchSessionLists, 10000);
 
     return () => {
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
+      cancelled = true;
+      clearInterval(intervalId);
     };
-  }, [isRunning, userRole, currentSpeakerIndex, addedTime, user?.id]);
+  }, [eventId, userRole]);
 
   // Auto-save session state periodically and when timer state changes
   useEffect(() => {
@@ -1359,15 +1334,7 @@ export default function RunEventPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-8 h-[100vh] flex flex-col">
       {/* Fixed Header */}
-      <div className="flex-shrink-0 mb-6">
-        <Button
-          variant="ghost"
-          onClick={() => router.push(`/page/${pageId}/event/${eventId}`)}
-          className="gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Event
-        </Button>
+      <div className="flex-shrink-0 mb-4">
         <div className="flex items-center justify-between w-full">
           <div>
             <div className="text-2xl font-semibold">{details.title}</div>
@@ -1499,11 +1466,7 @@ export default function RunEventPage() {
                               </p>
                             </div>
                           )}
-                          {idx < currentSpeakerIndex && (
-                            <div className="text-xs text-gray-600">
-                              Actual: Completed
-                            </div>
-                          )}
+
                           {idx === currentSpeakerIndex && isRunning && (
                             <div className="text-xs text-gray-600">
                               Current: {formatSeconds(seconds + addedTime)}
@@ -1799,14 +1762,14 @@ export default function RunEventPage() {
                                       Pending
                                     </Badge>
                                   )}
-                                  {isAccepted && !isAnswered && (
+                                  {/* {isAccepted && !isAnswered && (
                                     <Badge
                                       variant="outline"
                                       className="text-xs bg-blue-50 text-blue-700 border-blue-200"
                                     >
                                       Approved
                                     </Badge>
-                                  )}
+                                  )} */}
                                   {isRejected && (
                                     <Badge
                                       variant="outline"

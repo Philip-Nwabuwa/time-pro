@@ -77,7 +77,7 @@ export default function Navbar({ user, onSignOut }: NavbarProps) {
             </Link>
             <button
               onClick={handleDashboardClick}
-              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
+              className={`hidden md:block items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
                 isDashboardActive
                   ? "text-gray-900 font-bold border-b-2 border-purple-900 pb-1"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
