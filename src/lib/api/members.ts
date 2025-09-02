@@ -18,10 +18,16 @@ export async function fetchMembersByPageId(pageId: string): Promise<Member[]> {
   // biome-ignore lint/suspicious/noExplicitAny: Required for custom RPC function that returns user data
   const { data, error } = await (supabase as any).rpc(
     "get_page_members_with_user_data",
-    { page_id_param: pageId },
+    { page_id_param: pageId }
   );
 
-  if (error) throw error;
+  if (error) {
+    console.error("Error fetching members:", error);
+    throw error;
+  }
+
+  console.log(`👥 Page ${pageId} members fetched:`, data?.length || 0);
+
   if (!data || data.length === 0) return [];
 
   // Transform the data to match Member interface with real user information
@@ -48,7 +54,7 @@ export async function fetchMembersByPageId(pageId: string): Promise<Member[]> {
         joinedDate: row.joined_at || new Date().toISOString(),
         avatar,
       };
-    },
+    }
   );
 
   return transformedMembers;
@@ -57,7 +63,7 @@ export async function fetchMembersByPageId(pageId: string): Promise<Member[]> {
 export async function addPageMember(
   pageId: string,
   userId: string,
-  role: "admin" | "member" = "member",
+  role: "admin" | "member" = "member"
 ): Promise<Member> {
   const { data: member, error } = await supabase
     .from("page_members")
@@ -84,7 +90,7 @@ export async function addPageMember(
 
 export async function updatePageMemberRole(
   memberId: string,
-  role: "admin" | "member",
+  role: "admin" | "member"
 ): Promise<Member> {
   // Get the page_id first so we can fetch updated member data
   const { data: memberData, error: fetchError } = await supabase
@@ -129,7 +135,7 @@ export async function removePageMember(memberId: string): Promise<void> {
 
 export async function checkUserMembership(
   pageId: string,
-  userId: string,
+  userId: string
 ): Promise<{ isMember: boolean; role?: "admin" | "member" }> {
   const { data: member, error } = await supabase
     .from("page_members")

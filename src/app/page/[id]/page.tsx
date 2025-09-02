@@ -39,6 +39,7 @@ import {
   usePageMembers,
   useDeletePage,
   useDeleteEvent,
+  useLeavePage,
 } from "@/lib/api/hooks";
 
 export default function PageDetailsPage() {
@@ -56,6 +57,7 @@ export default function PageDetailsPage() {
     usePageMembers(pageId);
   const deletePage = useDeletePage();
   const deleteEventMutation = useDeleteEvent();
+  const leavePageMutation = useLeavePage();
 
   const handleBackClick = () => {
     router.push("/");
@@ -83,6 +85,15 @@ export default function PageDetailsPage() {
       await deleteEventMutation.mutateAsync(eventId);
     } catch (error) {
       console.error("Failed to delete event:", error);
+    }
+  };
+
+  const handleLeavePage = async () => {
+    try {
+      await leavePageMutation.mutateAsync(pageId);
+      router.push("/");
+    } catch (error) {
+      console.error("Failed to leave page:", error);
     }
   };
 
@@ -147,7 +158,7 @@ export default function PageDetailsPage() {
             >
               {page.role}
             </Badge>
-            {page.role === "admin" && (
+            {page.role === "admin" ? (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -175,6 +186,39 @@ export default function PageDetailsPage() {
                       className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
                     >
                       {deletePage.isPending ? "Deleting..." : "Delete Page"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+                  >
+                    Leave Page
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Leave Page</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to leave "{page.title}"? You will no
+                      longer have access to this page or its events.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleLeavePage}
+                      disabled={leavePageMutation.isPending}
+                      className="bg-orange-600 hover:bg-orange-700 focus:ring-orange-500"
+                    >
+                      {leavePageMutation.isPending
+                        ? "Leaving..."
+                        : "Leave Page"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

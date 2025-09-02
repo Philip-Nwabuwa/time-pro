@@ -253,10 +253,16 @@ export async function fetchPageById(id: string): Promise<PageData | null> {
   if (error || !page) return null;
 
   // Get member count
-  const { count: memberCount } = await supabase
+  const { count: memberCount, error: memberCountError } = await supabase
     .from("page_members")
     .select("*", { count: "exact", head: true })
     .eq("page_id", page.id);
+
+  if (memberCountError) {
+    console.error("Error fetching member count:", memberCountError);
+  }
+
+  console.log(`📊 Page ${page.id} member count:`, memberCount);
 
   // Get event count
   const { count: eventCount } = await supabase

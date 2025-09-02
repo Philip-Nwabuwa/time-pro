@@ -240,7 +240,15 @@ export function useUpdateMemberRole() {
       role: "admin" | "member";
     }) => updatePageMemberRole(memberId, role),
     onSuccess: () => {
+      // Invalidate all page-related queries since member role changes affect page data
       queryClient.invalidateQueries({ queryKey: ["pages"] });
+      queryClient.invalidateQueries({ queryKey: ["pages", "all"] });
+      // Also invalidate any specific page queries that might be cached
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          return query.queryKey[0] === "pages" && query.queryKey.length >= 2;
+        },
+      });
       toast.success("Member role updated successfully!");
     },
     onError: (error: Error) => {
@@ -254,8 +262,16 @@ export function useRemovePageMember() {
 
   return useMutation({
     mutationFn: removePageMember,
-    onSuccess: () => {
+    onSuccess: (data, memberId) => {
+      // Invalidate all page-related queries since member count affects page data
       queryClient.invalidateQueries({ queryKey: ["pages"] });
+      queryClient.invalidateQueries({ queryKey: ["pages", "all"] });
+      // Also invalidate any specific page queries that might be cached
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          return query.queryKey[0] === "pages" && query.queryKey.length >= 2;
+        },
+      });
       toast.success("Member removed successfully!");
     },
     onError: (error: Error) => {
