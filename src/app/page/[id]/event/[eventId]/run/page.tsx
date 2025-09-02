@@ -394,9 +394,10 @@ export default function RunEventPage() {
     roleTitle: string;
     bio?: string;
     email?: string;
-    linkedin?: string;
     avatar?: string;
     completed?: boolean;
+    linkedin?: string;
+    socialLinks?: Array<{ platform: string; url: string }>;
   } | null>(null);
 
   const currentSlot = details?.schedule[currentSpeakerIndex];
@@ -1477,10 +1478,19 @@ export default function RunEventPage() {
                             roleTitle: item.title,
                             bio: item.speakerBio || "No biography provided.",
                             email: item.speakerEmail || "No email provided.",
-                            linkedin:
-                              item.socialMediaLinks?.linkedin || undefined,
                             avatar: item.speakerAvatar || undefined,
                             completed: idx < currentSpeakerIndex,
+                            // Support array of social links
+                            socialLinks: Array.isArray(item.socialMediaLinks)
+                              ? (item.socialMediaLinks as Array<{
+                                  platform: string;
+                                  url: string;
+                                }>)
+                              : undefined,
+                            // Back-compat if a single linkedin string exists
+                            linkedin:
+                              (item as any).socialMediaLinks?.linkedin ||
+                              undefined,
                           })
                         }
                       >
@@ -1655,11 +1665,21 @@ export default function RunEventPage() {
                                     item.speakerBio || "No biography provided.",
                                   email:
                                     item.speakerEmail || "No email provided.",
-                                  linkedin:
-                                    item.socialMediaLinks?.linkedin ||
-                                    undefined,
                                   avatar: item.speakerAvatar || undefined,
                                   completed: idx < currentSpeakerIndex,
+                                  // Support array of social links
+                                  socialLinks: Array.isArray(
+                                    item.socialMediaLinks
+                                  )
+                                    ? (item.socialMediaLinks as Array<{
+                                        platform: string;
+                                        url: string;
+                                      }>)
+                                    : undefined,
+                                  // Back-compat if a single linkedin string exists
+                                  linkedin:
+                                    (item as any).socialMediaLinks?.linkedin ||
+                                    undefined,
                                 })
                               }
                             >
@@ -2249,20 +2269,47 @@ export default function RunEventPage() {
                   <div className="font-medium mb-2">Connect</div>
                   <div className="space-y-2">
                     {selectedUser.email && (
-                      <div className="rounded-md border p-3 text-sm">
-                        {selectedUser.email}
+                      <div>
+                        Email:{" "}
+                        <p
+                          className="font-mono text-xs underline underline-offset-2"
+                          onClick={() => {
+                            const mailtoLink = `mailto:${selectedUser.email}`;
+                            window.open(mailtoLink, "_blank");
+                          }}
+                        >
+                          {selectedUser.email}
+                        </p>
                       </div>
                     )}
-                    {selectedUser.linkedin && (
-                      <a
-                        href={selectedUser.linkedin}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-md border p-3 text-sm block hover:bg-gray-50"
-                      >
-                        LinkedIn Profile
-                      </a>
-                    )}
+                    {(selectedUser.socialLinks || []).map((link, i) => (
+                      <div className="flex flex-col">
+                        {link.platform}:
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono text-xs underline underline-offset-2"
+                          onClick={() => {
+                            window.open(link.url, "_blank");
+                          }}
+                        >
+                          {link.url}
+                        </a>
+                      </div>
+                    ))}
+
+                    {!selectedUser?.socialLinks?.length &&
+                      selectedUser.linkedin && (
+                        <a
+                          href={selectedUser.linkedin}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-md border p-3 text-sm block hover:bg-gray-50"
+                        >
+                          LinkedIn Profile
+                        </a>
+                      )}
                   </div>
                 </div>
               </div>
