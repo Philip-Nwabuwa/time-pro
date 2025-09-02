@@ -60,7 +60,7 @@ export default function EditPageModal({
   }, [pageData]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -255,7 +255,7 @@ export default function EditPageModal({
             <Button
               type="submit"
               disabled={updatePage.isPending || !formData.title.trim()}
-              className="bg-green-600 hover:bg-green-700 focus:ring-green-500"
+              className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500"
             >
               {updatePage.isPending ? "Updating..." : "Update Page"}
             </Button>

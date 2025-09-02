@@ -26,6 +26,8 @@ import {
   Trash2,
   ImagePlus,
   CheckSquare,
+  SquareMinus,
+  SquarePen,
 } from "lucide-react";
 import { useEventDetails } from "@/lib/api/hooks";
 import {
@@ -310,8 +312,8 @@ export default function RunEventPage() {
 
   // Right panel tabs and photo state
   const [activeToolTab, setActiveToolTab] = useState<
-    "qna" | "photos" | "polls"
-  >("polls");
+    "agenda" | "qna" | "photos" | "polls"
+  >("qna");
   const [photos, setPhotos] = useState<
     Array<{
       id: string;
@@ -348,10 +350,11 @@ export default function RunEventPage() {
   } | null>(null);
 
   const currentSlot = details?.schedule[currentSpeakerIndex];
-  const baseAllocation = (currentSlot?.allocatedMinutes || 4) * 60;
-  const min = baseAllocation * 0.75; // 75% of allocated time
-  const target = baseAllocation + addedTime; // 100% of allocated time + added time
-  const max = (baseAllocation + addedTime) * 1.25; // 125% of (allocated time + added time)
+  const min = (currentSlot?.minMinutes || 3) * 60; // Use minMinutes from schedule
+  const target =
+    (currentSlot?.targetMinutes || currentSlot?.allocatedMinutes || 5) * 60 +
+    addedTime; // Use targetMinutes or allocatedMinutes + added time
+  const max = (currentSlot?.maxMinutes || 7) * 60 + addedTime; // Use maxMinutes + added time
 
   // Get current speaker from schedule data
   const currentSpeaker =
@@ -1314,7 +1317,7 @@ export default function RunEventPage() {
         <Button
           variant="ghost"
           onClick={() => router.push(`/page/${pageId}/event/${eventId}`)}
-          className="mb-4 gap-2"
+          className="gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Event
@@ -1336,7 +1339,7 @@ export default function RunEventPage() {
                   router.push(`/page/${pageId}/event/${eventId}/edit`)
                 }
               >
-                Modify Event
+                <SquarePen />
               </Button>
               <Button
                 variant="destructive"
@@ -1359,9 +1362,9 @@ export default function RunEventPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-6 flex-1 min-h-0">
-        {/* Left: Timer and Agenda */}
-        <div className="col-span-7 space-y-6 overflow-y-auto pr-2 h-full pb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 min-h-0">
+        {/* Left: Timer and Agenda (Desktop only) */}
+        <div className="hidden lg:block lg:col-span-7 space-y-6 overflow-y-auto pr-2 h-full pb-6">
           {/* Big Timer Card - Only show for admins */}
           {userRole === "admin" && (
             <TimerCard
@@ -1387,7 +1390,7 @@ export default function RunEventPage() {
             />
           )}
 
-          {/* Agenda */}
+          {/* Agenda - Desktop only */}
           <div>
             <h3 className="font-semibold mb-3">Meeting Agenda</h3>
             <div className="space-y-3">
@@ -1485,49 +1488,187 @@ export default function RunEventPage() {
           </div>
         </div>
 
-        {/* Right: Session Tools */}
-        <div className="col-span-5 space-y-4 flex-shrink-0 h-fit">
+        {/* Mobile Timer Card */}
+        <div className="lg:hidden">
+          {userRole === "admin" && (
+            <TimerCard
+              currentSlot={currentSlot}
+              currentSpeaker={currentSpeaker}
+              seconds={seconds}
+              addedTime={addedTime}
+              onTimeState={onTimeState}
+              isRunning={isRunning}
+              hasStarted={hasStarted}
+              onToggleTimer={handleToggleTimer}
+              onNextSpeaker={handleNextSpeaker}
+              onAddTime={handleAddTime}
+              onToggleFullscreen={() => setIsFullscreen(true)}
+              timerBackgroundColor={timerBackgroundColor}
+              timerTextColor={timerTextColor}
+              min={min}
+              target={target}
+              max={max}
+              hideTimeDetails={hideTimeDetails}
+              onToggleHideDetails={handleToggleHideDetails}
+              isAdmin={userRole === "admin"}
+            />
+          )}
+        </div>
+
+        {/* Session Tools - Full width on mobile, right side on desktop */}
+        <div className="lg:col-span-5 space-y-4 flex-shrink-0 h-fit">
           <Card>
             <CardContent className="p-4">
               <h4 className="font-semibold mb-3">Session Tools</h4>
-              <div className={`flex items-center gap-2`}>
+              <div className={`flex items-center gap-2 flex-wrap`}>
+                <Button
+                  variant={activeToolTab === "agenda" ? "secondary" : "outline"}
+                  size="sm"
+                  className={`md:hidden block text-sm ${
+                    activeToolTab === "agenda" ? "bg-purple-900 text-white" : ""
+                  }`}
+                  onClick={() => setActiveToolTab("agenda")}
+                >
+                  <Calendar className="h-4 w-4 mr-1 hidden md:block" /> Agenda
+                </Button>
                 <Button
                   variant={activeToolTab === "qna" ? "secondary" : "outline"}
                   size="sm"
-                  className={
-                    activeToolTab === "qna"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : ""
-                  }
+                  className={`text-sm ${
+                    activeToolTab === "qna" ? "bg-purple-900 text-white" : ""
+                  }`}
                   onClick={() => setActiveToolTab("qna")}
                 >
-                  <MessageSquare className="h-4 w-4 mr-1" /> Q&A
+                  <MessageSquare className="h-4 w-4 mr-1 hidden md:block" /> Q&A
                 </Button>
                 <Button
                   variant={activeToolTab === "photos" ? "secondary" : "outline"}
                   size="sm"
-                  className={
-                    activeToolTab === "photos"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : ""
-                  }
+                  className={`text-sm ${
+                    activeToolTab === "photos" ? "bg-purple-900 text-white" : ""
+                  }`}
                   onClick={() => setActiveToolTab("photos")}
                 >
-                  <Camera className="h-4 w-4 mr-1" /> Photos
+                  <Camera className="h-4 w-4 mr-1 hidden md:block" /> Photos
                 </Button>
                 <Button
                   variant={activeToolTab === "polls" ? "secondary" : "outline"}
                   size="sm"
-                  className={
-                    activeToolTab === "polls"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : ""
-                  }
+                  className={`text-sm ${
+                    activeToolTab === "polls" ? "bg-purple-900 text-white" : ""
+                  }`}
                   onClick={() => setActiveToolTab("polls")}
                 >
-                  <CheckSquare className="h-4 w-4 mr-1" /> Polls
+                  <CheckSquare className="h-4 w-4 mr-1 hidden md:block" />
+                  Polls
                 </Button>
               </div>
+
+              {activeToolTab === "agenda" && (
+                <div className="mt-4">
+                  <div className="font-medium mb-3">Meeting Agenda</div>
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {details.schedule.map((item, idx) => (
+                      <Card
+                        key={item.id}
+                        className={
+                          idx === currentSpeakerIndex
+                            ? "border-emerald-600"
+                            : undefined
+                        }
+                      >
+                        <CardContent className="py-4">
+                          <div className="flex items-start justify-between">
+                            <button
+                              type="button"
+                              className="flex items-center gap-3 text-left"
+                              onClick={() =>
+                                setSelectedUser({
+                                  name: item.speakerName || "Unknown Speaker",
+                                  roleTitle: item.title,
+                                  bio:
+                                    item.speakerBio || "No biography provided.",
+                                  email:
+                                    item.speakerEmail || "No email provided.",
+                                  linkedin:
+                                    item.socialMediaLinks?.linkedin ||
+                                    undefined,
+                                  avatar: item.speakerAvatar || undefined,
+                                  completed: idx < currentSpeakerIndex,
+                                })
+                              }
+                            >
+                              <img
+                                src={item.speakerAvatar || "/next.svg"}
+                                alt="avatar"
+                                className="h-6 w-6 sm:h-8 sm:w-8 rounded-full border-2 border-gray-300 flex-shrink-0"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="font-medium text-xs sm:text-sm truncate">
+                                  {item.speakerName || "Unknown Speaker"}
+                                </div>
+                                <div className="text-xs text-gray-500 truncate">
+                                  {item.title}
+                                </div>
+                                {userRole === "admin" && (
+                                  <div className="text-xs mt-1 flex flex-wrap gap-1 sm:gap-2">
+                                    <p className="text-green-500">
+                                      Min:{" "}
+                                      {formatSeconds(
+                                        (item.minMinutes || 3) * 60
+                                      )}
+                                    </p>
+                                    <p className="text-yellow-500">
+                                      Target:{" "}
+                                      {formatSeconds(
+                                        (item.targetMinutes ||
+                                          item.allocatedMinutes ||
+                                          5) * 60
+                                      )}
+                                    </p>
+                                    <p className="text-red-500">
+                                      Max:{" "}
+                                      {formatSeconds(
+                                        (item.maxMinutes || 7) * 60
+                                      )}
+                                    </p>
+                                  </div>
+                                )}
+                                {idx < currentSpeakerIndex && (
+                                  <div className="text-xs text-gray-600">
+                                    Actual: Completed
+                                  </div>
+                                )}
+                                {idx === currentSpeakerIndex && isRunning && (
+                                  <div className="text-xs text-gray-600">
+                                    Current:{" "}
+                                    {formatSeconds(seconds + addedTime)}
+                                  </div>
+                                )}
+                              </div>
+                            </button>
+                            <div className="flex items-center gap-2">
+                              {idx < currentSpeakerIndex ? (
+                                <Badge className="bg-emerald-100 text-emerald-700">
+                                  Done
+                                </Badge>
+                              ) : idx === currentSpeakerIndex ? (
+                                <Badge className="bg-emerald-100 text-emerald-700">
+                                  Active
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-gray-100 text-gray-600">
+                                  Pending
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {activeToolTab === "qna" && (
                 <div className="mt-4">
@@ -1700,18 +1841,19 @@ export default function RunEventPage() {
                     <div className="flex items-center gap-2">
                       <div className="font-medium">Photo Gallery</div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge
+                          variant={
+                            selectedPhotos.size > 0 ? "default" : "secondary"
+                          }
+                          className={`text-xs ${
+                            selectedPhotos.size > 0 ? "bg-blue-500" : ""
+                          }`}
+                        >
                           {photos?.length || 0} photo
                           {(photos?.length || 0) !== 1 ? "s" : ""}
+                          {selectedPhotos.size > 0 &&
+                            ` • ${selectedPhotos.size} selected`}
                         </Badge>
-                        {selectedPhotos.size > 0 && (
-                          <Badge
-                            variant="default"
-                            className="text-xs bg-blue-500"
-                          >
-                            {selectedPhotos.size} selected
-                          </Badge>
-                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1723,7 +1865,7 @@ export default function RunEventPage() {
                             onClick={deselectAllPhotos}
                             className="text-xs"
                           >
-                            Deselect All
+                            <SquareMinus />
                           </Button>
                           <Button
                             variant="outline"

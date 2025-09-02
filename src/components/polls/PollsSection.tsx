@@ -92,7 +92,7 @@ export default function PollsSection({
             type="button"
             onClick={() => setShowCreateForm(!showCreateForm)}
             size="sm"
-            className="bg-green-600 hover:bg-green-700"
+            className="bg-purple-900 hover:bg-purple-900/80"
             disabled={isLoading}
           >
             <Plus className="h-4 w-4 mr-1" />

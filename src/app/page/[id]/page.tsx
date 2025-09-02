@@ -73,11 +73,11 @@ export default function PageDetailsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   const getStatusColor = (status: string) => {
@@ -95,10 +95,9 @@ export default function PageDetailsPage() {
 
   if (pageLoading) {
     return (
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="min-h-screen justify-center items-center px-6 py-8">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-          <span className="ml-2 text-gray-500">Loading page details...</span>
         </div>
       </main>
     );
@@ -106,7 +105,7 @@ export default function PageDetailsPage() {
 
   if (pageError || !page) {
     return (
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="min-h-screen justify-center items-center px-6 py-8">
         <div className="flex items-center justify-center py-12">
           <span className="text-red-500">
             Failed to load page details. Please try again.
@@ -251,7 +250,7 @@ export default function PageDetailsPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center gap-6 text-sm text-gray-600">
+                    <div className="flex flex-col md:flex-row items-start md:gap-6 gap-2 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         <span>{formatDate(event.date)}</span>
@@ -260,10 +259,12 @@ export default function PageDetailsPage() {
                         <Clock className="h-4 w-4" />
                         <span>{event.time}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        <span>{event.location}</span>
-                      </div>
+                      {event.location && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          <span>{event.location}</span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -300,7 +301,7 @@ export default function PageDetailsPage() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12">
+                        <Avatar className="h-8 w-8 md:h-12 md:w-12">
                           <AvatarImage src={member.avatar} alt={member.name} />
                           <AvatarFallback className="bg-green-100 text-green-600">
                             {member.name
@@ -310,15 +311,17 @@ export default function PageDetailsPage() {
                               .toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <CardTitle className="text-lg">
-                            {member.name}
+                        <div className="flex flex-col gap-1">
+                          <CardTitle className="text-xs md:text-lg leading-none">
+                            {member.name || "Unnamed Member"}
                           </CardTitle>
-                          <CardDescription>{member.email}</CardDescription>
+                          <CardDescription className="text-xs md:text-base leading-none">
+                            {member.email || "No email provided"}
+                          </CardDescription>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-gray-500 hidden md:block">
                           Joined {formatDate(member.joinedDate)}
                         </span>
                         <Badge

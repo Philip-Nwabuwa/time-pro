@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Timer, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
+import { Timer, ArrowLeft, CheckCircle } from "lucide-react";
+import logo from "@/assets/images/logo-2.jpeg";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -127,7 +129,7 @@ export default function OTPVerification({
 
   const handleKeyDown = (
     index: number,
-    e: React.KeyboardEvent<HTMLInputElement>,
+    e: React.KeyboardEvent<HTMLInputElement>
   ) => {
     // Handle backspace
     if (e.key === "Backspace" && !otp[index] && index > 0) {
@@ -179,9 +181,13 @@ export default function OTPVerification({
         <div className="max-w-md w-full">
           {/* Logo and Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500 rounded-lg mb-4">
-              <Timer className="w-8 h-8 text-white" />
-            </div>
+            <Image
+              src={logo}
+              alt="TimePro"
+              width={100}
+              height={100}
+              className="w-16 mb-4"
+            />
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
               Welcome to TimePro
             </h1>
@@ -192,8 +198,8 @@ export default function OTPVerification({
 
           <Card>
             <CardHeader className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                <CheckCircle className="h-8 w-8 text-green-600" />
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
+                <CheckCircle className="h-8 w-8 text-purple-600" />
               </div>
               <CardTitle className="text-xl">Email Verified!</CardTitle>
               <CardDescription>
@@ -216,7 +222,7 @@ export default function OTPVerification({
       <div className="max-w-md w-full">
         {/* Logo and Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500 rounded-lg mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-500 rounded-lg mb-4">
             <Timer className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
@@ -255,7 +261,7 @@ export default function OTPVerification({
                     onChange={(e) => handleOtpChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onPaste={handlePaste}
-                    className="w-12 h-12 text-center text-lg font-semibold border border-gray-300 rounded-md focus:border-green-500 focus:ring-2 focus:ring-green-500/20 focus:outline-none transition-colors"
+                    className="w-12 h-12 text-center text-lg font-semibold border border-gray-300 rounded-md focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-colors"
                     placeholder="•"
                   />
                 ))}
@@ -269,7 +275,7 @@ export default function OTPVerification({
                   <button
                     onClick={handleResendOTP}
                     disabled={loading}
-                    className="text-green-500 hover:text-green-600 font-medium disabled:opacity-50"
+                    className="text-purple-500 hover:text-purple-600 font-medium disabled:opacity-50"
                   >
                     Resend code
                   </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { supabase } from "@/lib/supabase";
 import { handleSignupError } from "@/lib/authUtils";
@@ -17,6 +18,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import Link from "next/link";
+import logo from "@/assets/images/logo-2.jpeg";
 
 interface SignupFormData {
   firstName: string;
@@ -72,23 +74,23 @@ export default function SignupForm() {
       // Check if user already exists and needs to confirm email
       if (signUpData.user && !signUpData.user.email_confirmed_at) {
         toast.success(
-          "Please check your email for the verification link to complete signup.",
+          "Please check your email for the verification link to complete signup."
         );
         window.location.href = `/verify-otp?email=${encodeURIComponent(
-          data.email,
+          data.email
         )}`;
       } else if (signUpData.user && signUpData.user.email_confirmed_at) {
         // User exists and is confirmed - redirect to sign in
         toast.error(
-          "An account with this email already exists. Please sign in instead.",
+          "An account with this email already exists. Please sign in instead."
         );
         window.location.href = "/signin";
       } else {
         toast.success(
-          "Account created! Please check your email for verification.",
+          "Account created! Please check your email for verification."
         );
         window.location.href = `/verify-otp?email=${encodeURIComponent(
-          data.email,
+          data.email
         )}`;
       }
     } catch (error: any) {
@@ -110,10 +112,14 @@ export default function SignupForm() {
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Logo and Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-2xl mb-6 shadow-lg">
-            <Timer className="w-10 h-10 text-primary-foreground" />
-          </div>
+        <div className="flex flex-col justify-center items-center mb-8">
+          <Image
+            src={logo}
+            alt="TimePro"
+            width={100}
+            height={100}
+            className="w-16 mb-4"
+          />
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Join TimePro
           </h1>

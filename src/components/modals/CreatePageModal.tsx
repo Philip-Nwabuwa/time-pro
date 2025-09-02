@@ -38,7 +38,7 @@ export default function CreatePageModal() {
   });
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -217,7 +217,6 @@ export default function CreatePageModal() {
                 !formData.title.trim() ||
                 (formData.pageType === "private" && !formData.pin.trim())
               }
-              className="bg-green-600 hover:bg-green-700 focus:ring-green-500"
             >
               {createPage.isPending ? "Creating..." : "Create Page"}
             </Button>

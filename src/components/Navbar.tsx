@@ -1,8 +1,9 @@
 "use client";
 
 import { Timer, Lock, LogOut, UserCircle, Search } from "lucide-react";
+import Image from "next/image";
 import { useModal } from "@/contexts/ModalContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import UserAvatar from "./UserAvatar";
 import {
   DropdownMenu,
@@ -13,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import logo from "@/assets/images/logo-2.jpeg";
 
 interface NavbarProps {
   user: {
@@ -28,6 +30,7 @@ interface NavbarProps {
 export default function Navbar({ user, onSignOut }: NavbarProps) {
   const { openModal } = useModal();
   const router = useRouter();
+  const pathname = usePathname();
 
   const getDisplayName = () => {
     if (user.user_metadata?.first_name && user.user_metadata?.last_name) {
@@ -48,22 +51,32 @@ export default function Navbar({ user, onSignOut }: NavbarProps) {
     router.push("/discovery");
   };
 
+  const isDiscoveryActive = pathname === "/discovery";
+
   return (
-    <header className="border-b bg-white">
+    <header className="border-b bg-white sticky top-0 z-50">
       <div className="mx-auto max-w-6xl px-6">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500">
-                <Timer className="h-6 w-6 text-white" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900">
-                Dashboard
+            <Link href="/" className="flex items-center gap-1">
+              <Image
+                src={logo}
+                alt="TimePro"
+                width={100}
+                height={100}
+                className="w-8"
+              />
+              <span className="text-lg lg:text-2xl font-semibold text-gray-900">
+                Oratoh
               </span>
             </Link>
             <button
               onClick={handleDiscoveryClick}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
+                isDiscoveryActive
+                  ? "text-gray-900 font-bold border-b-2 border-purple-900 pb-1"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              }`}
             >
               <Search className="h-4 w-4" />
               Discovery
@@ -74,7 +87,7 @@ export default function Navbar({ user, onSignOut }: NavbarProps) {
             {/* User Avatar Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded-full">
+                <button className="border border-solid border-purple-900 p-[1px] rounded-full">
                   <UserAvatar user={user} size="md" />
                 </button>
               </DropdownMenuTrigger>

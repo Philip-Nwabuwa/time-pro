@@ -59,7 +59,7 @@ export default function PollCard({
   };
 
   return (
-    <Card className={poll.active ? "border-green-200" : "border-gray-200"}>
+    <Card>
       {/* <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -109,14 +109,14 @@ export default function PollCard({
 
       <CardContent className="space-y-4">
         {/* Results with clickable voting */}
-        <div className="space-y-3">
+        <div className="space-y-3 pt-4">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Users className="h-4 w-4" />
             <span>
               {totalVotes} {totalVotes === 1 ? "vote" : "votes"}
             </span>
             {hasVoted && userVote && (
-              <span className="text-green-600 font-medium">• You voted</span>
+              <span className="text-purple-900 font-medium">• You voted</span>
             )}
           </div>
 
@@ -132,9 +132,9 @@ export default function PollCard({
                   onClick={canVote ? () => handleVote(option.id) : undefined}
                   className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                     isUserChoice
-                      ? "border-green-200 bg-green-50"
+                      ? "border-purple-900 bg-purple-50"
                       : canVote
-                      ? "border-gray-200 bg-gray-50 hover:border-green-300 hover:bg-green-50"
+                      ? "border-gray-200 bg-gray-50 hover:border-purple-900 hover:bg-purple-50"
                       : "border-gray-200 bg-gray-50"
                   }`}
                 >
@@ -142,7 +142,7 @@ export default function PollCard({
                     <span className="text-sm font-medium flex-1">
                       {option.option_text}
                       {isUserChoice && (
-                        <span className="text-green-600 text-xs ml-2">
+                        <span className="text-purple-900 text-xs ml-2">
                           (Your vote)
                         </span>
                       )}
@@ -153,7 +153,7 @@ export default function PollCard({
                   </div>
                   <Progress
                     value={percentage}
-                    className={`h-2 ${isUserChoice ? "bg-green-200" : ""}`}
+                    className={`h-2 ${isUserChoice ? "bg-purple-200" : ""}`}
                   />
                 </div>
               );

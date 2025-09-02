@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { supabase } from "@/lib/supabase";
 import { Timer, ArrowLeft, Eye, EyeOff, CheckCircle } from "lucide-react";
@@ -17,6 +18,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import Link from "next/link";
+import logo from "@/assets/images/logo-2.jpeg";
 
 interface EmailFormData {
   email: string;
@@ -83,7 +85,7 @@ export default function ForgotPasswordForm() {
       setCanResend(false);
     } catch (error: any) {
       toast.error(
-        error.message || "Failed to send reset code. Please try again.",
+        error.message || "Failed to send reset code. Please try again."
       );
     } finally {
       setLoading(false);
@@ -125,7 +127,7 @@ export default function ForgotPasswordForm() {
       setStep("success");
     } catch (error: any) {
       toast.error(
-        error.message || "Failed to reset password. Please try again.",
+        error.message || "Failed to reset password. Please try again."
       );
     } finally {
       setLoading(false);
@@ -184,7 +186,7 @@ export default function ForgotPasswordForm() {
 
   const handleKeyDown = (
     index: number,
-    e: React.KeyboardEvent<HTMLInputElement>,
+    e: React.KeyboardEvent<HTMLInputElement>
   ) => {
     // Handle backspace
     if (e.key === "Backspace" && !otp[index] && index > 0) {
@@ -236,10 +238,14 @@ export default function ForgotPasswordForm() {
       <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center px-4">
         <div className="w-full max-w-md">
           {/* Logo and Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-2xl mb-6 shadow-lg">
-              <Timer className="w-10 h-10 text-primary-foreground" />
-            </div>
+          <div className="flex flex-col justify-center items-center mb-8">
+            <Image
+              src={logo}
+              alt="TimePro"
+              width={100}
+              height={100}
+              className="w-16 mb-4"
+            />
             <h1 className="text-3xl font-bold text-foreground mb-2">
               Password Reset Complete
             </h1>
@@ -278,10 +284,14 @@ export default function ForgotPasswordForm() {
       <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center px-4">
         <div className="w-full max-w-md">
           {/* Logo and Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-2xl mb-6 shadow-lg">
-              <Timer className="w-10 h-10 text-primary-foreground" />
-            </div>
+          <div className="flex flex-col justify-center items-center mb-8">
+            <Image
+              src={logo}
+              alt="TimePro"
+              width={100}
+              height={100}
+              className="w-16 mb-4"
+            />
             <h1 className="text-3xl font-bold text-foreground mb-2">
               Reset Your Password
             </h1>
@@ -337,7 +347,7 @@ export default function ForgotPasswordForm() {
                           type="button"
                           onClick={handleResendOTP}
                           disabled={loading}
-                          className="text-primary hover:text-primary/80 font-medium disabled:opacity-50"
+                          className="text-primary hover:text-primary/80 font-medium disabled:opacity-50 hover:underline"
                         >
                           Resend code
                         </button>
@@ -451,10 +461,14 @@ export default function ForgotPasswordForm() {
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Logo and Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-2xl mb-6 shadow-lg">
-            <Timer className="w-10 h-10 text-primary-foreground" />
-          </div>
+        <div className="flex flex-col justify-center items-center mb-8">
+          <Image
+            src={logo}
+            alt="TimePro"
+            width={100}
+            height={100}
+            className="w-16 mb-4"
+          />
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Forgot Password?
           </h1>
@@ -514,7 +528,7 @@ export default function ForgotPasswordForm() {
                 Remember your password?{" "}
                 <Link
                   href="/signin"
-                  className="text-primary hover:text-primary/80 font-medium"
+                  className="text-primary hover:text-primary/80 font-medium hover:underline"
                 >
                   Sign In
                 </Link>

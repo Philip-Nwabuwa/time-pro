@@ -53,8 +53,8 @@ export default function PollCreateForm({
   const updateOption = (optionId: string, text: string) => {
     setOptions(
       options.map((option) =>
-        option.id === optionId ? { ...option, text } : option,
-      ),
+        option.id === optionId ? { ...option, text } : option
+      )
     );
   };
 
@@ -90,7 +90,7 @@ export default function PollCreateForm({
   };
 
   return (
-    <Card className="bg-green-50 border-green-200">
+    <Card className="bg-purple-50 border-purple-200">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Create New Poll</CardTitle>
@@ -173,17 +173,6 @@ export default function PollCreateForm({
 
           <div className="flex gap-3 pt-4">
             <Button
-              type="submit"
-              className="bg-green-600 hover:bg-green-700 flex-1"
-              disabled={
-                isLoading ||
-                !title.trim() ||
-                options.filter((opt) => opt.text.trim()).length < 2
-              }
-            >
-              {isLoading ? "Creating..." : "Create Poll"}
-            </Button>
-            <Button
               type="button"
               variant="outline"
               onClick={onCancel}
@@ -191,6 +180,17 @@ export default function PollCreateForm({
               disabled={isLoading}
             >
               Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="bg-purple-600 hover:bg-purple-700 flex-1"
+              disabled={
+                isLoading ||
+                !title.trim() ||
+                options.filter((opt) => opt.text.trim()).length < 2
+              }
+            >
+              {isLoading ? "Creating..." : "Create Poll"}
             </Button>
           </div>
         </form>

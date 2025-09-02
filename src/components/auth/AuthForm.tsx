@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import logo from "@/assets/images/logo-2.jpeg";
 import { supabase } from "@/lib/supabase";
-import { Eye, EyeOff, Timer } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 interface AuthFormProps {
@@ -53,7 +55,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         if (error) throw error;
 
         toast.success(
-          "Account created! Please check your email for verification.",
+          "Account created! Please check your email for verification."
         );
         // Redirect to OTP verification page with email parameter
         window.location.href = `/verify-otp?email=${encodeURIComponent(email)}`;
@@ -70,9 +72,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
       <div className="max-w-md w-full">
         {/* Logo and Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500 rounded-lg mb-4">
-            <Timer className="w-8 h-8 text-white" />
-          </div>
+          <Image
+            src={logo}
+            alt="TimePro"
+            width={100}
+            height={100}
+            className="w-16 mb-4"
+          />
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
             Welcome to TimePro
           </h1>
@@ -128,7 +134,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="First name"
                     required
                   />
@@ -141,7 +147,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="Last name"
                     required
                   />
@@ -157,7 +163,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 required
               />
             </div>
@@ -171,7 +177,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   required
                 />
                 <button
@@ -192,7 +198,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               <div className="text-right">
                 <a
                   href="#"
-                  className="text-sm text-green-500 hover:text-green-600"
+                  className="text-sm text-purple-500 hover:text-purple-600"
                 >
                   Forgot password?
                 </a>
@@ -206,11 +212,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   id="terms"
                   checked={agreeToTerms}
                   onChange={(e) => setAgreeToTerms(e.target.checked)}
-                  className="h-4 w-4 text-green-500 focus:ring-green-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-purple-500 focus:ring-purple-500 border-gray-300 rounded"
                 />
                 <label htmlFor="terms" className="ml-2 text-sm text-gray-600">
                   I agree to the{" "}
-                  <a href="#" className="text-green-500 hover:text-green-600">
+                  <a href="#" className="text-purple-500 hover:text-purple-600">
                     Terms and Conditions
                   </a>
                 </label>
@@ -220,7 +226,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-purple-500 text-white py-2 px-4 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? "Loading..." : isSignIn ? "Sign In" : "Create Account"}
             </button>
