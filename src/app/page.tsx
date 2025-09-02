@@ -71,7 +71,6 @@ export default function HomePage() {
             </div>
             <Button size="sm" className="gap-2" onClick={handleCreatePageClick}>
               <Plus className="h-4 w-4" />
-              Create Page
             </Button>
           </CardHeader>
           <CardContent>
