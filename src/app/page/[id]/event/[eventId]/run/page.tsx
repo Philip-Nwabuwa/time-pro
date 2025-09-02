@@ -331,9 +331,15 @@ export default function RunEventPage() {
   const [loadingQna, setLoadingQna] = useState(false);
 
   // Right panel tabs and photo state
+  // Right panel tabs and photo state
   const [activeToolTab, setActiveToolTab] = useState<
     "agenda" | "qna" | "photos" | "polls"
-  >("qna");
+  >(
+    typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 1024px)").matches
+      ? "qna"
+      : "agenda"
+  );
   const [photos, setPhotos] = useState<
     Array<{
       id: string;
