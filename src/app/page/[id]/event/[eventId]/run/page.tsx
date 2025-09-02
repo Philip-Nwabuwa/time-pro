@@ -1106,6 +1106,52 @@ export default function RunEventPage() {
     };
   }, [eventId, user]);
 
+  // Fallback polling: refresh session state every 10 seconds so members see updates
+  useEffect(() => {
+    if (!eventId) return;
+
+    const intervalId = setInterval(async () => {
+      try {
+        const { sessionData: currentData } = await fetchEventSessionAll(
+          eventId
+        );
+        const sessionState =
+          currentData?.session_data &&
+          typeof currentData.session_data === "object" &&
+          !Array.isArray(currentData.session_data)
+            ? (currentData.session_data as Record<string, any>)
+            : null;
+
+        if (!sessionState) return;
+
+        // If the current user is the controller, skip applying (they already have local state)
+        if (sessionState.controlledBy && sessionState.controlledBy === user?.id)
+          return;
+
+        if (sessionState.currentSpeakerIndex !== undefined) {
+          setCurrentSpeakerIndex(sessionState.currentSpeakerIndex);
+        }
+        if (sessionState.seconds !== undefined) {
+          setSeconds(sessionState.seconds);
+        }
+        if (sessionState.addedTime !== undefined) {
+          setAddedTime(sessionState.addedTime);
+        }
+        if (sessionState.hasStarted !== undefined) {
+          setHasStarted(sessionState.hasStarted);
+        }
+        if (sessionState.isRunning !== undefined) {
+          setIsRunning(sessionState.isRunning);
+        }
+      } catch (err) {
+        // Silently ignore polling errors to avoid noisy toasts
+        console.error("Polling error (session refresh):", err);
+      }
+    }, 10000);
+
+    return () => clearInterval(intervalId);
+  }, [eventId, user?.id]);
+
   // Load session data on mount
   useEffect(() => {
     const loadSessionData = async () => {

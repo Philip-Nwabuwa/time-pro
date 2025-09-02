@@ -6,6 +6,7 @@ import { ModalProvider } from "@/contexts/ModalContext";
 import { QueryProvider } from "@/contexts/QueryProvider";
 import { Toaster } from "sonner";
 import RootLayoutClient from "./RootLayoutClient";
+import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +37,9 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>
             <ModalProvider>
-              <RootLayoutClient>{children}</RootLayoutClient>
+              <RootLayoutClient>
+                {children} <Analytics />
+              </RootLayoutClient>
             </ModalProvider>
           </AuthProvider>
         </QueryProvider>
