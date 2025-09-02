@@ -544,7 +544,7 @@ export default function RunEventPage() {
 
       toast.success("Meeting ended successfully!");
       setShowEndMeetingModal(false);
-      router.push(`/page/${pageId}/event/${eventId}`);
+      window.location.href = `/page/${pageId}`;
     } catch (error) {
       console.error("Error ending meeting:", error);
       toast.error("Failed to end meeting. Please try again.");
