@@ -47,6 +47,8 @@ import MemberSearchInput from "@/components/MemberSearchInput";
 import DateTimePickerForm from "@/components/DateTimePickerForm";
 import TimeInput from "@/components/TimeInput";
 import { format } from "date-fns";
+import AvatarPicker from "@/components/AvatarPicker";
+import { uploadSpeakerAvatar } from "@/lib/avatarUtils";
 
 interface SpeakerRole {
   id: string;
@@ -109,6 +111,7 @@ export default function EditEventPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [deletedRoleIds, setDeletedRoleIds] = useState<string[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [uploadingRoleId, setUploadingRoleId] = useState<string | null>(null);
 
   // Modal states
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
@@ -291,6 +294,31 @@ export default function EditEventPage() {
           : role
       ),
     }));
+  };
+
+  const handleAvatarChange = async (index: number, fileBlob: Blob | null) => {
+    const role = formData.roles[index];
+    if (!role) return;
+    if (!fileBlob) {
+      // Clear avatar
+      updateRole(index, "avatar", "");
+      return;
+    }
+    try {
+      setUploadingRoleId(role.id);
+      const result = await uploadSpeakerAvatar(fileBlob, eventId, role.id);
+      if (result.success && result.url) {
+        updateRole(index, "avatar", result.url);
+        toast.success("Speaker photo updated");
+      } else {
+        toast.error(result.error || "Failed to upload photo");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to upload photo");
+    } finally {
+      setUploadingRoleId(null);
+    }
   };
 
   const calculateTotalTime = (): number => {
@@ -564,36 +592,6 @@ export default function EditEventPage() {
                 className="text-base"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                disabled={isLoading}
-                rows={3}
-                className="text-base"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Event Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={handleStatusChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="upcoming">Upcoming</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </CardContent>
         </Card>
 
@@ -735,6 +733,25 @@ export default function EditEventPage() {
                       </div>
                     </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Speaker Photo</Label>
+                        <div className="flex items-center gap-3">
+                          <AvatarPicker
+                            initialAvatarUrl={role.avatar}
+                            onAvatarChange={(blob) =>
+                              handleAvatarChange(index, blob)
+                            }
+                          />
+                          {uploadingRoleId === role.id && (
+                            <span className="text-sm text-gray-500">
+                              Uploading...
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
                       <Label>Speaker Email</Label>
                       <Input
@@ -748,7 +765,7 @@ export default function EditEventPage() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid md:grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <TimeInput
                           label="Min Time"
@@ -824,18 +841,6 @@ export default function EditEventPage() {
           </Button>
         </div>
       </div>
-
-      {/* Confirmation Modals */}
-      <ConfirmationModal
-        isOpen={showUnsavedChangesModal}
-        onClose={cancelLeave}
-        onConfirm={confirmLeaveWithoutSaving}
-        title="Unsaved Changes"
-        description="You have unsaved changes. Are you sure you want to leave without saving?"
-        confirmText="Leave Without Saving"
-        cancelText="Stay and Save"
-        variant="warning"
-      />
 
       <ConfirmationModal
         isOpen={showStatusChangeModal}
