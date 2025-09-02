@@ -330,16 +330,40 @@ export default function RunEventPage() {
   const [qnaMessages, setQnaMessages] = useState<QnaQuestion[]>([]);
   const [loadingQna, setLoadingQna] = useState(false);
 
-  // Right panel tabs and photo state
-  // Right panel tabs and photo state
   const [activeToolTab, setActiveToolTab] = useState<
     "agenda" | "qna" | "photos" | "polls"
-  >(
-    typeof window !== "undefined" &&
-      window.matchMedia("(min-width: 1024px)").matches
-      ? "qna"
-      : "agenda"
-  );
+  >("agenda");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 1024px)");
+
+    // Apply on mount
+    setActiveToolTab((prev) => (media.matches ? "qna" : "agenda"));
+
+    // Update on breakpoint changes; don't override other user selections
+    const onChange = (e: MediaQueryListEvent) => {
+      setActiveToolTab((prev) => {
+        if (e.matches && prev === "agenda") return "qna"; // mobile -> lg
+        if (!e.matches && prev === "qna") return "agenda"; // lg -> mobile
+        return prev;
+      });
+    };
+
+    if (media.addEventListener) {
+      media.addEventListener("change", onChange);
+    } else {
+      // Safari fallback
+      media.addListener(onChange);
+    }
+
+    return () => {
+      if (media.removeEventListener) {
+        media.removeEventListener("change", onChange);
+      } else {
+        media.removeListener(onChange);
+      }
+    };
+  }, []);
   const [photos, setPhotos] = useState<
     Array<{
       id: string;
