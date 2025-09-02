@@ -51,7 +51,12 @@ export default function Navbar({ user, onSignOut }: NavbarProps) {
     router.push("/discovery");
   };
 
+  const handleDashboardClick = () => {
+    router.push("/");
+  };
+
   const isDiscoveryActive = pathname === "/discovery";
+  const isDashboardActive = pathname === "/";
 
   return (
     <header className="border-b bg-white sticky top-0 z-50">
@@ -70,6 +75,16 @@ export default function Navbar({ user, onSignOut }: NavbarProps) {
                 Oratoh
               </span>
             </Link>
+            <button
+              onClick={handleDashboardClick}
+              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
+                isDashboardActive
+                  ? "text-gray-900 font-bold border-b-2 border-purple-900 pb-1"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              }`}
+            >
+              Dashboard
+            </button>
             <button
               onClick={handleDiscoveryClick}
               className={`flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
