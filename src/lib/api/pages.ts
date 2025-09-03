@@ -79,11 +79,21 @@ export async function fetchPages(): Promise<PageData[]> {
   // Transform to PageData format with counts
   const transformedPages: PageData[] = await Promise.all(
     allPages.map(async (page) => {
-      // Get member count - this will work because we can see pages we're associated with
-      const { count: memberCount } = await supabase
+      // Get member count by fetching actual members (more reliable than count query)
+      const { data: members, error: membersError } = await supabase
         .from("page_members")
-        .select("*", { count: "exact", head: true })
+        .select("id")
         .eq("page_id", page.id);
+
+      if (membersError) {
+        console.error(
+          `Error fetching members for page ${page.id}:`,
+          membersError
+        );
+      }
+
+      const memberCount = members?.length || 0;
+      console.log(`📊 Home page - Page ${page.id} member count:`, memberCount);
 
       // Get event count
       const { count: eventCount } = await supabase
@@ -172,11 +182,20 @@ export async function fetchAllPages(): Promise<
   // Get member and event counts for each page, plus check if current user is a member
   const pagesWithCounts = await Promise.all(
     pages.map(async (page) => {
-      // Get member count
-      const { count: memberCount } = await supabase
+      // Get member count by fetching actual members (more reliable than count query)
+      const { data: members, error: membersError } = await supabase
         .from("page_members")
-        .select("*", { count: "exact", head: true })
+        .select("id")
         .eq("page_id", page.id);
+
+      if (membersError) {
+        console.error(
+          `Error fetching members for page ${page.id}:`,
+          membersError
+        );
+      }
+
+      const memberCount = members?.length || 0;
 
       // Get event count
       const { count: eventCount } = await supabase
@@ -252,16 +271,17 @@ export async function fetchPageById(id: string): Promise<PageData | null> {
 
   if (error || !page) return null;
 
-  // Get member count
-  const { count: memberCount, error: memberCountError } = await supabase
+  // Get member count by fetching actual members (more reliable than count query)
+  const { data: members, error: membersError } = await supabase
     .from("page_members")
-    .select("*", { count: "exact", head: true })
+    .select("id")
     .eq("page_id", page.id);
 
-  if (memberCountError) {
-    console.error("Error fetching member count:", memberCountError);
+  if (membersError) {
+    console.error("Error fetching members:", membersError);
   }
 
+  const memberCount = members?.length || 0;
   console.log(`📊 Page ${page.id} member count:`, memberCount);
 
   // Get event count

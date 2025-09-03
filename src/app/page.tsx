@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useModal } from "@/contexts/ModalContext";
-import { usePages } from "@/lib/api/hooks";
+import { usePageMembers, usePages } from "@/lib/api/hooks";
 import { useRouter } from "next/navigation";
 
 export default function HomePage() {
@@ -25,6 +25,16 @@ export default function HomePage() {
   const handlePageClick = (pageId: string) => {
     router.push(`/page/${pageId}`);
   };
+
+  function PageMemberCount({ pageId }: { pageId: string }) {
+    const { data: members = [], isLoading } = usePageMembers(pageId);
+    const count = members.length;
+    return (
+      <span>
+        {isLoading ? "…" : `${count} ${count === 1 ? "member" : "members"}`}
+      </span>
+    );
+  }
 
   const handleEditPage = (e: React.MouseEvent, page: any) => {
     e.stopPropagation(); // Prevent navigation to page
@@ -156,7 +166,7 @@ export default function HomePage() {
                     <div className="flex items-center gap-6 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
                         <Users className="h-4 w-4" />
-                        <span>{page.members} members</span>
+                        <PageMemberCount pageId={page.id} />
                       </div>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />

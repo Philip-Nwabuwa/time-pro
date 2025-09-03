@@ -1563,32 +1563,29 @@ export default function RunEventPage() {
           </div>
         </div>
 
-        {/* Mobile Timer Card */}
-        <div className="lg:hidden">
-          {userRole === "admin" && (
-            <TimerCard
-              currentSlot={currentSlot}
-              currentSpeaker={currentSpeaker}
-              seconds={seconds}
-              addedTime={addedTime}
-              onTimeState={onTimeState}
-              isRunning={isRunning}
-              hasStarted={hasStarted}
-              onToggleTimer={handleToggleTimer}
-              onNextSpeaker={handleNextSpeaker}
-              onAddTime={handleAddTime}
-              onToggleFullscreen={() => setIsFullscreen(true)}
-              timerBackgroundColor={timerBackgroundColor}
-              timerTextColor={timerTextColor}
-              min={min}
-              target={target}
-              max={max}
-              hideTimeDetails={hideTimeDetails}
-              onToggleHideDetails={handleToggleHideDetails}
-              isAdmin={userRole === "admin"}
-            />
-          )}
-        </div>
+        {userRole === "admin" && (
+          <TimerCard
+            currentSlot={currentSlot}
+            currentSpeaker={currentSpeaker}
+            seconds={seconds}
+            addedTime={addedTime}
+            onTimeState={onTimeState}
+            isRunning={isRunning}
+            hasStarted={hasStarted}
+            onToggleTimer={handleToggleTimer}
+            onNextSpeaker={handleNextSpeaker}
+            onAddTime={handleAddTime}
+            onToggleFullscreen={() => setIsFullscreen(true)}
+            timerBackgroundColor={timerBackgroundColor}
+            timerTextColor={timerTextColor}
+            min={min}
+            target={target}
+            max={max}
+            hideTimeDetails={hideTimeDetails}
+            onToggleHideDetails={handleToggleHideDetails}
+            isAdmin={userRole === "admin"}
+          />
+        )}
 
         {/* Session Tools - Full width on mobile, right side on desktop */}
         <div className="lg:col-span-5 space-y-4 flex-shrink-0 h-fit">

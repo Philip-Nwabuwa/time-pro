@@ -143,93 +143,95 @@ export default function PageDetailsPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-4">
       <div className="mb-6">
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex flex-col items-start justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div className="text-2xl">{page.title}</div>
-            <p className="text-base mt-2">{page.desc}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Badge
-              className={
-                page.role === "admin"
-                  ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-100"
-              }
-            >
-              {page.role}
-            </Badge>
-            {page.role === "admin" ? (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Page</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete "{page.title}"? This
-                      action cannot be undone. All events and data associated
-                      with this page will be permanently removed.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDeletePage}
-                      disabled={deletePage.isPending}
-                      className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+            <div className="flex items-center gap-3">
+              <Badge
+                className={
+                  page.role === "admin"
+                    ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-100"
+                }
+              >
+                {page.role}
+              </Badge>
+              {page.role === "admin" ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
                     >
-                      {deletePage.isPending ? "Deleting..." : "Delete Page"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            ) : (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
-                  >
-                    Leave Page
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Leave Page</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to leave "{page.title}"? You will no
-                      longer have access to this page or its events.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleLeavePage}
-                      disabled={leavePageMutation.isPending}
-                      className="bg-orange-600 hover:bg-orange-700 focus:ring-orange-500"
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Page</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete "{page.title}"? This
+                        action cannot be undone. All events and data associated
+                        with this page will be permanently removed.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeletePage}
+                        disabled={deletePage.isPending}
+                        className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                      >
+                        {deletePage.isPending ? "Deleting..." : "Delete Page"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
                     >
-                      {leavePageMutation.isPending
-                        ? "Leaving..."
-                        : "Leave Page"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
+                      Leave Page
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Leave Page</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to leave "{page.title}"? You will
+                        no longer have access to this page or its events.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleLeavePage}
+                        disabled={leavePageMutation.isPending}
+                        className="bg-orange-600 hover:bg-orange-700 focus:ring-orange-500"
+                      >
+                        {leavePageMutation.isPending
+                          ? "Leaving..."
+                          : "Leave Page"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </div>
+          <p className="text-base mt-2">{page.desc}</p>
         </div>
         <div className="flex items-center gap-6 text-sm text-gray-600 pt-4">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            <span>{page.members} members</span>
+            <span>
+              {members.length} {members.length === 1 ? "member" : "members"}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
