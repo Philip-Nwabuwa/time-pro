@@ -1430,29 +1430,31 @@ export default function RunEventPage() {
         {/* Left: Timer and Agenda (Desktop only) */}
         <div className="hidden lg:block lg:col-span-7 space-y-6 overflow-y-auto pr-2 h-full pb-6">
           {/* Big Timer Card - Only show for admins */}
-          {userRole === "admin" && (
-            <TimerCard
-              currentSlot={currentSlot}
-              currentSpeaker={currentSpeaker}
-              seconds={seconds}
-              addedTime={addedTime}
-              onTimeState={onTimeState}
-              isRunning={isRunning}
-              hasStarted={hasStarted}
-              onToggleTimer={handleToggleTimer}
-              onNextSpeaker={handleNextSpeaker}
-              onAddTime={handleAddTime}
-              onToggleFullscreen={() => setIsFullscreen(true)}
-              timerBackgroundColor={timerBackgroundColor}
-              timerTextColor={timerTextColor}
-              min={min}
-              target={target}
-              max={max}
-              hideTimeDetails={hideTimeDetails}
-              onToggleHideDetails={handleToggleHideDetails}
-              isAdmin={userRole === "admin"}
-            />
-          )}
+          <div className="lg:hidden">
+            {userRole === "admin" ? (
+              <TimerCard
+                currentSlot={currentSlot}
+                currentSpeaker={currentSpeaker}
+                seconds={seconds}
+                addedTime={addedTime}
+                onTimeState={onTimeState}
+                isRunning={isRunning}
+                hasStarted={hasStarted}
+                onToggleTimer={handleToggleTimer}
+                onNextSpeaker={handleNextSpeaker}
+                onAddTime={handleAddTime}
+                onToggleFullscreen={() => setIsFullscreen(true)}
+                timerBackgroundColor={timerBackgroundColor}
+                timerTextColor={timerTextColor}
+                min={min}
+                target={target}
+                max={max}
+                hideTimeDetails={hideTimeDetails}
+                onToggleHideDetails={handleToggleHideDetails}
+                isAdmin={userRole === "admin"}
+              />
+            ) : null}
+          </div>
 
           {/* Agenda - Desktop only */}
           <div>
