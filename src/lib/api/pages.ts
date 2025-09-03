@@ -9,7 +9,8 @@ export async function fetchPages(): Promise<PageData[]> {
   const { data: ownedPages, error: ownedError } = await supabase
     .from("pages")
     .select("id, title, description, created_by, image_url")
-    .eq("created_by", user.user.id);
+    .eq("created_by", user.user.id)
+    .order("created_at", { ascending: false });
 
   if (ownedError) throw ownedError;
 
@@ -25,11 +26,13 @@ export async function fetchPages(): Promise<PageData[]> {
         title,
         description,
         created_by,
-        image_url
+        image_url,
+        created_at
       )
     `
     )
-    .eq("user_id", user.user.id);
+    .eq("user_id", user.user.id)
+    .order("pages(created_at)", { ascending: false });
 
   if (memberError) throw memberError;
 
