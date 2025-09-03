@@ -169,7 +169,7 @@ export default function ForgotPasswordForm() {
 
   // OTP input handling
   const handleOtpChange = (index: number, value: string) => {
-    if (!/^\d?$/.test(value)) return;
+    if (!/^\d?$/.test(value) && value !== "") return;
 
     const newOtp = otp.split("");
     newOtp[index] = value;
@@ -328,7 +328,9 @@ export default function ForgotPasswordForm() {
                         ref={(el) => {
                           inputRefs.current[index] = el;
                         }}
-                        type="text"
+                        type="tel"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         maxLength={1}
                         value={otp[index] || ""}
                         onChange={(e) => handleOtpChange(index, e.target.value)}

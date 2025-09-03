@@ -1558,7 +1558,11 @@ export default function RunEventPage() {
             </div>
           </div>
         </div>
-        <div className="lg:hidden">
+        <div
+          className={`${
+            userRole === "admin" ? "lg:hidden block h-20" : "hidden"
+          }`}
+        >
           {userRole === "admin" && (
             <TimerCard
               currentSlot={currentSlot}
