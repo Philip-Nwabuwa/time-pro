@@ -70,6 +70,7 @@ import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import EndMeetingModal from "@/components/modals/EndMeetingModal";
 import { checkUserMembership } from "@/lib/api/members";
 import { supabase } from "@/lib/supabase";
+import { processUploadedFiles, isImageFile } from "@/lib/utils/fileUtils";
 
 function formatSeconds(total: number) {
   const h = Math.floor(total / 3600);
@@ -748,8 +749,20 @@ export default function RunEventPage() {
     setUploadingPhoto(true);
     try {
       const isAdmin = userRole === "admin";
+      
+      // Process files (convert HEIC to JPEG if needed)
+      const processedFiles = await processUploadedFiles(files);
+      
+      if (processedFiles.length === 0) {
+        toast.error("No valid image files found");
+        return;
+      }
+      
+      if (processedFiles.length < files.length) {
+        toast.info(`Converted ${files.length - processedFiles.length} HEIC file${files.length - processedFiles.length > 1 ? 's' : ''} to JPEG`);
+      }
 
-      const uploadPromises = files.map((file) =>
+      const uploadPromises = processedFiles.map((file) =>
         uploadSessionPhoto(eventId, file, isAdmin)
       );
       const results = await Promise.all(uploadPromises);
@@ -765,20 +778,21 @@ export default function RunEventPage() {
 
       if (isAdmin) {
         toast.success(
-          `Uploaded ${files.length} photo${
-            files.length > 1 ? "s" : ""
+          `Uploaded ${processedFiles.length} photo${
+            processedFiles.length > 1 ? "s" : ""
           } successfully!`
         );
       } else {
         toast.success(
-          `Uploaded ${files.length} photo${
-            files.length > 1 ? "s" : ""
+          `Uploaded ${processedFiles.length} photo${
+            processedFiles.length > 1 ? "s" : ""
           } - awaiting admin approval`
         );
       }
     } catch (error) {
       console.error("Error uploading photos:", error);
-      toast.error("Failed to upload photos");
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload photos";
+      toast.error(errorMessage);
     } finally {
       setUploadingPhoto(false);
     }
@@ -2006,7 +2020,7 @@ export default function RunEventPage() {
                       e.preventDefault();
                       const files = Array.from(e.dataTransfer.files || []);
                       const imageFiles = files.filter((file) =>
-                        file.type.startsWith("image/")
+                        isImageFile(file)
                       );
                       if (imageFiles.length > 0) {
                         handleFileUpload(imageFiles);
@@ -2032,13 +2046,13 @@ export default function RunEventPage() {
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*"
+                        accept="image/*,.heic,.heif"
                         multiple
                         className="hidden"
                         onChange={(e) => {
                           const files = Array.from(e.target.files || []);
                           const imageFiles = files.filter((file) =>
-                            file.type.startsWith("image/")
+                            isImageFile(file)
                           );
                           if (imageFiles.length > 0) {
                             handleFileUpload(imageFiles);
@@ -2082,8 +2096,8 @@ export default function RunEventPage() {
                             }`}
                           />
 
-                          {/* Status overlay */}
-                          {isPending && (
+                          {/* Status overlay - only show for non-admin users */}
+                          {isPending && userRole !== "admin" && (
                             <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
                               <Badge className="bg-yellow-500 text-white text-xs">
                                 Pending
