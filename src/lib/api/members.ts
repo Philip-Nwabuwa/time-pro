@@ -42,9 +42,7 @@ export async function fetchMembersByPageId(pageId: string): Promise<Member[]> {
           : row.user_email?.split("@")[0] || "Unknown User";
 
       const email = row.user_email || "no-email@example.com";
-      const avatar =
-        row.user_avatar_url ||
-        `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`;
+      const avatar = row.user_avatar_url;
 
       return {
         id: row.id,

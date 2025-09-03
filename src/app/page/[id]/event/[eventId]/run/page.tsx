@@ -1560,7 +1560,7 @@ export default function RunEventPage() {
         </div>
         <div
           className={`${
-            userRole === "admin" ? "lg:hidden block h-20" : "hidden"
+            userRole === "admin" ? "lg:hidden block mb-4" : "hidden"
           }`}
         >
           {userRole === "admin" && (
