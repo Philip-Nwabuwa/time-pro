@@ -15,7 +15,7 @@ export default function TimeInput({
   label,
   value,
   onChange,
-  placeholder = "5:00",
+  placeholder = "0:05",
 }: TimeInputProps) {
   const [displayValue, setDisplayValue] = useState(value);
   const [isValid, setIsValid] = useState(true);
@@ -36,29 +36,32 @@ export default function TimeInput({
 
     // Handle different input formats
     if (cleaned.includes(":")) {
-      // Format: MM:SS or M:SS
+      // Format: HH:MM or H:MM
       const parts = cleaned.split(":");
-      const minutes = parseInt(parts[0] || "0", 10);
-      const seconds = parseInt(parts[1] || "0", 10);
+      const hours = parseInt(parts[0] || "0", 10);
+      const minutes = parseInt(parts[1] || "0", 10);
 
-      if (isNaN(minutes) || isNaN(seconds) || seconds >= 60 || minutes > 999) {
+      if (isNaN(hours) || isNaN(minutes) || minutes >= 60 || hours > 999) {
         return { formatted: input, isValid: false };
       }
 
       return {
-        formatted: `${minutes}:${seconds.toString().padStart(2, "0")}`,
+        formatted: `${hours}:${minutes.toString().padStart(2, "0")}`,
         isValid: true,
       };
     } else {
-      // Just numbers - treat as minutes
+      // Just numbers - treat as minutes, convert to hours:minutes
       const totalMinutes = parseInt(cleaned, 10);
 
-      if (isNaN(totalMinutes) || totalMinutes > 999) {
+      if (isNaN(totalMinutes) || totalMinutes > 59999) {
         return { formatted: input, isValid: false };
       }
 
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+
       return {
-        formatted: `${totalMinutes}:00`,
+        formatted: `${hours}:${minutes.toString().padStart(2, "0")}`,
         isValid: true,
       };
     }
@@ -85,8 +88,8 @@ export default function TimeInput({
 
   const getMinutesFromTimeString = (timeStr: string): number => {
     if (!timeStr) return 0;
-    const [minutes, seconds] = timeStr.split(":").map(Number);
-    return minutes + (seconds || 0) / 60;
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    return (hours || 0) * 60 + (minutes || 0);
   };
 
   const minutes = getMinutesFromTimeString(displayValue);
@@ -97,7 +100,7 @@ export default function TimeInput({
         {label}
         {minutes > 0 && (
           <span className="text-xs text-gray-500 font-normal">
-            ({minutes < 1 ? `${Math.round(minutes * 60)}s` : `${minutes}m`})
+            ({minutes}m)
           </span>
         )}
       </Label>
@@ -110,11 +113,11 @@ export default function TimeInput({
       />
       {!isValid && (
         <p className="text-xs text-red-500">
-          Enter time as minutes (e.g., "5" for 5 minutes) or MM:SS format
+          Enter time as minutes (e.g., "5" for 5 minutes) or HH:MM format
         </p>
       )}
       <p className="text-xs text-gray-500">
-        Format: MM:SS (e.g., "2:30" for 2 minutes 30 seconds, or just "5" for 5
+        Format: HH:MM (e.g., "0:05" for 5 minutes, or just "5" for 5
         minutes)
       </p>
     </div>

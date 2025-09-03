@@ -84,7 +84,7 @@ export default function ImageGallery({
   const currentPhoto = photos[currentIndex];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] bg-black bg-opacity-90 flex items-center justify-center">
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent">
         <div className="text-white text-sm">
@@ -133,11 +133,11 @@ export default function ImageGallery({
       )}
 
       {/* Main Image */}
-      <div className="relative max-w-full max-h-full p-8">
+      <div className="relative w-full h-full flex items-center justify-center p-8">
         <img
           src={currentPhoto.url}
           alt={`Photo ${currentIndex + 1}`}
-          className="max-w-full max-h-full object-contain"
+          className="max-w-[calc(100vw-4rem)] max-h-[calc(100vh-8rem)] object-contain"
           onClick={(e) => e.stopPropagation()}
         />
       </div>

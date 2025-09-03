@@ -161,17 +161,15 @@ export default function EditEventPage() {
   }, [formData, deletedRoleIds]);
 
   const formatMinutesToTime = (minutes: number): string => {
-    const mins = Math.floor(minutes);
-    const secs = Math.round((minutes - mins) * 60);
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}:${mins.toString().padStart(2, "0")}`;
   };
 
   const parseTimeToMinutes = (timeString: string): number => {
     if (!timeString) return 0;
-    const [minutes, seconds] = timeString.split(":").map(Number);
-    return (minutes || 0) + (seconds || 0) / 60;
+    const [hours, minutes] = timeString.split(":").map(Number);
+    return (hours || 0) * 60 + (minutes || 0);
   };
 
   const handleInputChange = (
@@ -239,9 +237,9 @@ export default function EditEventPage() {
       speakerEmail: "",
       bio: "",
       avatar: "",
-      minTime: "03:00",
-      targetTime: "05:00",
-      maxTime: "07:00",
+      minTime: "0:03",
+      targetTime: "0:05",
+      maxTime: "0:07",
       socialMediaLinks: [],
       isNew: true,
     };
@@ -351,15 +349,15 @@ export default function EditEventPage() {
     "11:30",
     "12:00",
     "12:30",
-    "13:00",
+    "0:13",
     "13:30",
     "14:00",
     "14:30",
-    "15:00",
+    "0:15",
     "15:30",
     "16:00",
     "16:30",
-    "17:00",
+    "0:17",
     "17:30",
     "18:00",
     "18:30",

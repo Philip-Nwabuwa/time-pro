@@ -72,13 +72,9 @@ import { checkUserMembership } from "@/lib/api/members";
 import { supabase } from "@/lib/supabase";
 
 function formatSeconds(total: number) {
-  const m = Math.floor(total / 60)
-    .toString()
-    .padStart(2, "0");
-  const s = Math.floor(total % 60)
-    .toString()
-    .padStart(2, "0");
-  return `${m}:${s}`;
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  return `${h}:${m.toString().padStart(2, "0")}`;
 }
 
 interface TimerCardProps {
@@ -1430,31 +1426,29 @@ export default function RunEventPage() {
         {/* Left: Timer and Agenda (Desktop only) */}
         <div className="hidden lg:block lg:col-span-7 space-y-6 overflow-y-auto pr-2 h-full pb-6">
           {/* Big Timer Card - Only show for admins */}
-          <div className="lg:hidden">
-            {userRole === "admin" ? (
-              <TimerCard
-                currentSlot={currentSlot}
-                currentSpeaker={currentSpeaker}
-                seconds={seconds}
-                addedTime={addedTime}
-                onTimeState={onTimeState}
-                isRunning={isRunning}
-                hasStarted={hasStarted}
-                onToggleTimer={handleToggleTimer}
-                onNextSpeaker={handleNextSpeaker}
-                onAddTime={handleAddTime}
-                onToggleFullscreen={() => setIsFullscreen(true)}
-                timerBackgroundColor={timerBackgroundColor}
-                timerTextColor={timerTextColor}
-                min={min}
-                target={target}
-                max={max}
-                hideTimeDetails={hideTimeDetails}
-                onToggleHideDetails={handleToggleHideDetails}
-                isAdmin={userRole === "admin"}
-              />
-            ) : null}
-          </div>
+          {userRole === "admin" && (
+            <TimerCard
+              currentSlot={currentSlot}
+              currentSpeaker={currentSpeaker}
+              seconds={seconds}
+              addedTime={addedTime}
+              onTimeState={onTimeState}
+              isRunning={isRunning}
+              hasStarted={hasStarted}
+              onToggleTimer={handleToggleTimer}
+              onNextSpeaker={handleNextSpeaker}
+              onAddTime={handleAddTime}
+              onToggleFullscreen={() => setIsFullscreen(true)}
+              timerBackgroundColor={timerBackgroundColor}
+              timerTextColor={timerTextColor}
+              min={min}
+              target={target}
+              max={max}
+              hideTimeDetails={hideTimeDetails}
+              onToggleHideDetails={handleToggleHideDetails}
+              isAdmin={userRole === "admin"}
+            />
+          )}
 
           {/* Agenda - Desktop only */}
           <div>
@@ -1564,30 +1558,31 @@ export default function RunEventPage() {
             </div>
           </div>
         </div>
-
-        {userRole === "admin" && (
-          <TimerCard
-            currentSlot={currentSlot}
-            currentSpeaker={currentSpeaker}
-            seconds={seconds}
-            addedTime={addedTime}
-            onTimeState={onTimeState}
-            isRunning={isRunning}
-            hasStarted={hasStarted}
-            onToggleTimer={handleToggleTimer}
-            onNextSpeaker={handleNextSpeaker}
-            onAddTime={handleAddTime}
-            onToggleFullscreen={() => setIsFullscreen(true)}
-            timerBackgroundColor={timerBackgroundColor}
-            timerTextColor={timerTextColor}
-            min={min}
-            target={target}
-            max={max}
-            hideTimeDetails={hideTimeDetails}
-            onToggleHideDetails={handleToggleHideDetails}
-            isAdmin={userRole === "admin"}
-          />
-        )}
+        <div className="lg:hidden">
+          {userRole === "admin" && (
+            <TimerCard
+              currentSlot={currentSlot}
+              currentSpeaker={currentSpeaker}
+              seconds={seconds}
+              addedTime={addedTime}
+              onTimeState={onTimeState}
+              isRunning={isRunning}
+              hasStarted={hasStarted}
+              onToggleTimer={handleToggleTimer}
+              onNextSpeaker={handleNextSpeaker}
+              onAddTime={handleAddTime}
+              onToggleFullscreen={() => setIsFullscreen(true)}
+              timerBackgroundColor={timerBackgroundColor}
+              timerTextColor={timerTextColor}
+              min={min}
+              target={target}
+              max={max}
+              hideTimeDetails={hideTimeDetails}
+              onToggleHideDetails={handleToggleHideDetails}
+              isAdmin={userRole === "admin"}
+            />
+          )}
+        </div>
 
         {/* Session Tools - Full width on mobile, right side on desktop */}
         <div className="lg:col-span-5 space-y-4 flex-shrink-0 h-fit">

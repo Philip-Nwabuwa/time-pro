@@ -243,21 +243,24 @@ export default function CreateEventPage() {
 
   const calculateTotalTime = () => {
     return formData.roles.reduce((total, role) => {
-      const targetTime = parseFloat(role.targetTime.replace(":", "."));
+      const targetTime = parseTimeToMinutes(role.targetTime);
       return total + targetTime;
     }, 0);
   };
 
   const formatTime = (time: number) => {
-    const minutes = Math.floor(time);
-    const seconds = Math.round((time - minutes) * 60);
-    return `${minutes}m${seconds > 0 ? ` ${seconds}s` : ""}`;
+    const hours = Math.floor(time / 60);
+    const minutes = Math.round(time % 60);
+    if (hours > 0) {
+      return `${hours}h${minutes > 0 ? ` ${minutes}m` : ""}`;
+    }
+    return `${minutes}m`;
   };
 
   const parseTimeToMinutes = (timeString: string): number => {
     if (!timeString) return 0;
-    const [minutes, seconds] = timeString.split(":").map(Number);
-    return (minutes || 0) + (seconds || 0) / 60;
+    const [hours, minutes] = timeString.split(":").map(Number);
+    return (hours || 0) * 60 + (minutes || 0);
   };
 
   const transformFormDataToEventInsert = (): EventInsert => {
@@ -640,7 +643,7 @@ export default function CreateEventPage() {
                         onChange={(value) =>
                           updateRole(role.id, "minTime", value)
                         }
-                        placeholder="3:00"
+                        placeholder="0:03"
                       />
 
                       <TimeInput
@@ -649,7 +652,7 @@ export default function CreateEventPage() {
                         onChange={(value) =>
                           updateRole(role.id, "targetTime", value)
                         }
-                        placeholder="5:00"
+                        placeholder="0:05"
                       />
 
                       <TimeInput
@@ -658,7 +661,7 @@ export default function CreateEventPage() {
                         onChange={(value) =>
                           updateRole(role.id, "maxTime", value)
                         }
-                        placeholder="7:00"
+                        placeholder="0:07"
                       />
                     </div>
 
