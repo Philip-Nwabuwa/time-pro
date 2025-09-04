@@ -89,7 +89,7 @@ export default function CreateEventPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -114,7 +114,7 @@ export default function CreateEventPage() {
 
   const handleCheckboxChange = (
     name: string,
-    checked: boolean | "indeterminate"
+    checked: boolean | "indeterminate",
   ) => {
     if (checked === "indeterminate") return;
     setFormData((prev) => ({
@@ -162,7 +162,7 @@ export default function CreateEventPage() {
     setFormData((prev) => ({
       ...prev,
       roles: prev.roles.map((role) =>
-        role.id === roleId ? { ...role, [field]: value } : role
+        role.id === roleId ? { ...role, [field]: value } : role,
       ),
     }));
   };
@@ -178,11 +178,11 @@ export default function CreateEventPage() {
               speakerName: member.name,
               speakerEmail: member.email,
               // Only update avatar if no custom avatar/video has been uploaded
-              avatar: role.avatarBlob ? role.avatar : (member.avatar || ""),
+              avatar: role.avatarBlob ? role.avatar : member.avatar || "",
               avatarBlob: role.avatarBlob, // Preserve uploaded video/avatar
               // Keep existing bio and social media links as they might be role-specific
             }
-          : role
+          : role,
       ),
     }));
   };
@@ -199,7 +199,7 @@ export default function CreateEventPage() {
                 { platform: "LinkedIn", url: "" },
               ],
             }
-          : role
+          : role,
       ),
     }));
   };
@@ -212,10 +212,10 @@ export default function CreateEventPage() {
           ? {
               ...role,
               socialMediaLinks: role.socialMediaLinks.filter(
-                (_, index) => index !== linkIndex
+                (_, index) => index !== linkIndex,
               ),
             }
-          : role
+          : role,
       ),
     }));
   };
@@ -224,7 +224,7 @@ export default function CreateEventPage() {
     roleId: string,
     linkIndex: number,
     field: "platform" | "url",
-    value: string
+    value: string,
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -233,10 +233,10 @@ export default function CreateEventPage() {
           ? {
               ...role,
               socialMediaLinks: role.socialMediaLinks.map((link, index) =>
-                index === linkIndex ? { ...link, [field]: value } : link
+                index === linkIndex ? { ...link, [field]: value } : link,
               ),
             }
-          : role
+          : role,
       ),
     }));
   };
@@ -282,7 +282,7 @@ export default function CreateEventPage() {
 
   const transformRolesToScheduleItems = (
     eventId: string,
-    roles: SpeakerRole[] = formData.roles
+    roles: SpeakerRole[] = formData.roles,
   ): EventScheduleItemInsert[] => {
     return roles.map((role, index) => ({
       event_id: eventId,
@@ -338,44 +338,48 @@ export default function CreateEventPage() {
             const uploadResult = await uploadSpeakerAvatar(
               role.avatarBlob,
               createdEvent.id,
-              role.id
+              role.id,
             );
 
             if (uploadResult.success && uploadResult.url) {
               speakerAvatarUrl = uploadResult.url;
             } else {
               console.warn(
-                `Failed to upload avatar for role ${role.roleName}: ${uploadResult.error}`
+                `Failed to upload avatar for role ${role.roleName}: ${uploadResult.error}`,
               );
-              toast.error(`Failed to upload avatar for ${role.roleName}: ${uploadResult.error}`);
+              toast.error(
+                `Failed to upload avatar for ${role.roleName}: ${uploadResult.error}`,
+              );
               // Continue with the existing URL or empty string
             }
           }
 
           // Clean up object URLs to prevent memory leaks and ensure we don't save them
-          if (speakerAvatarUrl && speakerAvatarUrl.startsWith('blob:')) {
+          if (speakerAvatarUrl && speakerAvatarUrl.startsWith("blob:")) {
             // If we still have an object URL, it means upload failed or wasn't attempted
             // Reset to empty string to avoid saving invalid blob URLs
-            speakerAvatarUrl = '';
+            speakerAvatarUrl = "";
           }
 
           return {
             ...role,
             avatar: speakerAvatarUrl,
           };
-        })
+        }),
       );
 
       // Create schedule items if there are any roles
       if (rolesWithUploadedAvatars.length > 0) {
         const scheduleItems = transformRolesToScheduleItems(
           createdEvent.id,
-          rolesWithUploadedAvatars
+          rolesWithUploadedAvatars,
         );
 
         // Create all schedule items
         await Promise.all(
-          scheduleItems.map((item) => createScheduleItem(createdEvent.id, item))
+          scheduleItems.map((item) =>
+            createScheduleItem(createdEvent.id, item),
+          ),
         );
       }
 
@@ -386,7 +390,7 @@ export default function CreateEventPage() {
       toast.error(
         error instanceof Error
           ? `Failed to create event: ${error.message}`
-          : "Failed to create event. Please try again."
+          : "Failed to create event. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -471,8 +475,8 @@ export default function CreateEventPage() {
                           formData.time
                         }`
                       : formData.date
-                      ? `${formData.date.toLocaleDateString()} - Select time`
-                      : "Select date and time"}
+                        ? `${formData.date.toLocaleDateString()} - Select time`
+                        : "Select date and time"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -680,7 +684,7 @@ export default function CreateEventPage() {
                               updateRole(
                                 role.id,
                                 "speakerEmail",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             placeholder="speaker@example.com"
@@ -717,7 +721,7 @@ export default function CreateEventPage() {
                                             role.id,
                                             linkIndex,
                                             "platform",
-                                            value
+                                            value,
                                           )
                                         }
                                       >
@@ -746,7 +750,7 @@ export default function CreateEventPage() {
                                             role.id,
                                             linkIndex,
                                             "url",
-                                            e.target.value
+                                            e.target.value,
                                           )
                                         }
                                         placeholder="https://..."
@@ -759,7 +763,7 @@ export default function CreateEventPage() {
                                         onClick={() =>
                                           removeSocialMediaLink(
                                             role.id,
-                                            linkIndex
+                                            linkIndex,
                                           )
                                         }
                                         className="text-red-500 hover:text-red-700 p-2"
@@ -767,7 +771,7 @@ export default function CreateEventPage() {
                                         <X className="h-4 w-4" />
                                       </Button>
                                     </div>
-                                  )
+                                  ),
                                 )}
                                 <Button
                                   type="button"

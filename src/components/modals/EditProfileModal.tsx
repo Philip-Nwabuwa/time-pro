@@ -125,7 +125,7 @@ export default function EditProfileModal() {
   }, [user, isModalOpen]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -157,7 +157,7 @@ export default function EditProfileModal() {
     setFormData((prev) => ({
       ...prev,
       socialLinks: prev.socialLinks.map((link) =>
-        link.id === id ? { ...link, ...updates } : link
+        link.id === id ? { ...link, ...updates } : link,
       ),
     }));
   };
@@ -231,20 +231,23 @@ export default function EditProfileModal() {
           // Don't fail the whole update if avatar upload fails
           console.error("Avatar upload failed:", uploadResult.error);
           toast.error(
-            "Profile updated, but avatar upload failed. Please try again."
+            "Profile updated, but avatar upload failed. Please try again.",
           );
         }
       }
 
       // Prepare profile data for update
-      const socialLinksMap = formData.socialLinks.reduce((acc, link) => {
-        if (link.platform === "custom" && link.customName) {
-          acc[link.customName.toLowerCase()] = link.url;
-        } else {
-          acc[link.platform] = link.url;
-        }
-        return acc;
-      }, {} as Record<string, string>);
+      const socialLinksMap = formData.socialLinks.reduce(
+        (acc, link) => {
+          if (link.platform === "custom" && link.customName) {
+            acc[link.customName.toLowerCase()] = link.url;
+          } else {
+            acc[link.platform] = link.url;
+          }
+          return acc;
+        },
+        {} as Record<string, string>,
+      );
 
       const profileData = {
         firstName: formData.firstName,
@@ -263,7 +266,7 @@ export default function EditProfileModal() {
         closeModal();
       } else {
         toast.error(
-          result.error || "Failed to update profile. Please try again."
+          result.error || "Failed to update profile. Please try again.",
         );
       }
     } catch (error) {

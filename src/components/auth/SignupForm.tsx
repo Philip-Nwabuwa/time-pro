@@ -74,23 +74,23 @@ export default function SignupForm() {
       // Check if user already exists and needs to confirm email
       if (signUpData.user && !signUpData.user.email_confirmed_at) {
         toast.success(
-          "Please check your email for the verification link to complete signup."
+          "Please check your email for the verification link to complete signup.",
         );
         window.location.href = `/verify-otp?email=${encodeURIComponent(
-          data.email
+          data.email,
         )}`;
       } else if (signUpData.user && signUpData.user.email_confirmed_at) {
         // User exists and is confirmed - redirect to sign in
         toast.error(
-          "An account with this email already exists. Please sign in instead."
+          "An account with this email already exists. Please sign in instead.",
         );
         window.location.href = "/signin";
       } else {
         toast.success(
-          "Account created! Please check your email for verification."
+          "Account created! Please check your email for verification.",
         );
         window.location.href = `/verify-otp?email=${encodeURIComponent(
-          data.email
+          data.email,
         )}`;
       }
     } catch (error: any) {

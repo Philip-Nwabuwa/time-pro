@@ -78,7 +78,7 @@ export default function PageDetailsPage() {
 
   const handleDeleteEvent = async (
     eventId: string,
-    e?: React.MouseEvent<HTMLButtonElement | HTMLDivElement>
+    e?: React.MouseEvent<HTMLButtonElement | HTMLDivElement>,
   ) => {
     if (e) e.stopPropagation();
     try {
@@ -289,96 +289,93 @@ export default function PageDetailsPage() {
           ) : (
             <div className="grid gap-4">
               {events.map((event) => (
-                  <Card
-                    key={event.id}
-                    className="hover:shadow-sm transition-shadow cursor-pointer"
-                    onClick={() =>
-                      router.push(`/page/${pageId}/event/${event.id}`)
-                    }
-                  >
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-lg">
-                            {event.title}
-                          </CardTitle>
-                          <CardDescription className="mt-1">
-                            {event.description}
-                          </CardDescription>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge className={getStatusColor(event.status)}>
-                            {event.status}
-                          </Badge>
-                          {page?.role === "admin" && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent
+                <Card
+                  key={event.id}
+                  className="hover:shadow-sm transition-shadow cursor-pointer"
+                  onClick={() =>
+                    router.push(`/page/${pageId}/event/${event.id}`)
+                  }
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{event.title}</CardTitle>
+                        <CardDescription className="mt-1">
+                          {event.description}
+                        </CardDescription>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusColor(event.status)}>
+                          {event.status}
+                        </Badge>
+                        {page?.role === "admin" && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    Delete Event
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete "
-                                    {event.title}
-                                    "? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    Cancel
-                                  </AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={(e) =>
-                                      handleDeleteEvent(event.id, e)
-                                    }
-                                    disabled={deleteEventMutation.isPending}
-                                    className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
-                                  >
-                                    {deleteEventMutation.isPending
-                                      ? "Deleting..."
-                                      : "Delete Event"}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-col md:flex-row items-start md:gap-6 gap-2 text-sm text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>{formatDate(event.date)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          <span>{event.time}</span>
-                        </div>
-                        {event.location && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            <span>{event.location}</span>
-                          </div>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Delete Event
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{event.title}
+                                  "? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={(e) =>
+                                    handleDeleteEvent(event.id, e)
+                                  }
+                                  disabled={deleteEventMutation.isPending}
+                                  className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                                >
+                                  {deleteEventMutation.isPending
+                                    ? "Deleting..."
+                                    : "Delete Event"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-col md:flex-row items-start md:gap-6 gap-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>{formatDate(event.date)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <span>{event.time}</span>
+                      </div>
+                      {event.location && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          <span>{event.location}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </TabsContent>

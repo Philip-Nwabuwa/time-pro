@@ -43,7 +43,7 @@ export default function DiscoveryPage() {
   const handleJoinPage = async (
     pageId: string,
     isPrivate: boolean,
-    pageTitle: string
+    pageTitle: string,
   ) => {
     if (isPrivate) {
       setSelectedPage({ id: pageId, title: pageTitle });
@@ -216,8 +216,8 @@ export default function DiscoveryPage() {
                     page.isMember
                       ? "bg-gray-500 cursor-default"
                       : page.isPrivate
-                      ? "bg-orange-600 hover:bg-orange-700"
-                      : "bg-green-600 hover:bg-green-700"
+                        ? "bg-orange-600 hover:bg-orange-700"
+                        : "bg-green-600 hover:bg-green-700"
                   }`}
                   size="sm"
                   disabled={page.isMember || joiningPages.has(page.id)}
@@ -226,10 +226,10 @@ export default function DiscoveryPage() {
                   {page.isMember
                     ? "Already a member"
                     : joiningPages.has(page.id)
-                    ? "Joining..."
-                    : page.isPrivate
-                    ? "Join Private Page"
-                    : "Join Page"}
+                      ? "Joining..."
+                      : page.isPrivate
+                        ? "Join Private Page"
+                        : "Join Page"}
                 </Button>
               </CardContent>
             </Card>

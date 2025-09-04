@@ -64,7 +64,7 @@ export default function LoginForm() {
           }
           toast.success("Verification code resent. Check your email.");
           window.location.href = `/verify-otp?email=${encodeURIComponent(
-            data.email
+            data.email,
           )}`;
           return;
         }

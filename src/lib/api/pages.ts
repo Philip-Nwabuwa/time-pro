@@ -29,7 +29,7 @@ export async function fetchPages(): Promise<PageData[]> {
         image_url,
         created_at
       )
-    `
+    `,
     )
     .eq("user_id", user.user.id)
     .order("pages(created_at)", { ascending: false });
@@ -91,7 +91,7 @@ export async function fetchPages(): Promise<PageData[]> {
       if (membersError) {
         console.error(
           `Error fetching members for page ${page.id}:`,
-          membersError
+          membersError,
         );
       }
 
@@ -122,7 +122,7 @@ export async function fetchPages(): Promise<PageData[]> {
       });
 
       return transformedPage;
-    })
+    }),
   );
 
   console.log(
@@ -132,7 +132,7 @@ export async function fetchPages(): Promise<PageData[]> {
       title: p.title,
       imageUrl: p.imageUrl,
       hasImageUrl: !!p.imageUrl,
-    }))
+    })),
   );
 
   return transformedPages;
@@ -166,7 +166,7 @@ export async function fetchAllPages(): Promise<
       created_at,
       is_private,
       image_url
-    `
+    `,
     )
     .order("created_at", { ascending: false });
 
@@ -194,7 +194,7 @@ export async function fetchAllPages(): Promise<
       if (membersError) {
         console.error(
           `Error fetching members for page ${page.id}:`,
-          membersError
+          membersError,
         );
       }
 
@@ -236,7 +236,7 @@ export async function fetchAllPages(): Promise<
       });
 
       return processedPage;
-    })
+    }),
   );
 
   console.log(
@@ -248,7 +248,7 @@ export async function fetchAllPages(): Promise<
         title: p.title,
         imageUrl: p.imageUrl,
         isMember: p.isMember,
-      }))
+      })),
   );
 
   return pagesWithCounts;
@@ -267,7 +267,7 @@ export async function fetchPageById(id: string): Promise<PageData | null> {
       description,
       created_by,
       image_url
-    `
+    `,
     )
     .eq("id", id)
     .single();
@@ -319,7 +319,7 @@ export async function fetchPageById(id: string): Promise<PageData | null> {
 
 export async function uploadPageImage(
   file: File,
-  pageId?: string
+  pageId?: string,
 ): Promise<{ filePath: string; publicUrl: string }> {
   const { data: user, error: authError } = await supabase.auth.getUser();
 
@@ -420,7 +420,7 @@ export async function uploadPageImage(
     });
     console.error(
       "❌ Full error object:",
-      JSON.stringify(uploadError, null, 2)
+      JSON.stringify(uploadError, null, 2),
     );
 
     // Check for specific error types
@@ -429,7 +429,7 @@ export async function uploadPageImage(
       uploadError.message?.includes("bucket")
     ) {
       throw new Error(
-        "Storage bucket not found. Please check your Supabase storage configuration."
+        "Storage bucket not found. Please check your Supabase storage configuration.",
       );
     }
 
@@ -476,7 +476,7 @@ export async function uploadPageImage(
 
 export async function createPage(
   pageData: Omit<PageInsert, "created_by">,
-  imageFile?: File
+  imageFile?: File,
 ): Promise<PageData> {
   const { data: user } = await supabase.auth.getUser();
   if (!user.user) throw new Error("Not authenticated");
@@ -534,10 +534,7 @@ export async function createPage(
           headers: Object.fromEntries(response.headers.entries()),
         });
       } catch (fetchError) {
-        console.warn(
-          "⚠️ Could not verify image URL accessibility:",
-          fetchError
-        );
+        console.warn("⚠️ Could not verify image URL accessibility:", fetchError);
       }
 
       // Update the page with the image information
@@ -624,7 +621,7 @@ export async function createPage(
 
 export async function updatePage(
   id: string,
-  updates: PageUpdate
+  updates: PageUpdate,
 ): Promise<PageData> {
   const { error } = await supabase.from("pages").update(updates).eq("id", id);
 

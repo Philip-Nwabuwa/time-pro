@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 
 interface Photo {
   id: string;
-  url: string;
+  url: string; // Medium version URL for main display
   photo: any;
   selected?: boolean;
+  thumbnailUrl?: string; // Thumbnail version URL
+  originalUrl?: string; // Original version URL for downloads
 }
 
 interface ImageGalleryProps {
@@ -63,13 +65,21 @@ export default function ImageGallery({
     if (!photos[currentIndex]) return;
 
     try {
-      const response = await fetch(photos[currentIndex].url);
+      const currentPhoto = photos[currentIndex];
+      // Use original URL for download if available, fallback to medium version
+      const downloadUrl = currentPhoto.originalUrl || currentPhoto.url;
+
+      const response = await fetch(downloadUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download =
-        photos[currentIndex].photo.file_name || `photo-${currentIndex + 1}`;
+
+      // Use original filename with proper extension
+      const fileName =
+        currentPhoto.photo.file_name || `photo-${currentIndex + 1}.jpg`;
+      link.download = fileName;
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -135,10 +145,11 @@ export default function ImageGallery({
       {/* Main Image */}
       <div className="relative w-full h-full flex items-center justify-center p-8">
         <img
-          src={currentPhoto.url}
-          alt={`Photo ${currentIndex + 1}`}
-          className="max-w-[calc(100vw-4rem)] max-h-[calc(100vh-8rem)] object-contain"
+          src={currentPhoto.url} // Uses medium version for preview
+          alt={currentPhoto.photo.file_name || `Photo ${currentIndex + 1}`}
+          className="max-w-[calc(100vw-4rem)] max-h-[calc(100vh-8rem)] object-contain transition-opacity duration-300"
           onClick={(e) => e.stopPropagation()}
+          loading="lazy"
         />
       </div>
 
@@ -157,9 +168,17 @@ export default function ImageGallery({
                 }`}
               >
                 <img
-                  src={photo.url}
+                  src={photo.thumbnailUrl || photo.url} // Use thumbnail in strip
                   alt={`Thumbnail ${index + 1}`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-opacity duration-200"
+                  loading="lazy"
+                  onError={(e) => {
+                    // Fallback to medium/main URL if thumbnail fails
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== photo.url) {
+                      target.src = photo.url;
+                    }
+                  }}
                 />
               </button>
             ))}

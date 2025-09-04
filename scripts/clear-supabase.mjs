@@ -11,7 +11,7 @@ const serviceKey =
 if (!url || !serviceKey) {
   console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars.");
   console.error(
-    "Make sure you have SUPABASE_SERVICE_ROLE_KEY set in your .env file for admin operations."
+    "Make sure you have SUPABASE_SERVICE_ROLE_KEY set in your .env file for admin operations.",
   );
   process.exit(1);
 }
@@ -19,7 +19,7 @@ if (!url || !serviceKey) {
 if (!process.argv.includes("--yes")) {
   console.error("Refusing to run. Pass --yes to confirm destructive wipe.");
   console.error(
-    "This will DELETE ALL data, users, and storage from your Supabase project!"
+    "This will DELETE ALL data, users, and storage from your Supabase project!",
   );
   console.error("Usage: node scripts/clear-supabase.mjs --yes");
   process.exit(1);
@@ -62,7 +62,7 @@ async function clearAllStorageBuckets() {
 
       if (listError) {
         console.warn(
-          `Failed to list files in bucket '${bucket.name}': ${listError.message}`
+          `Failed to list files in bucket '${bucket.name}': ${listError.message}`,
         );
         continue;
       }
@@ -90,21 +90,21 @@ async function clearAllStorageBuckets() {
 
         if (removeError) {
           console.warn(
-            `Failed to remove some files from bucket '${bucket.name}': ${removeError.message}`
+            `Failed to remove some files from bucket '${bucket.name}': ${removeError.message}`,
           );
         } else {
           console.log(
-            `Removed ${batch.length} files from bucket '${bucket.name}'`
+            `Removed ${batch.length} files from bucket '${bucket.name}'`,
           );
         }
       }
 
       console.log(
-        `Cleared bucket '${bucket.name}' (${allFiles.length} files total)`
+        `Cleared bucket '${bucket.name}' (${allFiles.length} files total)`,
       );
     } catch (error) {
       console.warn(
-        `Error processing bucket '${bucket.name}': ${error.message}`
+        `Error processing bucket '${bucket.name}': ${error.message}`,
       );
     }
   }
@@ -168,11 +168,11 @@ async function clearAllAuthUsers() {
     for (const user of users) {
       try {
         const { error: deleteError } = await supabase.auth.admin.deleteUser(
-          user.id
+          user.id,
         );
         if (deleteError) {
           console.warn(
-            `Failed to delete user ${user.id} (${user.email}): ${deleteError.message}`
+            `Failed to delete user ${user.id} (${user.email}): ${deleteError.message}`,
           );
         } else {
           deletedCount++;

@@ -209,6 +209,36 @@ export async function fetchSessionPhotos(
   return data || [];
 }
 
+/**
+ * Enhanced photo upload result with three versions
+ */
+export interface UploadResult {
+  photo: SessionPhoto;
+  urls: {
+    thumbnail: string;
+    medium: string;
+    original: string;
+  };
+  metadata: {
+    originalSize: number;
+    thumbnailSize: number;
+    mediumSize: number;
+    originalDimensions: { width: number; height: number };
+    wasConverted: boolean;
+    originalFormat: string;
+  };
+}
+
+/**
+ * Upload progress callback for batch uploads
+ */
+export type BatchUploadProgressCallback = (
+  fileIndex: number,
+  fileProgress: number,
+  fileName: string,
+  phase: "processing" | "uploading" | "saving",
+) => void;
+
 export async function uploadSessionPhoto(
   eventId: string,
   file: File,
@@ -260,6 +290,186 @@ export async function uploadSessionPhoto(
   return { photo, publicUrl };
 }
 
+/**
+ * Upload session photo with three-tier compression system
+ */
+export async function uploadSessionPhotoEnhanced(
+  eventId: string,
+  processedVersions: import("../utils/fileUtils").ProcessedImageVersions,
+  originalFileName: string,
+  isAdmin: boolean = false,
+  onProgress?: (phase: "uploading" | "saving", progress: number) => void,
+): Promise<UploadResult> {
+  const { data: user } = await supabase.auth.getUser();
+  if (!user.user) throw new Error("Not authenticated");
+
+  const photoId = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
+  const basePath = `${eventId}/images/${photoId}`;
+
+  onProgress?.("uploading", 10);
+
+  // Upload all three versions in parallel
+  const uploadPromises = [
+    supabase.storage
+      .from("event-photos")
+      .upload(`${basePath}/thumb.webp`, processedVersions.thumbnail, {
+        metadata: { uploadedBy: user.user.id, version: "thumbnail" },
+      }),
+    supabase.storage
+      .from("event-photos")
+      .upload(`${basePath}/medium.webp`, processedVersions.medium, {
+        metadata: { uploadedBy: user.user.id, version: "medium" },
+      }),
+    supabase.storage
+      .from("event-photos")
+      .upload(
+        `${basePath}/original${getFileExtension(processedVersions.original.name)}`,
+        processedVersions.original,
+        {
+          metadata: { uploadedBy: user.user.id, version: "original" },
+        },
+      ),
+  ];
+
+  const uploadResults = await Promise.all(uploadPromises);
+
+  // Check for upload errors
+  for (const result of uploadResults) {
+    if (result.error) {
+      throw result.error;
+    }
+  }
+
+  onProgress?.("uploading", 70);
+
+  // Get public URLs for all versions
+  const thumbnailUrl = supabase.storage
+    .from("event-photos")
+    .getPublicUrl(`${basePath}/thumb.webp`).data.publicUrl;
+  const mediumUrl = supabase.storage
+    .from("event-photos")
+    .getPublicUrl(`${basePath}/medium.webp`).data.publicUrl;
+  const originalUrl = supabase.storage
+    .from("event-photos")
+    .getPublicUrl(
+      `${basePath}/original${getFileExtension(processedVersions.original.name)}`,
+    ).data.publicUrl;
+
+  onProgress?.("saving", 80);
+
+  // Save photo metadata to database with enhanced structure
+  const { data: photo, error: dbError } = await supabase
+    .from("event_session_photos")
+    .insert({
+      event_id: eventId,
+      file_name: originalFileName,
+      file_path: `${basePath}/medium.webp`, // Default to medium for backward compatibility
+      file_size: processedVersions.metadata.originalSize,
+      mime_type: processedVersions.metadata.originalFormat,
+      uploaded_by: user.user.id,
+      status: isAdmin ? "accepted" : "pending",
+      approved: isAdmin ? true : null,
+      approved_by: isAdmin ? user.user.id : null,
+      approved_at: isAdmin ? new Date().toISOString() : null,
+      // Note: metadata column may not exist in current schema
+      // We'll store version info in file_path for now and can add metadata column later
+      // metadata: {
+      //   versions: {
+      //     thumbnail: `${basePath}/thumb.webp`,
+      //     medium: `${basePath}/medium.webp`,
+      //     original: `${basePath}/original${getFileExtension(processedVersions.original.name)}`
+      //   },
+      //   sizes: {
+      //     thumbnail: processedVersions.thumbnail.size,
+      //     medium: processedVersions.medium.size,
+      //     original: processedVersions.original.size
+      //   },
+      //   dimensions: processedVersions.metadata.originalDimensions,
+      //   wasConverted: processedVersions.metadata.wasConverted,
+      //   originalFormat: processedVersions.metadata.originalFormat,
+      //   photoId
+      // }
+    })
+    .select()
+    .single();
+
+  if (dbError) throw dbError;
+
+  onProgress?.("saving", 100);
+
+  return {
+    photo,
+    urls: {
+      thumbnail: thumbnailUrl,
+      medium: mediumUrl,
+      original: originalUrl,
+    },
+    metadata: processedVersions.metadata,
+  };
+}
+
+/**
+ * Get file extension from filename
+ */
+function getFileExtension(filename: string): string {
+  const lastDot = filename.lastIndexOf(".");
+  return lastDot !== -1 ? filename.substring(lastDot) : "";
+}
+
+/**
+ * Batch upload multiple processed photos with concurrency control
+ */
+export async function uploadSessionPhotosBatch(
+  eventId: string,
+  processedFiles: Array<{
+    versions: import("../utils/fileUtils").ProcessedImageVersions;
+    originalFileName: string;
+  }>,
+  isAdmin: boolean = false,
+  onProgress?: BatchUploadProgressCallback,
+  concurrency: number = 2,
+): Promise<UploadResult[]> {
+  const results: UploadResult[] = [];
+
+  for (let i = 0; i < processedFiles.length; i += concurrency) {
+    const batch = processedFiles.slice(i, i + concurrency);
+
+    const batchPromises = batch.map(async (processedFile, batchIndex) => {
+      const fileIndex = i + batchIndex;
+
+      try {
+        const result = await uploadSessionPhotoEnhanced(
+          eventId,
+          processedFile.versions,
+          processedFile.originalFileName,
+          isAdmin,
+          (phase, progress) => {
+            onProgress?.(
+              fileIndex,
+              progress,
+              processedFile.originalFileName,
+              phase,
+            );
+          },
+        );
+
+        results[fileIndex] = result;
+        return result;
+      } catch (error) {
+        console.error(
+          `Failed to upload ${processedFile.originalFileName}:`,
+          error,
+        );
+        throw error;
+      }
+    });
+
+    await Promise.all(batchPromises);
+  }
+
+  return results;
+}
+
 export async function deleteSessionPhoto(photoId: string): Promise<void> {
   // First get the photo details
   const { data: photo, error: fetchError } = await supabase
@@ -270,12 +480,37 @@ export async function deleteSessionPhoto(photoId: string): Promise<void> {
 
   if (fetchError) throw fetchError;
 
-  // Delete from storage
+  // Collect all file paths to delete
+  const pathsToDelete = [photo.file_path]; // Always include main file path
+
+  // Check if this is an enhanced photo with multiple versions
+  const isEnhancedPhoto =
+    photo.file_path.includes("/images/") &&
+    photo.file_path.includes("medium.webp");
+
+  if (isEnhancedPhoto) {
+    const basePath = photo.file_path.replace("/medium.webp", "");
+
+    // Add all possible versions
+    pathsToDelete.push(`${basePath}/thumb.webp`);
+    pathsToDelete.push(`${basePath}/original.jpg`); // We'll try common extensions
+    pathsToDelete.push(`${basePath}/original.jpeg`);
+    pathsToDelete.push(`${basePath}/original.png`);
+    pathsToDelete.push(`${basePath}/original.webp`);
+  }
+
+  // Delete all files from storage
   const { error: storageError } = await supabase.storage
     .from("event-photos")
-    .remove([photo.file_path]);
+    .remove(pathsToDelete);
 
-  if (storageError) throw storageError;
+  if (storageError) {
+    console.warn(
+      "Some files may not have been deleted from storage:",
+      storageError,
+    );
+    // Don't throw here - we still want to delete from database
+  }
 
   // Delete from database
   const { error: dbError } = await supabase
@@ -290,6 +525,77 @@ export async function getPhotoPublicUrl(filePath: string): Promise<string> {
   const { data } = supabase.storage.from("event-photos").getPublicUrl(filePath);
 
   return data.publicUrl;
+}
+
+/**
+ * Get URLs for all versions of a photo
+ */
+export async function getPhotoVersionUrls(photo: SessionPhoto): Promise<{
+  thumbnail: string;
+  medium: string;
+  original: string;
+}> {
+  // For now, check if the photo uses the new path structure
+  // Enhanced photos will have paths like: "eventId/images/photoId/medium.webp"
+  const isEnhancedPhoto =
+    photo.file_path.includes("/images/") &&
+    photo.file_path.includes("medium.webp");
+
+  if (isEnhancedPhoto) {
+    // Extract the base path from the medium file path
+    const basePath = photo.file_path.replace("/medium.webp", "");
+
+    return {
+      thumbnail: supabase.storage
+        .from("event-photos")
+        .getPublicUrl(`${basePath}/thumb.webp`).data.publicUrl,
+      medium: supabase.storage
+        .from("event-photos")
+        .getPublicUrl(`${basePath}/medium.webp`).data.publicUrl,
+      original: supabase.storage
+        .from("event-photos")
+        .getPublicUrl(`${basePath}/original.jpg`).data.publicUrl, // Assume .jpg for now
+    };
+  }
+
+  // Fallback for legacy photos - use main file_path for all versions
+  const mainUrl = supabase.storage
+    .from("event-photos")
+    .getPublicUrl(photo.file_path).data.publicUrl;
+
+  return {
+    thumbnail: mainUrl,
+    medium: mainUrl,
+    original: mainUrl,
+  };
+}
+
+/**
+ * Get thumbnail URL for a photo (prioritizes actual thumbnail if available)
+ */
+export async function getPhotoThumbnailUrl(
+  photo: SessionPhoto,
+): Promise<string> {
+  const urls = await getPhotoVersionUrls(photo);
+  return urls.thumbnail;
+}
+
+/**
+ * Get medium URL for a photo (prioritizes actual medium if available)
+ */
+export async function getPhotoMediumUrl(photo: SessionPhoto): Promise<string> {
+  const urls = await getPhotoVersionUrls(photo);
+  return urls.medium;
+}
+
+/**
+ * Get original URL for a photo
+ */
+export async function getPhotoOriginalUrl(
+  photo: SessionPhoto,
+): Promise<string> {
+  const urls = await getPhotoVersionUrls(photo);
+  return urls.original;
 }
 
 // Photo approval functions

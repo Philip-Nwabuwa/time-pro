@@ -55,7 +55,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         if (error) throw error;
 
         toast.success(
-          "Account created! Please check your email for verification."
+          "Account created! Please check your email for verification.",
         );
         // Redirect to OTP verification page with email parameter
         window.location.href = `/verify-otp?email=${encodeURIComponent(email)}`;

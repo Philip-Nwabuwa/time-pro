@@ -45,7 +45,7 @@ export default function PollCard({
 }: PollCardProps) {
   const totalVotes = poll.options.reduce(
     (sum, option) => sum + (option.vote_count || 0),
-    0
+    0,
   );
 
   const handleVote = (optionId: string) => {
@@ -134,8 +134,8 @@ export default function PollCard({
                     isUserChoice
                       ? "border-purple-900 bg-purple-50"
                       : canVote
-                      ? "border-gray-200 bg-gray-50 hover:border-purple-900 hover:bg-purple-50"
-                      : "border-gray-200 bg-gray-50"
+                        ? "border-gray-200 bg-gray-50 hover:border-purple-900 hover:bg-purple-50"
+                        : "border-gray-200 bg-gray-50"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">

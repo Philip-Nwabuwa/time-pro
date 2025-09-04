@@ -55,7 +55,7 @@ export default function EventDetailsPage() {
       pathname,
       pageId,
       eventId,
-      details
+      details,
     );
 
     if (shouldRedirect) {

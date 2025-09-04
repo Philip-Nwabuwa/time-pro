@@ -117,8 +117,7 @@ export default function TimeInput({
         </p>
       )}
       <p className="text-xs text-gray-500">
-        Format: HH:MM (e.g., "0:05" for 5 minutes, or just "5" for 5
-        minutes)
+        Format: HH:MM (e.g., "0:05" for 5 minutes, or just "5" for 5 minutes)
       </p>
     </div>
   );

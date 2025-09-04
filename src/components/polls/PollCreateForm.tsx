@@ -53,8 +53,8 @@ export default function PollCreateForm({
   const updateOption = (optionId: string, text: string) => {
     setOptions(
       options.map((option) =>
-        option.id === optionId ? { ...option, text } : option
-      )
+        option.id === optionId ? { ...option, text } : option,
+      ),
     );
   };
 

@@ -45,6 +45,10 @@ import {
   uploadSessionPhoto,
   deleteSessionPhoto,
   getPhotoPublicUrl,
+  getPhotoVersionUrls,
+  getPhotoThumbnailUrl,
+  getPhotoMediumUrl,
+  getPhotoOriginalUrl,
   acceptSessionPhoto,
   rejectSessionPhoto,
   fetchSessionPhotos,
@@ -70,7 +74,9 @@ import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import EndMeetingModal from "@/components/modals/EndMeetingModal";
 import { checkUserMembership } from "@/lib/api/members";
 import { supabase } from "@/lib/supabase";
-import { processUploadedFiles, isImageFile } from "@/lib/utils/fileUtils";
+import { isImageFile } from "@/lib/utils/fileUtils";
+import PhotoUpload from "@/components/PhotoUpload";
+import { type UploadResult } from "@/lib/api/eventSessions";
 
 function formatSeconds(total: number) {
   const h = Math.floor(total / 3600);
@@ -293,7 +299,7 @@ export default function RunEventPage() {
         details.schedule.map((item) => ({
           name: item.speakerName,
           avatar: item.speakerAvatar,
-        }))
+        })),
       );
     }
   }, [details]);
@@ -361,14 +367,15 @@ export default function RunEventPage() {
       }
     };
   }, []);
-  const [photos, setPhotos] = useState<
-    Array<{
-      id: string;
-      url: string;
-      photo: SessionPhoto;
-      selected?: boolean;
-    }>
-  >();
+  const [photos, setPhotos] =
+    useState<
+      Array<{
+        id: string;
+        url: string;
+        photo: SessionPhoto;
+        selected?: boolean;
+      }>
+    >();
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
@@ -618,10 +625,10 @@ export default function RunEventPage() {
         answered: !question.answered,
       });
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg))
+        prev.map((msg) => (msg.id === questionId ? updated : msg)),
       );
       toast.success(
-        updated.answered ? "Marked as answered" : "Marked as unanswered"
+        updated.answered ? "Marked as answered" : "Marked as unanswered",
       );
     } catch (error) {
       console.error("Error updating question:", error);
@@ -639,7 +646,7 @@ export default function RunEventPage() {
     try {
       const updated = await acceptQnaQuestion(questionId, user.id);
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg))
+        prev.map((msg) => (msg.id === questionId ? updated : msg)),
       );
       toast.success("Question accepted");
     } catch (error) {
@@ -657,7 +664,7 @@ export default function RunEventPage() {
     try {
       const updated = await rejectQnaQuestion(questionId);
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg))
+        prev.map((msg) => (msg.id === questionId ? updated : msg)),
       );
       toast.success("Question rejected");
     } catch (error) {
@@ -675,7 +682,7 @@ export default function RunEventPage() {
     try {
       const updated = await markQuestionAsAnswered(questionId);
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg))
+        prev.map((msg) => (msg.id === questionId ? updated : msg)),
       );
       toast.success("Question marked as answered");
     } catch (error) {
@@ -698,12 +705,17 @@ export default function RunEventPage() {
           ? await fetchSessionPhotos(eventId)
           : await fetchVisibleSessionPhotos(eventId);
       const photosWithUrls = await Promise.all(
-        updatedPhotos.map(async (photo) => ({
-          id: photo.id,
-          url: await getPhotoPublicUrl(photo.file_path),
-          photo,
-          selected: false,
-        }))
+        updatedPhotos.map(async (photo) => {
+          const urls = await getPhotoVersionUrls(photo);
+          return {
+            id: photo.id,
+            url: urls.medium, // Use medium version for display
+            photo,
+            selected: false,
+            thumbnailUrl: urls.thumbnail,
+            originalUrl: urls.original,
+          };
+        }),
       );
       setPhotos(photosWithUrls);
       toast.success("Photo accepted");
@@ -727,12 +739,17 @@ export default function RunEventPage() {
           ? await fetchSessionPhotos(eventId)
           : await fetchVisibleSessionPhotos(eventId);
       const photosWithUrls = await Promise.all(
-        updatedPhotos.map(async (photo) => ({
-          id: photo.id,
-          url: await getPhotoPublicUrl(photo.file_path),
-          photo,
-          selected: false,
-        }))
+        updatedPhotos.map(async (photo) => {
+          const urls = await getPhotoVersionUrls(photo);
+          return {
+            id: photo.id,
+            url: urls.medium, // Use medium version for display
+            photo,
+            selected: false,
+            thumbnailUrl: urls.thumbnail,
+            originalUrl: urls.original,
+          };
+        }),
       );
       setPhotos(photosWithUrls);
       toast.success("Photo rejected");
@@ -742,60 +759,22 @@ export default function RunEventPage() {
     }
   };
 
-  // Photo functions
-  const handleFileUpload = async (files: File[]) => {
-    if (!eventId || files.length === 0) return;
+  // Enhanced photo upload handler
+  const handleUploadComplete = (results: UploadResult[]) => {
+    const newPhotos = results.map((result) => ({
+      id: result.photo.id,
+      url: result.urls.medium, // Use medium version for display
+      photo: result.photo,
+      selected: false,
+      thumbnailUrl: result.urls.thumbnail,
+      originalUrl: result.urls.original,
+    }));
 
-    setUploadingPhoto(true);
-    try {
-      const isAdmin = userRole === "admin";
-      
-      // Process files (convert HEIC to JPEG if needed)
-      const processedFiles = await processUploadedFiles(files);
-      
-      if (processedFiles.length === 0) {
-        toast.error("No valid image files found");
-        return;
-      }
-      
-      if (processedFiles.length < files.length) {
-        toast.info(`Converted ${files.length - processedFiles.length} HEIC file${files.length - processedFiles.length > 1 ? 's' : ''} to JPEG`);
-      }
+    setPhotos((prev = []) => [...newPhotos, ...prev]); // Add new photos to the beginning
+  };
 
-      const uploadPromises = processedFiles.map((file) =>
-        uploadSessionPhoto(eventId, file, isAdmin)
-      );
-      const results = await Promise.all(uploadPromises);
-
-      const newPhotos = results.map(({ photo, publicUrl }) => ({
-        id: photo.id,
-        url: publicUrl,
-        photo,
-        selected: false,
-      }));
-
-      setPhotos((prev = []) => [...prev, ...newPhotos]);
-
-      if (isAdmin) {
-        toast.success(
-          `Uploaded ${processedFiles.length} photo${
-            processedFiles.length > 1 ? "s" : ""
-          } successfully!`
-        );
-      } else {
-        toast.success(
-          `Uploaded ${processedFiles.length} photo${
-            processedFiles.length > 1 ? "s" : ""
-          } - awaiting admin approval`
-        );
-      }
-    } catch (error) {
-      console.error("Error uploading photos:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to upload photos";
-      toast.error(errorMessage);
-    } finally {
-      setUploadingPhoto(false);
-    }
+  const handleUploadError = (error: string) => {
+    console.error("Enhanced upload error:", error);
   };
 
   const handleDeletePhoto = async (photoId: string) => {
@@ -813,7 +792,7 @@ export default function RunEventPage() {
   const saveUserPreference = async (
     userId: string,
     key: string,
-    value: any
+    value: any,
   ) => {
     if (!eventId) return;
 
@@ -951,31 +930,38 @@ export default function RunEventPage() {
     if (!photos || selectedPhotos.size === 0) return;
 
     const selectedPhotoData = photos.filter((photo) =>
-      selectedPhotos.has(photo.id)
+      selectedPhotos.has(photo.id),
     );
 
-    // For multiple photos, create a zip file or download individually
+    // Download original quality versions
     for (const photo of selectedPhotoData) {
       try {
-        const response = await fetch(photo.url);
+        // Use original URL if available, fallback to medium/main URL
+        const downloadUrl = (photo as any).originalUrl || photo.url;
+        const response = await fetch(downloadUrl);
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = photo.photo.file_name;
+
+        // Use original filename or create one with proper extension
+        const fileName = photo.photo.file_name || `photo-${photo.id}.jpg`;
+        link.download = fileName;
+
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
       } catch (error) {
         console.error(`Error downloading ${photo.photo.file_name}:`, error);
+        toast.error(`Failed to download ${photo.photo.file_name}`);
       }
     }
 
     toast.success(
-      `Downloaded ${selectedPhotos.size} photo${
+      `Downloaded ${selectedPhotos.size} original quality photo${
         selectedPhotos.size > 1 ? "s" : ""
-      }`
+      }`,
     );
   };
 
@@ -990,14 +976,16 @@ export default function RunEventPage() {
     const confirmDelete = window.confirm(
       `Are you sure you want to delete ${selectedPhotos.size} selected photo${
         selectedPhotos.size > 1 ? "s" : ""
-      }?`
+      }?`,
     );
 
     if (!confirmDelete) return;
 
     try {
       await Promise.all(
-        Array.from(selectedPhotos).map((photoId) => deleteSessionPhoto(photoId))
+        Array.from(selectedPhotos).map((photoId) =>
+          deleteSessionPhoto(photoId),
+        ),
       );
 
       setPhotos((prev) => prev?.filter((p) => !selectedPhotos.has(p.id)));
@@ -1005,7 +993,7 @@ export default function RunEventPage() {
       toast.success(
         `Deleted ${selectedPhotos.size} photo${
           selectedPhotos.size > 1 ? "s" : ""
-        }`
+        }`,
       );
     } catch (error) {
       console.error("Error deleting photos:", error);
@@ -1063,7 +1051,7 @@ export default function RunEventPage() {
             };
           }
           return poll;
-        })
+        }),
       );
       toast.success("Vote submitted");
     } catch (error) {
@@ -1078,7 +1066,7 @@ export default function RunEventPage() {
     try {
       const updatedPoll = await updatePoll(pollId, { active });
       setPolls((prev) =>
-        prev.map((poll) => (poll.id === pollId ? { ...poll, active } : poll))
+        prev.map((poll) => (poll.id === pollId ? { ...poll, active } : poll)),
       );
       toast.success(`Poll ${active ? "activated" : "deactivated"}`);
     } catch (error) {
@@ -1089,7 +1077,7 @@ export default function RunEventPage() {
 
   const handleDeletePoll = async (pollId: string) => {
     const confirmDelete = window.confirm(
-      "Are you sure you want to delete this poll?"
+      "Are you sure you want to delete this poll?",
     );
     if (!confirmDelete) return;
 
@@ -1158,7 +1146,7 @@ export default function RunEventPage() {
             setIsTimerSynced(true);
             setLastTimerUpdate(new Date());
           }
-        }
+        },
       )
       .subscribe();
 
@@ -1190,15 +1178,20 @@ export default function RunEventPage() {
         const votes = await getUserPollVotes(eventId);
         setUserVotes(votes);
 
-        // Load photos with public URLs
+        // Load photos with enhanced URLs
         if (sessionPhotos.length > 0) {
           const photosWithUrls = await Promise.all(
-            sessionPhotos.map(async (photo) => ({
-              id: photo.id,
-              url: await getPhotoPublicUrl(photo.file_path),
-              photo,
-              selected: false,
-            }))
+            sessionPhotos.map(async (photo) => {
+              const urls = await getPhotoVersionUrls(photo);
+              return {
+                id: photo.id,
+                url: urls.medium, // Use medium version for display
+                photo,
+                selected: false,
+                thumbnailUrl: urls.thumbnail,
+                originalUrl: urls.original,
+              };
+            }),
           );
           setPhotos(photosWithUrls);
         } else {
@@ -1250,7 +1243,7 @@ export default function RunEventPage() {
               if (userPrefs.hideTimeDetails !== undefined) {
                 setHideTimeDetails(userPrefs.hideTimeDetails);
                 console.log(
-                  `Hide time details preference restored: ${userPrefs.hideTimeDetails}`
+                  `Hide time details preference restored: ${userPrefs.hideTimeDetails}`,
                 );
               }
             }
@@ -1291,14 +1284,19 @@ export default function RunEventPage() {
         const votes = await getUserPollVotes(eventId);
         if (!cancelled) setUserVotes(votes);
 
-        // Photos (map to public URLs)
+        // Photos (map to enhanced URLs)
         const photosWithUrls = await Promise.all(
-          sessionPhotos.map(async (photo) => ({
-            id: photo.id,
-            url: await getPhotoPublicUrl(photo.file_path),
-            photo,
-            selected: false,
-          }))
+          sessionPhotos.map(async (photo) => {
+            const urls = await getPhotoVersionUrls(photo);
+            return {
+              id: photo.id,
+              url: urls.medium, // Use medium version for display
+              photo,
+              selected: false,
+              thumbnailUrl: urls.thumbnail,
+              originalUrl: urls.original,
+            };
+          }),
         );
         if (!cancelled) setPhotos(photosWithUrls);
       } catch (err) {
@@ -1510,7 +1508,7 @@ export default function RunEventPage() {
                           className="h-8 w-8 rounded-full border-2 border-gray-300"
                           onError={(e) => {
                             console.log(
-                              `Image failed to load for ${item.speakerName}: ${item.speakerAvatar}`
+                              `Image failed to load for ${item.speakerName}: ${item.speakerAvatar}`,
                             );
                             e.currentTarget.src = "/next.svg";
                           }}
@@ -1533,7 +1531,7 @@ export default function RunEventPage() {
                                 {formatSeconds(
                                   (item.targetMinutes ||
                                     item.allocatedMinutes ||
-                                    5) * 60
+                                    5) * 60,
                                 )}
                               </p>
                               <p className="text-red-500">
@@ -1681,7 +1679,7 @@ export default function RunEventPage() {
                                   completed: idx < currentSpeakerIndex,
                                   // Support array of social links
                                   socialLinks: Array.isArray(
-                                    item.socialMediaLinks
+                                    item.socialMediaLinks,
                                   )
                                     ? (item.socialMediaLinks as Array<{
                                         platform: string;
@@ -1701,7 +1699,7 @@ export default function RunEventPage() {
                                 className="size-10 lg:size-20 rounded-full border-2 border-gray-300 flex-shrink-0"
                                 onError={(e) => {
                                   console.log(
-                                    `Mobile image failed to load for ${item.speakerName}: ${item.speakerAvatar}`
+                                    `Mobile image failed to load for ${item.speakerName}: ${item.speakerAvatar}`,
                                   );
                                   e.currentTarget.src = "/next.svg";
                                 }}
@@ -1718,7 +1716,7 @@ export default function RunEventPage() {
                                     <p className="text-green-500">
                                       Min:{" "}
                                       {formatSeconds(
-                                        (item.minMinutes || 3) * 60
+                                        (item.minMinutes || 3) * 60,
                                       )}
                                     </p>
                                     <p className="text-yellow-500">
@@ -1726,13 +1724,13 @@ export default function RunEventPage() {
                                       {formatSeconds(
                                         (item.targetMinutes ||
                                           item.allocatedMinutes ||
-                                          5) * 60
+                                          5) * 60,
                                       )}
                                     </p>
                                     <p className="text-red-500">
                                       Max:{" "}
                                       {formatSeconds(
-                                        (item.maxMinutes || 7) * 60
+                                        (item.maxMinutes || 7) * 60,
                                       )}
                                     </p>
                                   </div>
@@ -1830,10 +1828,10 @@ export default function RunEventPage() {
                               isAnswered
                                 ? "bg-green-50 border-green-200"
                                 : isPending && userRole !== "admin"
-                                ? "opacity-50 bg-gray-50 border-gray-200"
-                                : isRejected
-                                ? "opacity-30 bg-red-50 border-red-200"
-                                : "bg-white"
+                                  ? "opacity-50 bg-gray-50 border-gray-200"
+                                  : isRejected
+                                    ? "opacity-30 bg-red-50 border-red-200"
+                                    : "bg-white"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-3">
@@ -1875,7 +1873,7 @@ export default function RunEventPage() {
                                 </div>
                                 <div className="text-xs text-gray-500">
                                   {new Date(
-                                    msg.created_at || ""
+                                    msg.created_at || "",
                                   ).toLocaleTimeString()}
                                   {isPending && userRole !== "admin" && (
                                     <span className="ml-2 text-gray-400">
@@ -2010,58 +2008,15 @@ export default function RunEventPage() {
                     </div>
                   </div>
 
-                  {/* Upload dropzone */}
-                  <div
-                    className="mt-3"
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const files = Array.from(e.dataTransfer.files || []);
-                      const imageFiles = files.filter((file) =>
-                        isImageFile(file)
-                      );
-                      if (imageFiles.length > 0) {
-                        handleFileUpload(imageFiles);
-                      }
-                    }}
-                  >
-                    <div
-                      role="button"
-                      className="w-full border-2 border-dashed rounded-md p-6 text-center text-gray-600 hover:bg-gray-50 cursor-pointer"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <ImagePlus className="h-6 w-6" />
-                        <div className="font-medium">
-                          {uploadingPhoto ? "Uploading..." : "Upload Photos"}
-                        </div>
-                        <div className="text-xs">
-                          {uploadingPhoto
-                            ? "Please wait"
-                            : "Drag & drop images or click"}
-                        </div>
-                      </div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*,.heic,.heif"
-                        multiple
-                        className="hidden"
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || []);
-                          const imageFiles = files.filter((file) =>
-                            isImageFile(file)
-                          );
-                          if (imageFiles.length > 0) {
-                            handleFileUpload(imageFiles);
-                          }
-                          // reset input value so same file can be added again later
-                          if (e.target) e.target.value = "";
-                        }}
-                      />
-                    </div>
+                  {/* Enhanced Upload Component */}
+                  <div className="mt-3">
+                    <PhotoUpload
+                      eventId={eventId}
+                      isAdmin={userRole === "admin"}
+                      onUploadComplete={handleUploadComplete}
+                      onUploadError={handleUploadError}
+                      disabled={uploadingPhoto}
+                    />
                   </div>
 
                   {/* Thumbs */}
@@ -2079,21 +2034,29 @@ export default function RunEventPage() {
                             isSelected
                               ? "border-blue-500 border-2 bg-blue-50"
                               : isPending && userRole !== "admin"
-                              ? "border-gray-200 opacity-50"
-                              : isRejected
-                              ? "border-red-200 opacity-30"
-                              : "border-gray-200"
+                                ? "border-gray-200 opacity-50"
+                                : isRejected
+                                  ? "border-red-200 opacity-30"
+                                  : "border-gray-200"
                           }`}
                           onClick={() => openGallery(index)}
                         >
                           <img
-                            src={photo.url}
+                            src={(photo as any).thumbnailUrl || photo.url} // Use thumbnail for grid display
                             alt={photo.photo.file_name}
-                            className={`h-full w-full object-cover ${
+                            className={`h-full w-full object-cover transition-opacity duration-200 ${
                               isPending && userRole !== "admin"
                                 ? "grayscale"
                                 : ""
                             }`}
+                            loading="lazy" // Enable lazy loading for better performance
+                            onError={(e) => {
+                              // Fallback to medium/main URL if thumbnail fails
+                              const target = e.target as HTMLImageElement;
+                              if (target.src !== photo.url) {
+                                target.src = photo.url;
+                              }
+                            }}
                           />
 
                           {/* Status overlay - only show for non-admin users */}
