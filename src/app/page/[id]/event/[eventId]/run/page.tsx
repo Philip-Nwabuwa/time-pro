@@ -28,6 +28,7 @@ import {
   CheckSquare,
   SquareMinus,
   SquarePen,
+  SkipBack,
 } from "lucide-react";
 import { useEventDetails } from "@/lib/api/hooks";
 import {
@@ -81,7 +82,10 @@ import { type UploadResult } from "@/lib/api/eventSessions";
 function formatSeconds(total: number) {
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
-  return `${h}:${m.toString().padStart(2, "0")}`;
+  const s = total % 60;
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s
+    .toString()
+    .padStart(2, "0")}`;
 }
 
 interface TimerCardProps {
@@ -94,6 +98,7 @@ interface TimerCardProps {
   hasStarted: boolean;
   onToggleTimer: () => void;
   onNextSpeaker: () => void;
+  onPreviousSpeaker: () => void;
   onAddTime: (seconds: number) => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
@@ -105,6 +110,8 @@ interface TimerCardProps {
   hideTimeDetails: boolean;
   onToggleHideDetails: () => void;
   isAdmin: boolean;
+  currentSpeakerIndex: number;
+  totalSpeakers: number;
 }
 
 function TimerCard({
@@ -117,6 +124,7 @@ function TimerCard({
   hasStarted,
   onToggleTimer,
   onNextSpeaker,
+  onPreviousSpeaker,
   onAddTime,
   isFullscreen = false,
   onToggleFullscreen,
@@ -128,6 +136,8 @@ function TimerCard({
   hideTimeDetails,
   onToggleHideDetails,
   isAdmin,
+  currentSpeakerIndex,
+  totalSpeakers,
 }: TimerCardProps) {
   return (
     <Card className={isFullscreen ? "h-full" : ""}>
@@ -238,7 +248,7 @@ function TimerCard({
             {/* Timer controls - only show for admins */}
             {isAdmin && (
               <div
-                className={`grid grid-cols-2 gap-3 w-full items-center justify-center ${
+                className={`grid grid-cols-3 gap-3 w-full items-center justify-center ${
                   isFullscreen ? "gap-6" : ""
                 }`}
               >
@@ -246,10 +256,21 @@ function TimerCard({
                   variant="secondary"
                   size={isFullscreen ? "default" : "default"}
                   className="bg-white/10 text-white hover:bg-white/20"
+                  onClick={onPreviousSpeaker}
+                  disabled={currentSpeakerIndex === 0}
+                >
+                  <SkipBack className="h-4 w-4 mr-2" />
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  size={isFullscreen ? "default" : "default"}
+                  className="bg-white/10 text-white hover:bg-white/20"
                   onClick={onNextSpeaker}
+                  disabled={currentSpeakerIndex >= totalSpeakers - 1}
                 >
                   <Play className="h-4 w-4 mr-2" />
-                  Next Speaker
+                  Next
                 </Button>
                 <Button
                   onClick={onToggleTimer}
@@ -299,7 +320,7 @@ export default function RunEventPage() {
         details.schedule.map((item) => ({
           name: item.speakerName,
           avatar: item.speakerAvatar,
-        })),
+        }))
       );
     }
   }, [details]);
@@ -367,21 +388,41 @@ export default function RunEventPage() {
       }
     };
   }, []);
-  const [photos, setPhotos] =
-    useState<
-      Array<{
-        id: string;
-        url: string;
-        photo: SessionPhoto;
-        selected?: boolean;
-      }>
-    >();
+  const [photos, setPhotos] = useState<
+    Array<{
+      id: string;
+      url: string;
+      photo: SessionPhoto;
+      selected?: boolean;
+    }>
+  >();
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryInitialIndex, setGalleryInitialIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Helper function to deduplicate photos by ID
+  const deduplicatePhotos = (
+    photos: Array<{
+      id: string;
+      url: string;
+      photo: SessionPhoto;
+      selected?: boolean;
+      thumbnailUrl?: string;
+      originalUrl?: string;
+    }>
+  ) => {
+    const seen = new Set<string>();
+    return photos.filter((photo) => {
+      if (seen.has(photo.id)) {
+        return false;
+      }
+      seen.add(photo.id);
+      return true;
+    });
+  };
 
   // Modal states
   const [showAddTimeModal, setShowAddTimeModal] = useState(false);
@@ -473,6 +514,39 @@ export default function RunEventPage() {
         hasStarted: false,
         seconds: 0,
         currentSpeakerIndex: nextIndex,
+        addedTime: 0,
+        lastUpdate: new Date().toISOString(),
+        controlledBy: user?.id,
+      });
+    }
+  };
+
+  // Previous speaker function - only for admins
+  const handlePreviousSpeaker = async () => {
+    if (userRole !== "admin") {
+      toast.error("Only administrators can control speaker transitions");
+      return;
+    }
+
+    if (!details?.schedule) return;
+
+    const prevIndex = currentSpeakerIndex - 1;
+    if (prevIndex >= 0) {
+      // Save current speaker's final time before switching
+      await saveSessionState();
+
+      setCurrentSpeakerIndex(prevIndex);
+      setSeconds(0); // Reset timer
+      setAddedTime(0); // Reset added time
+      setIsRunning(false); // Stop timer
+      setHasStarted(false); // Reset timer started state
+
+      // Broadcast speaker change to all users
+      await broadcastTimerState({
+        isRunning: false,
+        hasStarted: false,
+        seconds: 0,
+        currentSpeakerIndex: prevIndex,
         addedTime: 0,
         lastUpdate: new Date().toISOString(),
         controlledBy: user?.id,
@@ -625,10 +699,10 @@ export default function RunEventPage() {
         answered: !question.answered,
       });
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg)),
+        prev.map((msg) => (msg.id === questionId ? updated : msg))
       );
       toast.success(
-        updated.answered ? "Marked as answered" : "Marked as unanswered",
+        updated.answered ? "Marked as answered" : "Marked as unanswered"
       );
     } catch (error) {
       console.error("Error updating question:", error);
@@ -646,7 +720,7 @@ export default function RunEventPage() {
     try {
       const updated = await acceptQnaQuestion(questionId, user.id);
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg)),
+        prev.map((msg) => (msg.id === questionId ? updated : msg))
       );
       toast.success("Question accepted");
     } catch (error) {
@@ -664,7 +738,7 @@ export default function RunEventPage() {
     try {
       const updated = await rejectQnaQuestion(questionId);
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg)),
+        prev.map((msg) => (msg.id === questionId ? updated : msg))
       );
       toast.success("Question rejected");
     } catch (error) {
@@ -682,7 +756,7 @@ export default function RunEventPage() {
     try {
       const updated = await markQuestionAsAnswered(questionId);
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg)),
+        prev.map((msg) => (msg.id === questionId ? updated : msg))
       );
       toast.success("Question marked as answered");
     } catch (error) {
@@ -715,9 +789,9 @@ export default function RunEventPage() {
             thumbnailUrl: urls.thumbnail,
             originalUrl: urls.original,
           };
-        }),
+        })
       );
-      setPhotos(photosWithUrls);
+      setPhotos(deduplicatePhotos(photosWithUrls));
       toast.success("Photo accepted");
     } catch (error) {
       console.error("Error accepting photo:", error);
@@ -749,9 +823,9 @@ export default function RunEventPage() {
             thumbnailUrl: urls.thumbnail,
             originalUrl: urls.original,
           };
-        }),
+        })
       );
-      setPhotos(photosWithUrls);
+      setPhotos(deduplicatePhotos(photosWithUrls));
       toast.success("Photo rejected");
     } catch (error) {
       console.error("Error rejecting photo:", error);
@@ -770,7 +844,14 @@ export default function RunEventPage() {
       originalUrl: result.urls.original,
     }));
 
-    setPhotos((prev = []) => [...newPhotos, ...prev]); // Add new photos to the beginning
+    setPhotos((prev = []) => {
+      // Deduplicate by photo ID to prevent duplicates
+      const existingIds = new Set(prev.map((p) => p.id));
+      const uniqueNewPhotos = newPhotos.filter(
+        (photo) => !existingIds.has(photo.id)
+      );
+      return [...uniqueNewPhotos, ...prev]; // Add new photos to the beginning
+    });
   };
 
   const handleUploadError = (error: string) => {
@@ -792,7 +873,7 @@ export default function RunEventPage() {
   const saveUserPreference = async (
     userId: string,
     key: string,
-    value: any,
+    value: any
   ) => {
     if (!eventId) return;
 
@@ -930,7 +1011,7 @@ export default function RunEventPage() {
     if (!photos || selectedPhotos.size === 0) return;
 
     const selectedPhotoData = photos.filter((photo) =>
-      selectedPhotos.has(photo.id),
+      selectedPhotos.has(photo.id)
     );
 
     // Download original quality versions
@@ -961,7 +1042,7 @@ export default function RunEventPage() {
     toast.success(
       `Downloaded ${selectedPhotos.size} original quality photo${
         selectedPhotos.size > 1 ? "s" : ""
-      }`,
+      }`
     );
   };
 
@@ -976,16 +1057,14 @@ export default function RunEventPage() {
     const confirmDelete = window.confirm(
       `Are you sure you want to delete ${selectedPhotos.size} selected photo${
         selectedPhotos.size > 1 ? "s" : ""
-      }?`,
+      }?`
     );
 
     if (!confirmDelete) return;
 
     try {
       await Promise.all(
-        Array.from(selectedPhotos).map((photoId) =>
-          deleteSessionPhoto(photoId),
-        ),
+        Array.from(selectedPhotos).map((photoId) => deleteSessionPhoto(photoId))
       );
 
       setPhotos((prev) => prev?.filter((p) => !selectedPhotos.has(p.id)));
@@ -993,7 +1072,7 @@ export default function RunEventPage() {
       toast.success(
         `Deleted ${selectedPhotos.size} photo${
           selectedPhotos.size > 1 ? "s" : ""
-        }`,
+        }`
       );
     } catch (error) {
       console.error("Error deleting photos:", error);
@@ -1051,7 +1130,7 @@ export default function RunEventPage() {
             };
           }
           return poll;
-        }),
+        })
       );
       toast.success("Vote submitted");
     } catch (error) {
@@ -1066,7 +1145,7 @@ export default function RunEventPage() {
     try {
       const updatedPoll = await updatePoll(pollId, { active });
       setPolls((prev) =>
-        prev.map((poll) => (poll.id === pollId ? { ...poll, active } : poll)),
+        prev.map((poll) => (poll.id === pollId ? { ...poll, active } : poll))
       );
       toast.success(`Poll ${active ? "activated" : "deactivated"}`);
     } catch (error) {
@@ -1077,7 +1156,7 @@ export default function RunEventPage() {
 
   const handleDeletePoll = async (pollId: string) => {
     const confirmDelete = window.confirm(
-      "Are you sure you want to delete this poll?",
+      "Are you sure you want to delete this poll?"
     );
     if (!confirmDelete) return;
 
@@ -1146,7 +1225,7 @@ export default function RunEventPage() {
             setIsTimerSynced(true);
             setLastTimerUpdate(new Date());
           }
-        },
+        }
       )
       .subscribe();
 
@@ -1161,6 +1240,7 @@ export default function RunEventPage() {
       if (!eventId) return;
 
       try {
+        setLoadingPhotos(true);
         const {
           questions,
           photos: sessionPhotos,
@@ -1191,9 +1271,10 @@ export default function RunEventPage() {
                 thumbnailUrl: urls.thumbnail,
                 originalUrl: urls.original,
               };
-            }),
+            })
           );
-          setPhotos(photosWithUrls);
+          // Deduplicate photos to prevent React key errors
+          setPhotos(deduplicatePhotos(photosWithUrls));
         } else {
           setPhotos([]);
         }
@@ -1243,7 +1324,7 @@ export default function RunEventPage() {
               if (userPrefs.hideTimeDetails !== undefined) {
                 setHideTimeDetails(userPrefs.hideTimeDetails);
                 console.log(
-                  `Hide time details preference restored: ${userPrefs.hideTimeDetails}`,
+                  `Hide time details preference restored: ${userPrefs.hideTimeDetails}`
                 );
               }
             }
@@ -1252,6 +1333,8 @@ export default function RunEventPage() {
       } catch (error) {
         console.error("Error loading session data:", error);
         setPhotos([]);
+      } finally {
+        setLoadingPhotos(false);
       }
     };
 
@@ -1265,6 +1348,9 @@ export default function RunEventPage() {
     let cancelled = false;
 
     const refetchSessionLists = async () => {
+      // Skip if photos are currently loading to prevent race conditions
+      if (loadingPhotos) return;
+
       try {
         const {
           questions,
@@ -1296,9 +1382,12 @@ export default function RunEventPage() {
               thumbnailUrl: urls.thumbnail,
               originalUrl: urls.original,
             };
-          }),
+          })
         );
-        if (!cancelled) setPhotos(photosWithUrls);
+        if (!cancelled) {
+          // Deduplicate photos to prevent React key errors
+          setPhotos(deduplicatePhotos(photosWithUrls));
+        }
       } catch (err) {
         // Avoid noisy toasts during background refresh
         console.error("Polling error (lists refresh):", err);
@@ -1313,7 +1402,28 @@ export default function RunEventPage() {
       cancelled = true;
       clearInterval(intervalId);
     };
-  }, [eventId, userRole]);
+  }, [eventId, userRole, loadingPhotos]);
+
+  // Timer interval - increment seconds when running
+  useEffect(() => {
+    if (isRunning) {
+      intervalRef.current = window.setInterval(() => {
+        setSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isRunning]);
 
   // Auto-save session state periodically and when timer state changes
   useEffect(() => {
@@ -1449,6 +1559,7 @@ export default function RunEventPage() {
               hasStarted={hasStarted}
               onToggleTimer={handleToggleTimer}
               onNextSpeaker={handleNextSpeaker}
+              onPreviousSpeaker={handlePreviousSpeaker}
               onAddTime={handleAddTime}
               onToggleFullscreen={() => setIsFullscreen(true)}
               timerBackgroundColor={timerBackgroundColor}
@@ -1459,6 +1570,8 @@ export default function RunEventPage() {
               hideTimeDetails={hideTimeDetails}
               onToggleHideDetails={handleToggleHideDetails}
               isAdmin={userRole === "admin"}
+              currentSpeakerIndex={currentSpeakerIndex}
+              totalSpeakers={details?.schedule.length || 0}
             />
           )}
 
@@ -1484,8 +1597,8 @@ export default function RunEventPage() {
                           setSelectedUser({
                             name: item.speakerName || "Unknown Speaker",
                             roleTitle: item.title,
-                            bio: item.speakerBio || "No biography provided.",
-                            email: item.speakerEmail || "No email provided.",
+                            bio: item.speakerBio || "No information provided.",
+                            email: item.speakerEmail || undefined,
                             avatar: item.speakerAvatar || undefined,
                             completed: idx < currentSpeakerIndex,
                             // Support array of social links
@@ -1508,7 +1621,7 @@ export default function RunEventPage() {
                           className="h-8 w-8 rounded-full border-2 border-gray-300"
                           onError={(e) => {
                             console.log(
-                              `Image failed to load for ${item.speakerName}: ${item.speakerAvatar}`,
+                              `Image failed to load for ${item.speakerName}: ${item.speakerAvatar}`
                             );
                             e.currentTarget.src = "/next.svg";
                           }}
@@ -1531,7 +1644,7 @@ export default function RunEventPage() {
                                 {formatSeconds(
                                   (item.targetMinutes ||
                                     item.allocatedMinutes ||
-                                    5) * 60,
+                                    5) * 60
                                 )}
                               </p>
                               <p className="text-red-500">
@@ -1586,6 +1699,7 @@ export default function RunEventPage() {
               hasStarted={hasStarted}
               onToggleTimer={handleToggleTimer}
               onNextSpeaker={handleNextSpeaker}
+              onPreviousSpeaker={handlePreviousSpeaker}
               onAddTime={handleAddTime}
               onToggleFullscreen={() => setIsFullscreen(true)}
               timerBackgroundColor={timerBackgroundColor}
@@ -1596,6 +1710,8 @@ export default function RunEventPage() {
               hideTimeDetails={hideTimeDetails}
               onToggleHideDetails={handleToggleHideDetails}
               isAdmin={userRole === "admin"}
+              currentSpeakerIndex={currentSpeakerIndex}
+              totalSpeakers={details?.schedule.length || 0}
             />
           )}
         </div>
@@ -1672,14 +1788,14 @@ export default function RunEventPage() {
                                   name: item.speakerName || "Unknown Speaker",
                                   roleTitle: item.title,
                                   bio:
-                                    item.speakerBio || "No biography provided.",
-                                  email:
-                                    item.speakerEmail || "No email provided.",
+                                    item.speakerBio ||
+                                    "No information provided.",
+                                  email: item.speakerEmail || undefined,
                                   avatar: item.speakerAvatar || undefined,
                                   completed: idx < currentSpeakerIndex,
                                   // Support array of social links
                                   socialLinks: Array.isArray(
-                                    item.socialMediaLinks,
+                                    item.socialMediaLinks
                                   )
                                     ? (item.socialMediaLinks as Array<{
                                         platform: string;
@@ -1699,7 +1815,7 @@ export default function RunEventPage() {
                                 className="size-10 lg:size-20 rounded-full border-2 border-gray-300 flex-shrink-0"
                                 onError={(e) => {
                                   console.log(
-                                    `Mobile image failed to load for ${item.speakerName}: ${item.speakerAvatar}`,
+                                    `Mobile image failed to load for ${item.speakerName}: ${item.speakerAvatar}`
                                   );
                                   e.currentTarget.src = "/next.svg";
                                 }}
@@ -1716,7 +1832,7 @@ export default function RunEventPage() {
                                     <p className="text-green-500">
                                       Min:{" "}
                                       {formatSeconds(
-                                        (item.minMinutes || 3) * 60,
+                                        (item.minMinutes || 3) * 60
                                       )}
                                     </p>
                                     <p className="text-yellow-500">
@@ -1724,13 +1840,13 @@ export default function RunEventPage() {
                                       {formatSeconds(
                                         (item.targetMinutes ||
                                           item.allocatedMinutes ||
-                                          5) * 60,
+                                          5) * 60
                                       )}
                                     </p>
                                     <p className="text-red-500">
                                       Max:{" "}
                                       {formatSeconds(
-                                        (item.maxMinutes || 7) * 60,
+                                        (item.maxMinutes || 7) * 60
                                       )}
                                     </p>
                                   </div>
@@ -1828,10 +1944,10 @@ export default function RunEventPage() {
                               isAnswered
                                 ? "bg-green-50 border-green-200"
                                 : isPending && userRole !== "admin"
-                                  ? "opacity-50 bg-gray-50 border-gray-200"
-                                  : isRejected
-                                    ? "opacity-30 bg-red-50 border-red-200"
-                                    : "bg-white"
+                                ? "opacity-50 bg-gray-50 border-gray-200"
+                                : isRejected
+                                ? "opacity-30 bg-red-50 border-red-200"
+                                : "bg-white"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-3">
@@ -1873,7 +1989,7 @@ export default function RunEventPage() {
                                 </div>
                                 <div className="text-xs text-gray-500">
                                   {new Date(
-                                    msg.created_at || "",
+                                    msg.created_at || ""
                                   ).toLocaleTimeString()}
                                   {isPending && userRole !== "admin" && (
                                     <span className="ml-2 text-gray-400">
@@ -2034,10 +2150,10 @@ export default function RunEventPage() {
                             isSelected
                               ? "border-blue-500 border-2 bg-blue-50"
                               : isPending && userRole !== "admin"
-                                ? "border-gray-200 opacity-50"
-                                : isRejected
-                                  ? "border-red-200 opacity-30"
-                                  : "border-gray-200"
+                              ? "border-gray-200 opacity-50"
+                              : isRejected
+                              ? "border-red-200 opacity-30"
+                              : "border-gray-200"
                           }`}
                           onClick={() => openGallery(index)}
                         >
@@ -2188,6 +2304,7 @@ export default function RunEventPage() {
               hasStarted={hasStarted}
               onToggleTimer={handleToggleTimer}
               onNextSpeaker={handleNextSpeaker}
+              onPreviousSpeaker={handlePreviousSpeaker}
               onAddTime={handleAddTime}
               isFullscreen={true}
               onToggleFullscreen={() => setIsFullscreen(false)}
@@ -2199,6 +2316,8 @@ export default function RunEventPage() {
               hideTimeDetails={hideTimeDetails}
               isAdmin={userRole === "admin"}
               onToggleHideDetails={handleToggleHideDetails}
+              currentSpeakerIndex={currentSpeakerIndex}
+              totalSpeakers={details?.schedule.length || 0}
             />
           </div>
         </div>
@@ -2209,10 +2328,10 @@ export default function RunEventPage() {
         open={!!selectedUser}
         onOpenChange={(open) => !open && setSelectedUser(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-hidden flex flex-col">
           {selectedUser && (
-            <div className="space-y-4">
-              <DialogHeader>
+            <div className="flex flex-col h-full">
+              <DialogHeader className="flex-shrink-0">
                 <div className="flex flex-col items-center text-center w-full">
                   <img
                     src={selectedUser.avatar || "/next.svg"}
@@ -2227,7 +2346,7 @@ export default function RunEventPage() {
                   </DialogDescription>
                 </div>
               </DialogHeader>
-              <div className="space-y-3">
+              <div className="space-y-3 flex-1 overflow-y-auto pr-2">
                 <div>
                   <div className="font-medium mb-2">Role Details</div>
                   <div className="flex items-center justify-between rounded-md border p-3">
@@ -2235,9 +2354,9 @@ export default function RunEventPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="font-medium mb-2">Biography</div>
+                  <div className="font-medium mb-2">About</div>
                   <div className="rounded-md border p-3 text-sm text-gray-700">
-                    {selectedUser.bio || "No biography provided."}
+                    {selectedUser.bio || "No information provided."}
                   </div>
                 </div>
                 <div>
@@ -2247,7 +2366,7 @@ export default function RunEventPage() {
                       <div>
                         Email:{" "}
                         <p
-                          className="font-mono text-xs underline underline-offset-2"
+                          className="font-mono text-xs underline underline-offset-2 cursor-pointer"
                           onClick={() => {
                             const mailtoLink = `mailto:${selectedUser.email}`;
                             window.open(mailtoLink, "_blank");
@@ -2258,7 +2377,7 @@ export default function RunEventPage() {
                       </div>
                     )}
                     {(selectedUser.socialLinks || []).map((link, i) => (
-                      <div className="flex flex-col">
+                      <div key={i} className="flex flex-col">
                         {link.platform}:
                         <a
                           href={link.url}

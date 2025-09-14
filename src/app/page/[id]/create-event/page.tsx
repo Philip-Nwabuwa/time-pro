@@ -89,7 +89,7 @@ export default function CreateEventPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -114,7 +114,7 @@ export default function CreateEventPage() {
 
   const handleCheckboxChange = (
     name: string,
-    checked: boolean | "indeterminate",
+    checked: boolean | "indeterminate"
   ) => {
     if (checked === "indeterminate") return;
     setFormData((prev) => ({
@@ -149,6 +149,7 @@ export default function CreateEventPage() {
         ...prev.roles.slice(index),
       ],
     }));
+    toast.success("New role added");
   };
 
   const removeRole = (roleId: string) => {
@@ -162,7 +163,7 @@ export default function CreateEventPage() {
     setFormData((prev) => ({
       ...prev,
       roles: prev.roles.map((role) =>
-        role.id === roleId ? { ...role, [field]: value } : role,
+        role.id === roleId ? { ...role, [field]: value } : role
       ),
     }));
   };
@@ -180,11 +181,16 @@ export default function CreateEventPage() {
               // Only update avatar if no custom avatar/video has been uploaded
               avatar: role.avatarBlob ? role.avatar : member.avatar || "",
               avatarBlob: role.avatarBlob, // Preserve uploaded video/avatar
-              // Keep existing bio and social media links as they might be role-specific
+              // Update bio only if it's empty, otherwise keep existing bio
+              bio: role.bio || member.bio || "",
+              // Keep existing social media links as they might be role-specific
             }
-          : role,
+          : role
       ),
     }));
+
+    // Show success message
+    toast.success(`Speaker details auto-populated for ${member.name}`);
   };
 
   const addSocialMediaLink = (roleId: string) => {
@@ -199,7 +205,7 @@ export default function CreateEventPage() {
                 { platform: "LinkedIn", url: "" },
               ],
             }
-          : role,
+          : role
       ),
     }));
   };
@@ -212,10 +218,10 @@ export default function CreateEventPage() {
           ? {
               ...role,
               socialMediaLinks: role.socialMediaLinks.filter(
-                (_, index) => index !== linkIndex,
+                (_, index) => index !== linkIndex
               ),
             }
-          : role,
+          : role
       ),
     }));
   };
@@ -224,7 +230,7 @@ export default function CreateEventPage() {
     roleId: string,
     linkIndex: number,
     field: "platform" | "url",
-    value: string,
+    value: string
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -233,10 +239,10 @@ export default function CreateEventPage() {
           ? {
               ...role,
               socialMediaLinks: role.socialMediaLinks.map((link, index) =>
-                index === linkIndex ? { ...link, [field]: value } : link,
+                index === linkIndex ? { ...link, [field]: value } : link
               ),
             }
-          : role,
+          : role
       ),
     }));
   };
@@ -248,19 +254,24 @@ export default function CreateEventPage() {
     }, 0);
   };
 
-  const formatTime = (time: number) => {
-    const hours = Math.floor(time / 60);
-    const minutes = Math.round(time % 60);
-    if (hours > 0) {
-      return `${hours}h${minutes > 0 ? ` ${minutes}m` : ""}`;
-    }
-    return `${minutes}m`;
+  const formatTime = (timeInMinutes: number) => {
+    const totalSeconds = Math.round(timeInMinutes * 60);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${hours.toString().padStart(2, "0")}:${minutes
+      .toString()
+      .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   };
 
   const parseTimeToMinutes = (timeString: string): number => {
     if (!timeString) return 0;
-    const [hours, minutes] = timeString.split(":").map(Number);
-    return (hours || 0) * 60 + (minutes || 0);
+    const parts = timeString.split(":");
+    const hours = parseInt(parts[0] || "0", 10);
+    const minutes = parseInt(parts[1] || "0", 10);
+    const seconds = parseInt(parts[2] || "0", 10);
+    return (hours || 0) * 60 + (minutes || 0) + (seconds || 0) / 60;
   };
 
   const transformFormDataToEventInsert = (): EventInsert => {
@@ -273,7 +284,7 @@ export default function CreateEventPage() {
       allow_feedback: formData.allowFeedback,
       anonymous_feedback: formData.anonymousFeedback,
       detailed_speaker_profiles: formData.detailedSpeakerProfiles,
-      estimated_minutes: Math.round(calculateTotalTime() * 60),
+      estimated_minutes: Math.round(calculateTotalTime()),
       roles_count: formData.roles.length,
       status: "upcoming",
       configured: true,
@@ -282,7 +293,7 @@ export default function CreateEventPage() {
 
   const transformRolesToScheduleItems = (
     eventId: string,
-    roles: SpeakerRole[] = formData.roles,
+    roles: SpeakerRole[] = formData.roles
   ): EventScheduleItemInsert[] => {
     return roles.map((role, index) => ({
       event_id: eventId,
@@ -338,17 +349,17 @@ export default function CreateEventPage() {
             const uploadResult = await uploadSpeakerAvatar(
               role.avatarBlob,
               createdEvent.id,
-              role.id,
+              role.id
             );
 
             if (uploadResult.success && uploadResult.url) {
               speakerAvatarUrl = uploadResult.url;
             } else {
               console.warn(
-                `Failed to upload avatar for role ${role.roleName}: ${uploadResult.error}`,
+                `Failed to upload avatar for role ${role.roleName}: ${uploadResult.error}`
               );
               toast.error(
-                `Failed to upload avatar for ${role.roleName}: ${uploadResult.error}`,
+                `Failed to upload avatar for ${role.roleName}: ${uploadResult.error}`
               );
               // Continue with the existing URL or empty string
             }
@@ -365,21 +376,19 @@ export default function CreateEventPage() {
             ...role,
             avatar: speakerAvatarUrl,
           };
-        }),
+        })
       );
 
       // Create schedule items if there are any roles
       if (rolesWithUploadedAvatars.length > 0) {
         const scheduleItems = transformRolesToScheduleItems(
           createdEvent.id,
-          rolesWithUploadedAvatars,
+          rolesWithUploadedAvatars
         );
 
         // Create all schedule items
         await Promise.all(
-          scheduleItems.map((item) =>
-            createScheduleItem(createdEvent.id, item),
-          ),
+          scheduleItems.map((item) => createScheduleItem(createdEvent.id, item))
         );
       }
 
@@ -390,7 +399,7 @@ export default function CreateEventPage() {
       toast.error(
         error instanceof Error
           ? `Failed to create event: ${error.message}`
-          : "Failed to create event. Please try again.",
+          : "Failed to create event. Please try again."
       );
     } finally {
       setIsLoading(false);
@@ -475,8 +484,8 @@ export default function CreateEventPage() {
                           formData.time
                         }`
                       : formData.date
-                        ? `${formData.date.toLocaleDateString()} - Select time`
-                        : "Select date and time"}
+                      ? `${formData.date.toLocaleDateString()} - Select time`
+                      : "Select date and time"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -647,7 +656,7 @@ export default function CreateEventPage() {
                         onChange={(value) =>
                           updateRole(role.id, "minTime", value)
                         }
-                        placeholder="0:03"
+                        placeholder="0:03:00"
                       />
 
                       <TimeInput
@@ -656,7 +665,7 @@ export default function CreateEventPage() {
                         onChange={(value) =>
                           updateRole(role.id, "targetTime", value)
                         }
-                        placeholder="0:05"
+                        placeholder="0:05:00"
                       />
 
                       <TimeInput
@@ -665,130 +674,120 @@ export default function CreateEventPage() {
                         onChange={(value) =>
                           updateRole(role.id, "maxTime", value)
                         }
-                        placeholder="0:07"
+                        placeholder="0:07:00"
                       />
                     </div>
 
-                    {!formData.anonymousFeedback && (
-                      <div className="border-t pt-4 space-y-4">
-                        <h4 className="font-medium">Speaker Details</h4>
+                    <div className="border-t pt-4 space-y-4">
+                      <h4 className="font-medium">Speaker Details</h4>
 
-                        <div className="space-y-2">
-                          <Label>
-                            <Mail className="h-4 w-4 inline mr-2" />
-                            Speaker Email (for feedback)
-                          </Label>
-                          <Input
-                            value={role.speakerEmail}
-                            onChange={(e) =>
-                              updateRole(
-                                role.id,
-                                "speakerEmail",
-                                e.target.value,
-                              )
-                            }
-                            placeholder="speaker@example.com"
-                          />
-                        </div>
-
-                        {formData.detailedSpeakerProfiles && (
-                          <>
-                            <div className="space-y-2">
-                              <Label>Bio</Label>
-                              <Textarea
-                                value={role.bio}
-                                onChange={(e) =>
-                                  updateRole(role.id, "bio", e.target.value)
-                                }
-                                placeholder="Speaker biography..."
-                                className="min-h-[80px]"
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>Social Media Links</Label>
-                              <div className="space-y-2">
-                                {role.socialMediaLinks.map(
-                                  (link, linkIndex) => (
-                                    <div
-                                      key={linkIndex}
-                                      className="flex items-center gap-2"
-                                    >
-                                      <Select
-                                        value={link.platform}
-                                        onValueChange={(value) =>
-                                          updateSocialMediaLink(
-                                            role.id,
-                                            linkIndex,
-                                            "platform",
-                                            value,
-                                          )
-                                        }
-                                      >
-                                        <SelectTrigger className="w-32">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="LinkedIn">
-                                            LinkedIn
-                                          </SelectItem>
-                                          <SelectItem value="Twitter">
-                                            Twitter
-                                          </SelectItem>
-                                          <SelectItem value="Instagram">
-                                            Instagram
-                                          </SelectItem>
-                                          <SelectItem value="Website">
-                                            Website
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                      <Input
-                                        value={link.url}
-                                        onChange={(e) =>
-                                          updateSocialMediaLink(
-                                            role.id,
-                                            linkIndex,
-                                            "url",
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="https://..."
-                                        className="flex-1"
-                                      />
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                          removeSocialMediaLink(
-                                            role.id,
-                                            linkIndex,
-                                          )
-                                        }
-                                        className="text-red-500 hover:text-red-700 p-2"
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  ),
-                                )}
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => addSocialMediaLink(role.id)}
-                                  className="w-full"
-                                >
-                                  <Plus className="h-4 w-4 mr-1" />
-                                  Add Link
-                                </Button>
-                              </div>
-                            </div>
-                          </>
-                        )}
+                      <div className="space-y-2">
+                        <Label>
+                          <Mail className="h-4 w-4 inline mr-2" />
+                          Speaker Email{" "}
+                          {!formData.anonymousFeedback ? "(for feedback)" : ""}
+                        </Label>
+                        <Input
+                          value={role.speakerEmail}
+                          onChange={(e) =>
+                            updateRole(role.id, "speakerEmail", e.target.value)
+                          }
+                          placeholder="speaker@example.com"
+                        />
                       </div>
-                    )}
+
+                      {formData.detailedSpeakerProfiles && (
+                        <>
+                          <div className="space-y-2">
+                            <Label>Bio</Label>
+                            <Textarea
+                              value={role.bio}
+                              onChange={(e) =>
+                                updateRole(role.id, "bio", e.target.value)
+                              }
+                              placeholder="Speaker biography..."
+                              className="min-h-[80px]"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Social Media Links</Label>
+                            <div className="space-y-2">
+                              {role.socialMediaLinks.map((link, linkIndex) => (
+                                <div
+                                  key={linkIndex}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Select
+                                    value={link.platform}
+                                    onValueChange={(value) =>
+                                      updateSocialMediaLink(
+                                        role.id,
+                                        linkIndex,
+                                        "platform",
+                                        value
+                                      )
+                                    }
+                                  >
+                                    <SelectTrigger className="w-32">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="LinkedIn">
+                                        LinkedIn
+                                      </SelectItem>
+                                      <SelectItem value="Twitter">
+                                        Twitter
+                                      </SelectItem>
+                                      <SelectItem value="Instagram">
+                                        Instagram
+                                      </SelectItem>
+                                      <SelectItem value="Website">
+                                        Website
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Input
+                                    value={link.url}
+                                    onChange={(e) =>
+                                      updateSocialMediaLink(
+                                        role.id,
+                                        linkIndex,
+                                        "url",
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder="https://..."
+                                    className="flex-1"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      removeSocialMediaLink(role.id, linkIndex)
+                                    }
+                                    className="text-red-500 hover:text-red-700 p-2"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addSocialMediaLink(role.id)}
+                                className="w-full"
+                              >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add Link
+                              </Button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

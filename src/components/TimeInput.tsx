@@ -15,7 +15,7 @@ export default function TimeInput({
   label,
   value,
   onChange,
-  placeholder = "0:05",
+  placeholder = "0:05:00",
 }: TimeInputProps) {
   const [displayValue, setDisplayValue] = useState(value);
   const [isValid, setIsValid] = useState(true);
@@ -25,7 +25,7 @@ export default function TimeInput({
   }, [value]);
 
   const parseAndFormatTime = (
-    input: string,
+    input: string
   ): { formatted: string; isValid: boolean } => {
     if (!input.trim()) {
       return { formatted: "", isValid: true };
@@ -36,21 +36,50 @@ export default function TimeInput({
 
     // Handle different input formats
     if (cleaned.includes(":")) {
-      // Format: HH:MM or H:MM
+      // Format: HH:MM:SS, HH:MM, or H:MM
       const parts = cleaned.split(":");
-      const hours = parseInt(parts[0] || "0", 10);
-      const minutes = parseInt(parts[1] || "0", 10);
 
-      if (isNaN(hours) || isNaN(minutes) || minutes >= 60 || hours > 999) {
+      if (parts.length === 3) {
+        // HH:MM:SS format
+        const hours = parseInt(parts[0] || "0", 10);
+        const minutes = parseInt(parts[1] || "0", 10);
+        const seconds = parseInt(parts[2] || "0", 10);
+
+        if (
+          isNaN(hours) ||
+          isNaN(minutes) ||
+          isNaN(seconds) ||
+          minutes >= 60 ||
+          seconds >= 60 ||
+          hours > 999
+        ) {
+          return { formatted: input, isValid: false };
+        }
+
+        return {
+          formatted: `${hours}:${minutes.toString().padStart(2, "0")}:${seconds
+            .toString()
+            .padStart(2, "0")}`,
+          isValid: true,
+        };
+      } else if (parts.length === 2) {
+        // HH:MM format
+        const hours = parseInt(parts[0] || "0", 10);
+        const minutes = parseInt(parts[1] || "0", 10);
+
+        if (isNaN(hours) || isNaN(minutes) || minutes >= 60 || hours > 999) {
+          return { formatted: input, isValid: false };
+        }
+
+        return {
+          formatted: `${hours}:${minutes.toString().padStart(2, "0")}:00`,
+          isValid: true,
+        };
+      } else {
         return { formatted: input, isValid: false };
       }
-
-      return {
-        formatted: `${hours}:${minutes.toString().padStart(2, "0")}`,
-        isValid: true,
-      };
     } else {
-      // Just numbers - treat as minutes, convert to hours:minutes
+      // Just numbers - treat as minutes, convert to hours:minutes:seconds
       const totalMinutes = parseInt(cleaned, 10);
 
       if (isNaN(totalMinutes) || totalMinutes > 59999) {
@@ -61,7 +90,7 @@ export default function TimeInput({
       const minutes = totalMinutes % 60;
 
       return {
-        formatted: `${hours}:${minutes.toString().padStart(2, "0")}`,
+        formatted: `${hours}:${minutes.toString().padStart(2, "0")}:00`,
         isValid: true,
       };
     }
@@ -88,8 +117,11 @@ export default function TimeInput({
 
   const getMinutesFromTimeString = (timeStr: string): number => {
     if (!timeStr) return 0;
-    const [hours, minutes] = timeStr.split(":").map(Number);
-    return (hours || 0) * 60 + (minutes || 0);
+    const parts = timeStr.split(":");
+    const hours = parseInt(parts[0] || "0", 10);
+    const minutes = parseInt(parts[1] || "0", 10);
+    const seconds = parseInt(parts[2] || "0", 10);
+    return (hours || 0) * 60 + (minutes || 0) + (seconds || 0) / 60;
   };
 
   const minutes = getMinutesFromTimeString(displayValue);
@@ -113,11 +145,12 @@ export default function TimeInput({
       />
       {!isValid && (
         <p className="text-xs text-red-500">
-          Enter time as minutes (e.g., "5" for 5 minutes) or HH:MM format
+          Enter time as minutes (e.g., "5" for 5 minutes) or HH:MM:SS format
         </p>
       )}
       <p className="text-xs text-gray-500">
-        Format: HH:MM (e.g., "0:05" for 5 minutes, or just "5" for 5 minutes)
+        Format: HH:MM:SS (e.g., "0:05:00" for 5 minutes, or just "5" for 5
+        minutes)
       </p>
     </div>
   );

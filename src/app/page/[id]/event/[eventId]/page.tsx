@@ -55,7 +55,7 @@ export default function EventDetailsPage() {
       pathname,
       pageId,
       eventId,
-      details,
+      details
     );
 
     if (shouldRedirect) {
@@ -301,7 +301,15 @@ export default function EventDetailsPage() {
             <div>
               <div className="font-medium text-gray-700">Total Duration</div>
               <div className="text-gray-600">
-                {details.estimatedMinutes} minutes
+                {(() => {
+                  const totalSeconds = details.estimatedMinutes * 60;
+                  const hours = Math.floor(totalSeconds / 3600);
+                  const minutes = Math.floor((totalSeconds % 3600) / 60);
+                  const seconds = totalSeconds % 60;
+                  return `${hours.toString().padStart(2, "0")}:${minutes
+                    .toString()
+                    .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+                })()}
               </div>
             </div>
             <div>

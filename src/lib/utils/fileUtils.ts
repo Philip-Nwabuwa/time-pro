@@ -57,7 +57,7 @@ export async function convertHeicToJpeg(file: File): Promise<File> {
   } catch (error) {
     console.error("Error converting HEIC file:", error);
     throw new Error(
-      "Failed to convert HEIC file. Please try a different format.",
+      "Failed to convert HEIC file. Please try a different format."
     );
   }
 }
@@ -124,7 +124,10 @@ export function validateFileUpload(file: File): FileValidationResult {
   if (file.size > maxSize) {
     return {
       isValid: false,
-      error: `"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Max size is 10MB`,
+      error: `"${file.name}" is too large (${(
+        file.size /
+        (1024 * 1024)
+      ).toFixed(1)}MB). Max size is 10MB`,
     };
   }
 
@@ -148,7 +151,7 @@ export function validateBatchUpload(files: File[]): BatchValidationResult {
   // Check file count limit
   if (files.length > maxFiles) {
     errors.push(
-      `Too many files selected. Maximum ${maxFiles} files allowed, got ${files.length}`,
+      `Too many files selected. Maximum ${maxFiles} files allowed, got ${files.length}`
     );
     return { validFiles: [], errors, totalSize: 0 };
   }
@@ -167,7 +170,9 @@ export function validateBatchUpload(files: File[]): BatchValidationResult {
   // Check total size limit
   if (totalSize > maxTotalSize) {
     errors.push(
-      `Total file size too large (${(totalSize / (1024 * 1024)).toFixed(1)}MB). Maximum 50MB total allowed`,
+      `Total file size too large (${(totalSize / (1024 * 1024)).toFixed(
+        1
+      )}MB). Maximum 50MB total allowed`
     );
     return { validFiles: [], errors, totalSize };
   }
@@ -179,7 +184,7 @@ export function validateBatchUpload(files: File[]): BatchValidationResult {
  * Get image dimensions from file
  */
 export async function getImageDimensions(
-  file: File,
+  file: File
 ): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -233,16 +238,20 @@ export async function createThumbnail(file: File): Promise<File> {
   return new Promise((resolve) => {
     canvas.toBlob(
       (blob) => {
-        const fileName = file.name.replace(/\.[^/.]+$/, "_thumb.webp");
+        const originalName = file.name || "image";
+        const baseName = originalName.includes(".")
+          ? originalName.split(".").slice(0, -1).join(".")
+          : originalName;
+        const fileName = `${baseName}_thumb.webp`;
         resolve(
           new File([blob!], fileName, {
             type: "image/webp",
             lastModified: file.lastModified,
-          }),
+          })
         );
       },
       "image/webp",
-      0.6,
+      0.6
     );
   });
 }
@@ -261,7 +270,11 @@ export async function createMediumImage(file: File): Promise<File> {
   };
 
   const compressedFile = await imageCompression(file, options);
-  const fileName = file.name.replace(/\.[^/.]+$/, "_medium.webp");
+  const originalName = file.name || "image";
+  const baseName = originalName.includes(".")
+    ? originalName.split(".").slice(0, -1).join(".")
+    : originalName;
+  const fileName = `${baseName}_medium.webp`;
 
   return new File([compressedFile], fileName, {
     type: "image/webp",
@@ -291,7 +304,25 @@ export async function createOriginalImage(file: File): Promise<File> {
     preserveExif: true, // Keep metadata for originals
   };
 
-  return await imageCompression(file, options);
+  const compressedFile = await imageCompression(file, options);
+
+  // Ensure the compressed file has a proper name
+  if (!compressedFile.name || compressedFile.name === "") {
+    const originalName = file.name || "image";
+    const extension = originalName.includes(".")
+      ? originalName.split(".").pop()
+      : "jpg";
+    return new File(
+      [compressedFile],
+      `${originalName.split(".")[0] || "image"}.${extension}`,
+      {
+        type: compressedFile.type,
+        lastModified: compressedFile.lastModified,
+      }
+    );
+  }
+
+  return compressedFile;
 }
 
 /**
@@ -299,7 +330,7 @@ export async function createOriginalImage(file: File): Promise<File> {
  */
 export async function processImageToVersions(
   file: File,
-  onProgress?: UploadProgressCallback,
+  onProgress?: UploadProgressCallback
 ): Promise<ProcessedImageVersions> {
   let processedFile = file;
   let wasConverted = false;
@@ -380,14 +411,14 @@ export async function processBatchToVersions(
   onProgress?: (
     fileIndex: number,
     fileProgress: number,
-    fileName: string,
+    fileName: string
   ) => void,
   onComplete?: (
     fileIndex: number,
     result: ProcessedImageVersions,
-    fileName: string,
+    fileName: string
   ) => void,
-  concurrency: number = 2,
+  concurrency: number = 2
 ): Promise<ProcessedImageVersions[]> {
   const results: ProcessedImageVersions[] = [];
   const processing: Promise<void>[] = [];

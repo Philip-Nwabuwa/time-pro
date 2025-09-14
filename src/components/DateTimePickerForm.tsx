@@ -33,33 +33,15 @@ export default function DateTimePickerForm({
     setTime(selectedTime);
   }, [selectedTime]);
 
-  // Mock time slots data
-  const timeSlots = [
-    { time: "09:00", available: true },
-    { time: "09:30", available: true },
-    { time: "10:00", available: true },
-    { time: "10:30", available: true },
-    { time: "11:00", available: true },
-    { time: "11:30", available: true },
-    { time: "12:00", available: true },
-    { time: "12:30", available: true },
-    { time: "13:00", available: true },
-    { time: "13:30", available: true },
-    { time: "14:00", available: true },
-    { time: "14:30", available: true },
-    { time: "15:00", available: true },
-    { time: "15:30", available: true },
-    { time: "16:00", available: true },
-    { time: "16:30", available: true },
-    { time: "17:00", available: true },
-    { time: "17:30", available: true },
-    { time: "18:00", available: true },
-    { time: "18:30", available: true },
-    { time: "19:00", available: true },
-    { time: "19:30", available: true },
-    { time: "20:00", available: true },
-    { time: "20:30", available: true },
-  ];
+  // Generate 24-hour time slots from 00:00 to 23:30
+  const timeSlots = Array.from({ length: 48 }, (_, index) => {
+    const hour = Math.floor(index / 2);
+    const minute = (index % 2) * 30;
+    const timeString = `${hour.toString().padStart(2, "0")}:${minute
+      .toString()
+      .padStart(2, "0")}`;
+    return { time: timeString, available: true };
+  });
 
   const handleDateSelect = (newDate: Date | undefined) => {
     if (newDate) {

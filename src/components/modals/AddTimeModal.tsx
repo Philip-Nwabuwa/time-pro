@@ -158,7 +158,7 @@ export default function AddTimeModal({
             type="button"
             onClick={handleConfirm}
             disabled={isLoading}
-            className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
+            className="flex-1 sm:flex-none"
           >
             {isLoading ? "Adding..." : "Add Time"}
           </Button>

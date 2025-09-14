@@ -7,8 +7,7 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "biome check",
-    "format": "biome format --write",
-    "clear:supabase": "node scripts/clear-supabase.mjs --yes"
+    "format": "biome format --write"
   },
   "dependencies": {
     "@origin-space/image-cropper": "^0.1.9",
