@@ -10,6 +10,7 @@ import {
   Loader2,
   Plus,
   Trash2,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +41,7 @@ import {
   useDeletePage,
   useDeleteEvent,
   useLeavePage,
+  useCloneEvent,
 } from "@/lib/api/hooks";
 
 export default function PageDetailsPage() {
@@ -58,6 +60,7 @@ export default function PageDetailsPage() {
   const deletePage = useDeletePage();
   const deleteEventMutation = useDeleteEvent();
   const leavePageMutation = useLeavePage();
+  const cloneEventMutation = useCloneEvent();
 
   const handleBackClick = () => {
     router.push("/");
@@ -78,13 +81,30 @@ export default function PageDetailsPage() {
 
   const handleDeleteEvent = async (
     eventId: string,
-    e?: React.MouseEvent<HTMLButtonElement | HTMLDivElement>,
+    e?: React.MouseEvent<HTMLButtonElement | HTMLDivElement>
   ) => {
     if (e) e.stopPropagation();
     try {
       await deleteEventMutation.mutateAsync(eventId);
     } catch (error) {
       console.error("Failed to delete event:", error);
+    }
+  };
+
+  const handleCloneEvent = async (
+    eventId: string,
+    e?: React.MouseEvent<HTMLButtonElement | HTMLDivElement>
+  ) => {
+    if (e) e.stopPropagation();
+    try {
+      const clonedEvent = await cloneEventMutation.mutateAsync({
+        eventId,
+        pageId,
+      });
+      // Redirect to the edit page of the newly cloned event
+      router.push(`/page/${pageId}/event/${clonedEvent.id}/edit`);
+    } catch (error) {
+      console.error("Failed to clone event:", error);
     }
   };
 
@@ -309,49 +329,61 @@ export default function PageDetailsPage() {
                           {event.status}
                         </Badge>
                         {page?.role === "admin" && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent
-                              onClick={(e) => e.stopPropagation()}
+                          <>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+                              onClick={(e) => handleCloneEvent(event.id, e)}
+                              disabled={cloneEventMutation.isPending}
                             >
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Delete Event
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{event.title}
-                                  "? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  Cancel
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={(e) =>
-                                    handleDeleteEvent(event.id, e)
-                                  }
-                                  disabled={deleteEventMutation.isPending}
-                                  className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
-                                >
-                                  {deleteEventMutation.isPending
-                                    ? "Deleting..."
-                                    : "Delete Event"}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Delete Event
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "
+                                    {event.title}
+                                    "? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    Cancel
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={(e) =>
+                                      handleDeleteEvent(event.id, e)
+                                    }
+                                    disabled={deleteEventMutation.isPending}
+                                    className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                                  >
+                                    {deleteEventMutation.isPending
+                                      ? "Deleting..."
+                                      : "Delete Event"}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </>
                         )}
                       </div>
                     </div>

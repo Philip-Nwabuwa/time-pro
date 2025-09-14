@@ -14,6 +14,7 @@ import {
   createEvent,
   updateEvent,
   deleteEvent,
+  cloneEvent,
 } from "./events";
 import {
   fetchMembersByPageId,
@@ -187,6 +188,28 @@ export function useDeleteEvent() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete event: ${error.message}`);
+    },
+  });
+}
+
+export function useCloneEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ eventId, pageId }: { eventId: string; pageId: string }) =>
+      cloneEvent(eventId, pageId),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.pageEvents(variables.pageId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.page(variables.pageId),
+      });
+      toast.success("Event cloned successfully!");
+      return data; // Return the cloned event data
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to clone event: ${error.message}`);
     },
   });
 }

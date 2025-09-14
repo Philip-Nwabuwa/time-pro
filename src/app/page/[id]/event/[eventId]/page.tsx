@@ -12,8 +12,9 @@ import {
   Play,
   Pencil,
   ArrowLeft,
+  Copy,
 } from "lucide-react";
-import { useEventDetails, queryKeys } from "@/lib/api/hooks";
+import { useEventDetails, queryKeys, useCloneEvent } from "@/lib/api/hooks";
 import { useEffect, useState } from "react";
 import { checkUserMembership } from "@/lib/api/members";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,6 +38,7 @@ export default function EventDetailsPage() {
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const cloneEventMutation = useCloneEvent();
 
   const [userRole, setUserRole] = useState<"admin" | "member" | null>(null);
   const [isStarting, setIsStarting] = useState(false);
@@ -103,6 +105,24 @@ export default function EventDetailsPage() {
       toast.error("Failed to start event. Please try again.");
     } finally {
       setIsStarting(false);
+    }
+  };
+
+  const handleCloneEvent = async () => {
+    if (!details || userRole !== "admin") {
+      toast.error("Only administrators can clone events");
+      return;
+    }
+
+    try {
+      const clonedEvent = await cloneEventMutation.mutateAsync({
+        eventId,
+        pageId,
+      });
+      // Redirect to the edit page of the newly cloned event
+      router.push(`/page/${pageId}/event/${clonedEvent.id}/edit`);
+    } catch (error) {
+      console.error("Error cloning event:", error);
     }
   };
 
@@ -181,6 +201,14 @@ export default function EventDetailsPage() {
                 >
                   <Pencil className="h-4 w-4 mr-2" /> Edit Event
                 </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleCloneEvent}
+                  disabled={cloneEventMutation.isPending}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  {cloneEventMutation.isPending ? "Cloning..." : "Clone Event"}
+                </Button>
               </div>
             )}
           {userRole === "admin" && details.status === "ongoing" && (
@@ -201,6 +229,14 @@ export default function EventDetailsPage() {
                 }
               >
                 <Pencil className="h-4 w-4 mr-2" /> Edit Event
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleCloneEvent}
+                disabled={cloneEventMutation.isPending}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                {cloneEventMutation.isPending ? "Cloning..." : "Clone Event"}
               </Button>
             </div>
           )}

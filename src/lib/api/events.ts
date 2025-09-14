@@ -31,7 +31,7 @@ export async function fetchEventsByPageId(pageId: string): Promise<Event[]> {
 
 export async function fetchEventDetails(
   pageId: string,
-  eventId: string,
+  eventId: string
 ): Promise<EventDetails | null> {
   const { data: event, error } = await supabase
     .from("events")
@@ -84,8 +84,66 @@ export async function fetchEventDetails(
   };
 }
 
+export async function cloneEvent(
+  eventId: string,
+  pageId: string
+): Promise<Event> {
+  // First, get the original event details
+  const originalEvent = await fetchEventDetails(pageId, eventId);
+  if (!originalEvent) {
+    throw new Error("Event not found");
+  }
+
+  // Create new event data based on the original
+  const clonedEventData: Omit<EventInsert, "created_by"> = {
+    title: `${originalEvent.title} (Copy)`,
+    event_date: originalEvent.date,
+    event_time: originalEvent.time,
+    location: originalEvent.location,
+    page_id: pageId,
+    allow_feedback: originalEvent.allowFeedback ?? true,
+    anonymous_feedback: originalEvent.anonymousFeedback ?? false,
+    detailed_speaker_profiles: originalEvent.detailedSpeakerProfiles ?? true,
+    estimated_minutes: originalEvent.estimatedMinutes,
+    roles_count: originalEvent.rolesCount,
+    status: "upcoming", // Start as upcoming so it can be edited
+    configured: originalEvent.configured,
+  };
+
+  // Create the new event
+  const newEvent = await createEvent(clonedEventData);
+
+  // Clone the schedule items
+  if (originalEvent.schedule && originalEvent.schedule.length > 0) {
+    const scheduleItems: EventScheduleItemInsert[] = originalEvent.schedule.map(
+      (item) => ({
+        event_id: newEvent.id,
+        title: item.title,
+        role: item.role,
+        order_index: item.order,
+        allocated_minutes: item.allocatedMinutes,
+        speaker_name: item.speakerName || null,
+        speaker_email: item.speakerEmail || null,
+        speaker_bio: item.speakerBio || null,
+        speaker_avatar: item.speakerAvatar || null,
+        min_minutes: item.minMinutes || null,
+        target_minutes: item.targetMinutes || null,
+        max_minutes: item.maxMinutes || null,
+        social_media_links: item.socialMediaLinks || null,
+      })
+    );
+
+    // Create all schedule items
+    await Promise.all(
+      scheduleItems.map((item) => createScheduleItem(newEvent.id, item))
+    );
+  }
+
+  return newEvent;
+}
+
 export async function createEvent(
-  eventData: Omit<EventInsert, "created_by">,
+  eventData: Omit<EventInsert, "created_by">
 ): Promise<Event> {
   const { data: user } = await supabase.auth.getUser();
   if (!user.user) throw new Error("Not authenticated");
@@ -115,7 +173,7 @@ export async function createEvent(
 
 export async function updateEvent(
   id: string,
-  updates: EventUpdate,
+  updates: EventUpdate
 ): Promise<Event> {
   const { data: event, error } = await supabase
     .from("events")
@@ -169,7 +227,7 @@ export async function startEvent(id: string): Promise<Event> {
 // Schedule items
 export async function createScheduleItem(
   eventId: string,
-  itemData: Omit<EventScheduleItemInsert, "event_id">,
+  itemData: Omit<EventScheduleItemInsert, "event_id">
 ): Promise<void> {
   const { error } = await supabase.from("event_schedule_items").insert({
     ...itemData,
@@ -181,7 +239,7 @@ export async function createScheduleItem(
 
 export async function updateScheduleItem(
   id: string,
-  updates: EventScheduleItemUpdate,
+  updates: EventScheduleItemUpdate
 ): Promise<void> {
   const { error } = await supabase
     .from("event_schedule_items")

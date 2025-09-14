@@ -27,6 +27,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from "sonner";
 import { useEventDetails, usePage } from "@/lib/api/hooks";
 import {
@@ -46,7 +51,6 @@ import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import MemberSearchInput from "@/components/MemberSearchInput";
 import DateTimePickerForm from "@/components/DateTimePickerForm";
 import TimeInput from "@/components/TimeInput";
-import { format } from "date-fns";
 import AvatarPicker from "@/components/AvatarPicker";
 import { uploadSpeakerAvatar } from "@/lib/avatarUtils";
 
@@ -339,41 +343,6 @@ export default function EditEventPage() {
     }));
   };
 
-  // Dropdown options
-  const timeSlots = [
-    "09:00",
-    "09:30",
-    "10:00",
-    "10:30",
-    "11:00",
-    "11:30",
-    "12:00",
-    "12:30",
-    "0:13",
-    "13:30",
-    "14:00",
-    "14:30",
-    "0:15",
-    "15:30",
-    "16:00",
-    "16:30",
-    "0:17",
-    "17:30",
-    "18:00",
-    "18:30",
-    "19:00",
-    "19:30",
-    "20:00",
-    "20:30",
-  ];
-
-  const today = new Date();
-  const dateOptions = Array.from({ length: 60 }).map((_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    return d;
-  });
-
   const handleSaveEvent = async () => {
     // Validation
     if (!formData.title.trim()) {
@@ -531,51 +500,34 @@ export default function EditEventPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>Event Date & Time *</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Select
-                    value={
-                      formData.date
-                        ? formData.date.toISOString().split("T")[0]
-                        : ""
-                    }
-                    onValueChange={(v) => handleDateChange(new Date(v))}
+            <div className="space-y-2">
+              <Label>Date & Time*</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                    disabled={isLoading}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select date" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dateOptions.map((d) => {
-                        const val = d.toISOString().split("T")[0];
-                        return (
-                          <SelectItem key={val} value={val}>
-                            {format(d, "EEE, MMM d, yyyy")}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-
-                  <Select
-                    value={formData.time || ""}
-                    onValueChange={handleTimeChange}
-                    disabled={!formData.date}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeSlots.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {formData.date && formData.time
+                      ? `${formData.date.toLocaleDateString()} at ${
+                          formData.time
+                        }`
+                      : formData.date
+                      ? `${formData.date.toLocaleDateString()} - Select time`
+                      : "Select date and time"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <DateTimePickerForm
+                    selectedDate={formData.date}
+                    selectedTime={formData.time}
+                    onDateChange={handleDateChange}
+                    onTimeChange={handleTimeChange}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
