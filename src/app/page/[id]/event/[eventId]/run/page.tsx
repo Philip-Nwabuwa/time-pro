@@ -29,6 +29,7 @@ import {
   SquareMinus,
   SquarePen,
   SkipBack,
+  Check,
 } from "lucide-react";
 import { useEventDetails } from "@/lib/api/hooks";
 import {
@@ -263,6 +264,13 @@ function TimerCard({
                   Previous
                 </Button>
                 <Button
+                  onClick={onToggleTimer}
+                  size={isFullscreen ? "default" : "default"}
+                  className="bg-emerald-700 hover:bg-emerald-800"
+                >
+                  {isRunning ? "Stop" : hasStarted ? "Resume" : "Start Timer"}
+                </Button>
+                <Button
                   variant="secondary"
                   size={isFullscreen ? "default" : "default"}
                   className="bg-white/10 text-white hover:bg-white/20"
@@ -271,13 +279,6 @@ function TimerCard({
                 >
                   <Play className="h-4 w-4 mr-2" />
                   Next
-                </Button>
-                <Button
-                  onClick={onToggleTimer}
-                  size={isFullscreen ? "default" : "default"}
-                  className="bg-emerald-700 hover:bg-emerald-800"
-                >
-                  {isRunning ? "Stop" : hasStarted ? "Resume" : "Start Timer"}
                 </Button>
               </div>
             )}
@@ -340,6 +341,8 @@ export default function RunEventPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
+  const [accumulatedMs, setAccumulatedMs] = useState(0);
+  const [lastResumedAt, setLastResumedAt] = useState<string | null>(null);
   const intervalRef = useRef<number | null>(null);
 
   // Speaker management
@@ -503,19 +506,22 @@ export default function RunEventPage() {
       await saveSessionState();
 
       setCurrentSpeakerIndex(nextIndex);
-      setSeconds(0); // Reset timer
+      setSeconds(0); // Reset display seconds
       setAddedTime(0); // Reset added time
       setIsRunning(false); // Stop timer
       setHasStarted(false); // Reset timer started state
+      setAccumulatedMs(0);
+      setLastResumedAt(null);
 
       // Broadcast speaker change to all users
       await broadcastTimerState({
         isRunning: false,
         hasStarted: false,
-        seconds: 0,
         currentSpeakerIndex: nextIndex,
         addedTime: 0,
         lastUpdate: new Date().toISOString(),
+        accumulatedMs: 0,
+        lastResumedAt: null,
         controlledBy: user?.id,
       });
     }
@@ -536,19 +542,22 @@ export default function RunEventPage() {
       await saveSessionState();
 
       setCurrentSpeakerIndex(prevIndex);
-      setSeconds(0); // Reset timer
+      setSeconds(0); // Reset display seconds
       setAddedTime(0); // Reset added time
       setIsRunning(false); // Stop timer
       setHasStarted(false); // Reset timer started state
+      setAccumulatedMs(0);
+      setLastResumedAt(null);
 
       // Broadcast speaker change to all users
       await broadcastTimerState({
         isRunning: false,
         hasStarted: false,
-        seconds: 0,
         currentSpeakerIndex: prevIndex,
         addedTime: 0,
         lastUpdate: new Date().toISOString(),
+        accumulatedMs: 0,
+        lastResumedAt: null,
         controlledBy: user?.id,
       });
     }
@@ -566,46 +575,42 @@ export default function RunEventPage() {
       return;
     }
 
+    const nowIso = new Date().toISOString();
     if (!isRunning) {
+      // Start or resume
       setHasStarted(true);
       setIsRunning(true);
-      // Broadcast timer start to all users
+      setLastResumedAt(nowIso);
       await broadcastTimerState({
         isRunning: true,
         hasStarted: true,
-        seconds,
         currentSpeakerIndex,
         addedTime,
-        lastUpdate: new Date().toISOString(),
-        controlledBy: user?.id,
-      });
-    } else if (isRunning) {
-      // Stopping the timer - capture current time and offer to add time
-      const currentTime = seconds;
-      setIsRunning(false);
-      setStoppedTime(formatSeconds(currentTime));
-      setShowAddTimeModal(true);
-      // Broadcast timer stop to all users
-      await broadcastTimerState({
-        isRunning: false,
-        hasStarted: true,
-        seconds: currentTime,
-        currentSpeakerIndex,
-        addedTime,
-        lastUpdate: new Date().toISOString(),
+        lastUpdate: nowIso,
+        accumulatedMs,
+        lastResumedAt: nowIso,
         controlledBy: user?.id,
       });
     } else {
-      // Resuming the timer
-      setIsRunning(true);
-      // Broadcast timer resume to all users
+      // Pause: add elapsed since last resume to accumulated
+      const lastResumeTime = lastResumedAt ? Date.parse(lastResumedAt) : null;
+      const nowMs = Date.now();
+      const elapsed = lastResumeTime ? Math.max(0, nowMs - lastResumeTime) : 0;
+      const newAccumulated = accumulatedMs + elapsed;
+      const currentTime = Math.floor(newAccumulated / 1000);
+      setIsRunning(false);
+      setAccumulatedMs(newAccumulated);
+      setLastResumedAt(null);
+      setStoppedTime(formatSeconds(currentTime));
+      setShowAddTimeModal(true);
       await broadcastTimerState({
-        isRunning: true,
+        isRunning: false,
         hasStarted: true,
-        seconds,
         currentSpeakerIndex,
         addedTime,
-        lastUpdate: new Date().toISOString(),
+        lastUpdate: nowIso,
+        accumulatedMs: newAccumulated,
+        lastResumedAt: null,
         controlledBy: user?.id,
       });
     }
@@ -773,7 +778,24 @@ export default function RunEventPage() {
 
     try {
       await acceptSessionPhoto(photoId, user.id);
-      // Refresh photos list - use role-based function
+
+      // Optimistic update: flip status locally so controls disappear immediately
+      setPhotos((prev = []) =>
+        prev.map((p) =>
+          p.id === photoId
+            ? {
+                ...p,
+                photo: {
+                  ...p.photo,
+                  status: "accepted",
+                  approved: true,
+                } as any,
+              }
+            : p
+        )
+      );
+
+      // Background refresh to ensure consistency
       const updatedPhotos =
         userRole === "admin"
           ? await fetchSessionPhotos(eventId)
@@ -807,7 +829,17 @@ export default function RunEventPage() {
 
     try {
       await rejectSessionPhoto(photoId);
-      // Refresh photos list - use role-based function
+
+      // Optimistic update
+      setPhotos((prev = []) =>
+        prev.map((p) =>
+          p.id === photoId
+            ? { ...p, photo: { ...p.photo, status: "rejected" } as any }
+            : p
+        )
+      );
+
+      // Background refresh
       const updatedPhotos =
         userRole === "admin"
           ? await fetchSessionPhotos(eventId)
@@ -916,10 +948,11 @@ export default function RunEventPage() {
   const broadcastTimerState = async (timerState: {
     isRunning: boolean;
     hasStarted: boolean;
-    seconds: number;
     currentSpeakerIndex: number;
     addedTime: number;
     lastUpdate: string;
+    accumulatedMs: number;
+    lastResumedAt: string | null;
     controlledBy?: string;
   }) => {
     if (!eventId) return;
@@ -927,13 +960,13 @@ export default function RunEventPage() {
     try {
       const sessionState = {
         currentSpeakerIndex: timerState.currentSpeakerIndex,
-        seconds: timerState.seconds,
         addedTime: timerState.addedTime,
         hasStarted: timerState.hasStarted,
         isRunning: timerState.isRunning,
         lastUpdate: timerState.lastUpdate,
         controlledBy: timerState.controlledBy,
-        timerPausedAt: timerState.isRunning ? null : timerState.lastUpdate,
+        accumulatedMs: timerState.accumulatedMs,
+        lastResumedAt: timerState.lastResumedAt,
         savedAt: new Date().toISOString(),
       };
 
@@ -965,16 +998,23 @@ export default function RunEventPage() {
           ? currentSessionState.userPreferences
           : {};
 
+      const nowMs = Date.now();
+      const lastResumeTime = lastResumedAt ? Date.parse(lastResumedAt) : null;
+      const snapshotAccumulated =
+        isRunning && lastResumeTime
+          ? accumulatedMs + Math.max(0, nowMs - lastResumeTime)
+          : accumulatedMs;
+
       const sessionState = {
         currentSpeakerIndex,
-        seconds,
         addedTime,
         hasStarted,
-        isRunning: false, // Don't persist running state for non-real-time saves
-        timerPausedAt: isRunning ? null : new Date().toISOString(), // Track when timer was paused
+        isRunning,
         lastUpdate: new Date().toISOString(),
-        controlledBy: user?.id, // Track who last controlled the timer
-        userPreferences: existingUserPreferences, // Preserve existing user preferences
+        controlledBy: user?.id,
+        userPreferences: existingUserPreferences,
+        accumulatedMs: snapshotAccumulated,
+        lastResumedAt: isRunning ? lastResumedAt : null,
         savedAt: new Date().toISOString(),
       };
 
@@ -1210,9 +1250,6 @@ export default function RunEventPage() {
             if (sessionData.currentSpeakerIndex !== undefined) {
               setCurrentSpeakerIndex(sessionData.currentSpeakerIndex);
             }
-            if (sessionData.seconds !== undefined) {
-              setSeconds(sessionData.seconds);
-            }
             if (sessionData.addedTime !== undefined) {
               setAddedTime(sessionData.addedTime);
             }
@@ -1221,6 +1258,12 @@ export default function RunEventPage() {
             }
             if (sessionData.isRunning !== undefined) {
               setIsRunning(sessionData.isRunning);
+            }
+            if (sessionData.accumulatedMs !== undefined) {
+              setAccumulatedMs(sessionData.accumulatedMs);
+            }
+            if (sessionData.lastResumedAt !== undefined) {
+              setLastResumedAt(sessionData.lastResumedAt);
             }
             setIsTimerSynced(true);
             setLastTimerUpdate(new Date());
@@ -1298,16 +1341,17 @@ export default function RunEventPage() {
             setHasStarted(state.hasStarted);
           }
 
-          // Restore timer with consideration for pause time
-          if (state.seconds !== undefined) {
-            let restoredSeconds = state.seconds;
-
-            // If timer was paused and we have a pause timestamp, don't add elapsed time
-            // If timer was running, we would need to calculate elapsed time, but since we save
-            // isRunning as false, we assume it was paused
-            setSeconds(restoredSeconds);
-
-            console.log(`Timer restored to: ${restoredSeconds} seconds`);
+          // Restore timing model
+          if (state.isRunning !== undefined) {
+            setIsRunning(state.isRunning);
+          }
+          if (state.accumulatedMs !== undefined) {
+            setAccumulatedMs(state.accumulatedMs);
+          } else if (state.seconds !== undefined) {
+            setAccumulatedMs((state.seconds as number) * 1000);
+          }
+          if (state.lastResumedAt !== undefined) {
+            setLastResumedAt(state.lastResumedAt);
           }
 
           // Restore user preferences if available
@@ -1396,7 +1440,7 @@ export default function RunEventPage() {
 
     // initial fetch + interval
     refetchSessionLists();
-    const intervalId = setInterval(refetchSessionLists, 10000);
+    const intervalId = setInterval(refetchSessionLists, 30000);
 
     return () => {
       cancelled = true;
@@ -1404,18 +1448,19 @@ export default function RunEventPage() {
     };
   }, [eventId, userRole, loadingPhotos]);
 
-  // Timer interval - increment seconds when running
+  // Timer interval - derive seconds from accumulatedMs and lastResumedAt
   useEffect(() => {
-    if (isRunning) {
-      intervalRef.current = window.setInterval(() => {
-        setSeconds((prev) => prev + 1);
-      }, 1000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+    const computeSeconds = () => {
+      if (isRunning && lastResumedAt) {
+        const elapsed = Math.max(0, Date.now() - Date.parse(lastResumedAt));
+        setSeconds(Math.floor((accumulatedMs + elapsed) / 1000));
+      } else {
+        setSeconds(Math.floor(accumulatedMs / 1000));
       }
-    }
+    };
+
+    computeSeconds();
+    intervalRef.current = window.setInterval(computeSeconds, 1000);
 
     return () => {
       if (intervalRef.current) {
@@ -1423,7 +1468,7 @@ export default function RunEventPage() {
         intervalRef.current = null;
       }
     };
-  }, [isRunning]);
+  }, [isRunning, lastResumedAt, accumulatedMs]);
 
   // Auto-save session state periodically and when timer state changes
   useEffect(() => {
@@ -1451,6 +1496,24 @@ export default function RunEventPage() {
   useEffect(() => {
     saveSessionState();
   }, [currentSpeakerIndex]);
+
+  // Best-effort save on tab close
+  useEffect(() => {
+    const handler = () => {
+      try {
+        saveSessionState();
+      } catch {}
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [
+    accumulatedMs,
+    lastResumedAt,
+    isRunning,
+    hasStarted,
+    currentSpeakerIndex,
+    addedTime,
+  ]);
 
   // Handle ESC key to exit fullscreen
   useEffect(() => {
@@ -2202,7 +2265,7 @@ export default function RunEventPage() {
                                 }}
                                 className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs py-1 h-auto"
                               >
-                                Accept
+                                <Check />
                               </Button>
                               <Button
                                 size="sm"
@@ -2212,7 +2275,7 @@ export default function RunEventPage() {
                                 }}
                                 className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-1 h-auto"
                               >
-                                Reject
+                                <X />
                               </Button>
                             </div>
                           )}

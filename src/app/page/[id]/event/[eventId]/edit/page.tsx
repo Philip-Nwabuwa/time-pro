@@ -61,6 +61,7 @@ interface SpeakerRole {
   speakerEmail: string;
   bio: string;
   avatar: string;
+  avatarBlob: Blob | null;
   minTime: string;
   targetTime: string;
   maxTime: string;
@@ -73,11 +74,9 @@ interface EventFormData {
   date: Date | null;
   time: string | null;
   location: string;
-  description: string;
   allowFeedback: boolean;
   anonymousFeedback: boolean;
   detailedSpeakerProfiles: boolean;
-  status: "upcoming" | "completed" | "draft";
   roles: SpeakerRole[];
 }
 
@@ -105,11 +104,9 @@ export default function EditEventPage() {
     date: null,
     time: null,
     location: "",
-    description: "",
     allowFeedback: true,
     anonymousFeedback: false,
     detailedSpeakerProfiles: true,
-    status: "upcoming",
     roles: [],
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -119,10 +116,7 @@ export default function EditEventPage() {
 
   // Modal states
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
-  const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
-  const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(
-    null
-  );
+  // Removed status change modal to match create UI
 
   // Populate form data when event details are loaded
   useEffect(() => {
@@ -132,11 +126,9 @@ export default function EditEventPage() {
         date: new Date(eventDetails.date),
         time: eventDetails.time,
         location: eventDetails.location,
-        description: eventDetails.description || "",
         allowFeedback: eventDetails.allowFeedback ?? true,
         anonymousFeedback: eventDetails.anonymousFeedback ?? false,
         detailedSpeakerProfiles: eventDetails.detailedSpeakerProfiles ?? true,
-        status: eventDetails.status as "upcoming" | "completed" | "draft",
         roles: eventDetails.schedule.map((item, index) => ({
           id: item.id,
           roleName: item.title,
@@ -144,12 +136,13 @@ export default function EditEventPage() {
           speakerEmail: item.speakerEmail || "",
           bio: item.speakerBio || "",
           avatar: item.speakerAvatar || "",
+          avatarBlob: null,
           minTime: formatMinutesToTime(item.minMinutes || 3),
           targetTime: formatMinutesToTime(
             item.targetMinutes || item.allocatedMinutes
           ),
           maxTime: formatMinutesToTime(
-            item.maxMinutes || item.allocatedMinutes * 1.5
+            item.maxMinutes || Math.round((item.allocatedMinutes || 5) * 1.5)
           ),
           socialMediaLinks: item.socialMediaLinks || [],
         })),
@@ -165,15 +158,22 @@ export default function EditEventPage() {
   }, [formData, deletedRoleIds]);
 
   const formatMinutesToTime = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}:${mins.toString().padStart(2, "0")}`;
+    const totalSeconds = Math.round(minutes * 60);
+    const hours = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    return `${hours}:${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   const parseTimeToMinutes = (timeString: string): number => {
     if (!timeString) return 0;
-    const [hours, minutes] = timeString.split(":").map(Number);
-    return (hours || 0) * 60 + (minutes || 0);
+    const parts = timeString.split(":");
+    const hours = parseInt(parts[0] || "0", 10);
+    const minutes = parseInt(parts[1] || "0", 10);
+    const seconds = parseInt(parts[2] || "0", 10);
+    return (hours || 0) * 60 + (minutes || 0) + (seconds || 0) / 60;
   };
 
   const handleInputChange = (
@@ -186,35 +186,7 @@ export default function EditEventPage() {
     }));
   };
 
-  const handleStatusChange = (status: string) => {
-    // Warn if changing to completed status
-    if (status === "completed" && formData.status !== "completed") {
-      setPendingStatusChange(status);
-      setShowStatusChangeModal(true);
-      return;
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      status: status as "upcoming" | "completed" | "draft",
-    }));
-  };
-
-  const confirmStatusChange = () => {
-    if (pendingStatusChange) {
-      setFormData((prev) => ({
-        ...prev,
-        status: pendingStatusChange as "upcoming" | "completed" | "draft",
-      }));
-    }
-    setShowStatusChangeModal(false);
-    setPendingStatusChange(null);
-  };
-
-  const cancelStatusChange = () => {
-    setShowStatusChangeModal(false);
-    setPendingStatusChange(null);
-  };
+  // Removed status change handlers to match create UI
 
   const handleBack = () => {
     if (hasUnsavedChanges && !isLoading) {
@@ -233,7 +205,7 @@ export default function EditEventPage() {
     setShowUnsavedChangesModal(false);
   };
 
-  const addRole = () => {
+  const addRoleAtIndex = (index: number) => {
     const newRole: SpeakerRole = {
       id: `new-${Date.now()}`,
       roleName: "",
@@ -241,17 +213,25 @@ export default function EditEventPage() {
       speakerEmail: "",
       bio: "",
       avatar: "",
-      minTime: "0:03",
-      targetTime: "0:05",
-      maxTime: "0:07",
+      avatarBlob: null,
+      minTime: "",
+      targetTime: "",
+      maxTime: "",
       socialMediaLinks: [],
       isNew: true,
     };
     setFormData((prev) => ({
       ...prev,
-      roles: [...prev.roles, newRole],
+      roles: [
+        ...prev.roles.slice(0, index),
+        newRole,
+        ...prev.roles.slice(index),
+      ],
     }));
+    toast.success("New role added");
   };
+
+  const addRole = () => addRoleAtIndex(formData.roles.length);
 
   const removeRole = (index: number) => {
     const roleToRemove = formData.roles[index];
@@ -290,7 +270,9 @@ export default function EditEventPage() {
               ...role,
               speakerName: member.name,
               speakerEmail: member.email,
-              avatar: member.avatar || "",
+              // Only update avatar if no custom avatar has been uploaded
+              avatar: role.avatarBlob ? role.avatar : member.avatar || "",
+              avatarBlob: role.avatarBlob,
               // Keep existing bio and social media links as they might be role-specific
             }
           : role
@@ -298,28 +280,15 @@ export default function EditEventPage() {
     }));
   };
 
-  const handleAvatarChange = async (index: number, fileBlob: Blob | null) => {
-    const role = formData.roles[index];
-    if (!role) return;
-    if (!fileBlob) {
-      // Clear avatar
+  const handleAvatarChange = (index: number, blob: Blob | null) => {
+    // Match create page behavior: store blob and object URL, upload on submit
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      updateRole(index, "avatarBlob", blob);
+      updateRole(index, "avatar", url);
+    } else {
+      updateRole(index, "avatarBlob", null);
       updateRole(index, "avatar", "");
-      return;
-    }
-    try {
-      setUploadingRoleId(role.id);
-      const result = await uploadSpeakerAvatar(fileBlob, eventId, role.id);
-      if (result.success && result.url) {
-        updateRole(index, "avatar", result.url);
-        toast.success("Speaker photo updated");
-      } else {
-        toast.error(result.error || "Failed to upload photo");
-      }
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to upload photo");
-    } finally {
-      setUploadingRoleId(null);
     }
   };
 
@@ -374,24 +343,53 @@ export default function EditEventPage() {
       const eventDate = formData.date.toISOString().split("T")[0]; // YYYY-MM-DD format
       const eventTime = formData.time;
 
-      // Prepare event update data
+      // Prepare event update data (align with create form surface)
       const eventUpdateData: EventUpdate = {
         title: formData.title.trim(),
-        description: formData.description.trim() || null,
         event_date: eventDate,
-        event_time: eventTime,
+        event_time: eventTime!,
         location: formData.location.trim() || null,
-        status: formData.status,
         estimated_minutes: Math.round(calculateTotalTime()),
         roles_count: formData.roles.length,
         configured: formData.roles.length > 0,
         allow_feedback: formData.allowFeedback,
         anonymous_feedback: formData.anonymousFeedback,
         detailed_speaker_profiles: formData.detailedSpeakerProfiles,
-      };
+      } as EventUpdate;
 
       // Update the event
       await updateEvent(eventId, eventUpdateData);
+
+      // Upload speaker avatars and update roles with uploaded URLs
+      const rolesWithUploadedAvatars = await Promise.all(
+        formData.roles.map(async (role) => {
+          let speakerAvatarUrl = role.avatar;
+          if (role.avatarBlob) {
+            const uploadResult = await uploadSpeakerAvatar(
+              role.avatarBlob,
+              eventId,
+              role.id
+            );
+            if (uploadResult.success && uploadResult.url) {
+              speakerAvatarUrl = uploadResult.url;
+            } else {
+              console.warn(
+                `Failed to upload avatar for role ${role.roleName}: ${uploadResult.error}`
+              );
+              toast.error(
+                `Failed to upload avatar for ${role.roleName}: ${uploadResult.error}`
+              );
+            }
+          }
+          if (speakerAvatarUrl && speakerAvatarUrl.startsWith("blob:")) {
+            speakerAvatarUrl = "";
+          }
+          return {
+            ...role,
+            avatar: speakerAvatarUrl,
+          };
+        })
+      );
 
       // Handle schedule items
       // 1. Delete removed roles
@@ -400,13 +398,13 @@ export default function EditEventPage() {
       }
 
       // 2. Update existing roles and create new ones
-      for (let i = 0; i < formData.roles.length; i++) {
-        const role = formData.roles[i];
+      for (let i = 0; i < rolesWithUploadedAvatars.length; i++) {
+        const role = rolesWithUploadedAvatars[i];
 
         const scheduleItemData = {
           title: role.roleName.trim(),
           role: role.roleName.trim(),
-          order_index: i + 1,
+          order_index: i,
           allocated_minutes: Math.round(parseTimeToMinutes(role.targetTime)),
           min_minutes: Math.round(parseTimeToMinutes(role.minTime)),
           target_minutes: Math.round(parseTimeToMinutes(role.targetTime)),
@@ -473,13 +471,21 @@ export default function EditEventPage() {
     <main className="mx-auto max-w-4xl px-6 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Event</h1>
-        <p className="text-gray-600">
-          Edit event for <span className="font-medium">{page.title}</span>
-        </p>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Event</h1>
+          <p className="text-gray-600">
+            Update event for <span className="font-medium">{page.title}</span>
+          </p>
+        </div>
       </div>
 
-      <div className="space-y-8">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSaveEvent();
+        }}
+        className="space-y-8"
+      >
         {/* Event Details */}
         <Card>
           <CardHeader>
@@ -536,6 +542,7 @@ export default function EditEventPage() {
                 id="location"
                 name="location"
                 type="text"
+                placeholder="Enter event location (optional)"
                 value={formData.location}
                 onChange={handleInputChange}
                 disabled={isLoading}
@@ -545,55 +552,49 @@ export default function EditEventPage() {
           </CardContent>
         </Card>
 
-        {/* Event Configuration */}
+        {/* Feedback & Speaker Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Event Configuration</CardTitle>
+            <CardTitle>Feedback & Speaker Settings</CardTitle>
+            <p className="text-sm text-gray-600">
+              Configure how feedback and speaker information is handled.
+            </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="allowFeedback"
-                checked={formData.allowFeedback}
-                onCheckedChange={(checked) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    allowFeedback: checked as boolean,
-                  }))
-                }
-                disabled={isLoading}
-              />
-              <Label htmlFor="allowFeedback">Allow feedback collection</Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="anonymousFeedback"
-                checked={formData.anonymousFeedback}
-                onCheckedChange={(checked) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    anonymousFeedback: checked as boolean,
-                  }))
-                }
-                disabled={isLoading || !formData.allowFeedback}
-              />
-              <Label htmlFor="anonymousFeedback">
-                Allow anonymous feedback
-              </Label>
-            </div>
+            {formData.allowFeedback && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="anonymousFeedback"
+                  checked={formData.anonymousFeedback}
+                  onCheckedChange={(checked: boolean | "indeterminate") =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      anonymousFeedback:
+                        checked === "indeterminate"
+                          ? prev.anonymousFeedback
+                          : (checked as boolean),
+                    }))
+                  }
+                />
+                <Label htmlFor="anonymousFeedback">
+                  Make feedback anonymous
+                </Label>
+              </div>
+            )}
 
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="detailedSpeakerProfiles"
                 checked={formData.detailedSpeakerProfiles}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean | "indeterminate") =>
                   setFormData((prev) => ({
                     ...prev,
-                    detailedSpeakerProfiles: checked as boolean,
+                    detailedSpeakerProfiles:
+                      checked === "indeterminate"
+                        ? prev.detailedSpeakerProfiles
+                        : (checked as boolean),
                   }))
                 }
-                disabled={isLoading}
               />
               <Label htmlFor="detailedSpeakerProfiles">
                 Enable detailed speaker profiles
@@ -602,177 +603,312 @@ export default function EditEventPage() {
           </CardContent>
         </Card>
 
-        {/* Roles and Schedule */}
+        {/* Event Schedule & Roles */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Roles & Schedule</CardTitle>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addRole}
-                disabled={isLoading}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add Role
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {formData.roles.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <p>No roles added yet.</p>
-                <p className="text-sm">Click "Add Role" to get started.</p>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <CardTitle>Event Schedule & Roles</CardTitle>
+                <p className="text-sm text-gray-600 mt-2">
+                  Manage speakers and time allocations.
+                </p>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {formData.roles.map((role, index) => (
-                  <div
-                    key={role.id}
-                    className="border rounded-lg p-4 space-y-4 relative"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-700">
-                          Role {index + 1}
-                        </span>
+              <div className="flex items-center gap-4">
+                <Button type="button" onClick={addRole} size="sm">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Role
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {formData.roles.map((role, index) => (
+                <div key={role.id}>
+                  {/* Plus button to add role before this one */}
+                  {index > 0 && (
+                    <div className="flex justify-center my-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addRoleAtIndex(index)}
+                        className="rounded-full w-8 h-8 p-0 border-dashed border-2 hover:border-solid"
+                        disabled={isLoading}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Role content */}
+                  <div className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-center gap-4">
+                      <GripVertical className="h-4 w-4 text-gray-400 cursor-move" />
+                      <div className="space-y-2">
+                        <Label>Avatar</Label>
+                        <AvatarPicker
+                          initialAvatarUrl={role.avatar || null}
+                          onAvatarChange={(blob) =>
+                            handleAvatarChange(index, blob)
+                          }
+                        />
                       </div>
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Role Name</Label>
+                          <Input
+                            value={role.roleName}
+                            onChange={(e) =>
+                              updateRole(index, "roleName", e.target.value)
+                            }
+                            placeholder="Role name"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <MemberSearchInput
+                            pageId={pageId}
+                            value={role.speakerName}
+                            onChange={(value) =>
+                              updateRole(index, "speakerName", value)
+                            }
+                            onMemberSelect={(member) =>
+                              handleMemberSelect(index, member)
+                            }
+                            label="Speaker Name"
+                            placeholder="Search members or enter name..."
+                          />
+                        </div>
+                      </div>
+
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => removeRole(index)}
-                        disabled={isLoading}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="text-red-500 hover:text-red-700"
                       >
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Role Name *</Label>
-                        <Input
-                          value={role.roleName}
-                          onChange={(e) =>
-                            updateRole(index, "roleName", e.target.value)
-                          }
-                          placeholder="e.g., Toastmaster, Speaker"
-                          disabled={isLoading}
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <MemberSearchInput
-                          pageId={pageId}
-                          value={role.speakerName}
-                          onChange={(value) =>
-                            updateRole(index, "speakerName", value)
-                          }
-                          onMemberSelect={(member) =>
-                            handleMemberSelect(index, member)
-                          }
-                          label="Speaker Name"
-                          placeholder="Search members or enter name..."
-                          disabled={isLoading}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Speaker Photo</Label>
-                        <div className="flex items-center gap-3">
-                          <AvatarPicker
-                            initialAvatarUrl={role.avatar}
-                            onAvatarChange={(blob) =>
-                              handleAvatarChange(index, blob)
-                            }
-                          />
-                          {uploadingRoleId === role.id && (
-                            <span className="text-sm text-gray-500">
-                              Uploading...
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Speaker Email</Label>
-                      <Input
-                        value={role.speakerEmail}
-                        onChange={(e) =>
-                          updateRole(index, "speakerEmail", e.target.value)
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <TimeInput
+                        label="Min Time"
+                        value={role.minTime}
+                        onChange={(value) =>
+                          updateRole(index, "minTime", value)
                         }
-                        placeholder="Speaker's email address"
-                        disabled={isLoading}
-                        type="email"
+                        placeholder="0:03:00"
+                      />
+
+                      <TimeInput
+                        label="Target Time"
+                        value={role.targetTime}
+                        onChange={(value) =>
+                          updateRole(index, "targetTime", value)
+                        }
+                        placeholder="0:05:00"
+                      />
+
+                      <TimeInput
+                        label="Max Time"
+                        value={role.maxTime}
+                        onChange={(value) =>
+                          updateRole(index, "maxTime", value)
+                        }
+                        placeholder="0:07:00"
                       />
                     </div>
 
-                    <div className="grid md:grid-cols-3 gap-4">
+                    <div className="border-t pt-4 space-y-4">
+                      <h4 className="font-medium">Speaker Details</h4>
+
                       <div className="space-y-2">
-                        <TimeInput
-                          label="Min Time"
-                          value={role.minTime}
-                          onChange={(value) =>
-                            updateRole(index, "minTime", value)
+                        <Label>
+                          <Mail className="h-4 w-4 inline mr-2" />
+                          Speaker Email{" "}
+                          {!formData.anonymousFeedback ? "(for feedback)" : ""}
+                        </Label>
+                        <Input
+                          value={role.speakerEmail}
+                          onChange={(e) =>
+                            updateRole(index, "speakerEmail", e.target.value)
                           }
+                          placeholder="speaker@example.com"
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <TimeInput
-                          label="Target Time"
-                          value={role.targetTime}
-                          onChange={(value) =>
-                            updateRole(index, "targetTime", value)
-                          }
-                        />
-                      </div>
+                      {formData.detailedSpeakerProfiles && (
+                        <>
+                          <div className="space-y-2">
+                            <Label>Bio</Label>
+                            <Textarea
+                              value={role.bio}
+                              onChange={(e) =>
+                                updateRole(index, "bio", e.target.value)
+                              }
+                              placeholder="Speaker biography..."
+                              className="min-h-[80px]"
+                            />
+                          </div>
 
-                      <div className="space-y-2">
-                        <TimeInput
-                          label="Max Time"
-                          value={role.maxTime}
-                          onChange={(value) =>
-                            updateRole(index, "maxTime", value)
-                          }
-                        />
-                      </div>
+                          <div className="space-y-2">
+                            <Label>Social Media Links</Label>
+                            <div className="space-y-2">
+                              {role.socialMediaLinks.map((link, linkIndex) => (
+                                <div
+                                  key={linkIndex}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Select
+                                    value={link.platform}
+                                    onValueChange={(value) => {
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        roles: prev.roles.map((r, i) =>
+                                          i === index
+                                            ? {
+                                                ...r,
+                                                socialMediaLinks:
+                                                  r.socialMediaLinks.map(
+                                                    (l, li) =>
+                                                      li === linkIndex
+                                                        ? {
+                                                            ...l,
+                                                            platform: value,
+                                                          }
+                                                        : l
+                                                  ),
+                                              }
+                                            : r
+                                        ),
+                                      }));
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-32">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="LinkedIn">
+                                        LinkedIn
+                                      </SelectItem>
+                                      <SelectItem value="Twitter">
+                                        Twitter
+                                      </SelectItem>
+                                      <SelectItem value="Instagram">
+                                        Instagram
+                                      </SelectItem>
+                                      <SelectItem value="Website">
+                                        Website
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Input
+                                    value={link.url}
+                                    onChange={(e) => {
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        roles: prev.roles.map((r, i) =>
+                                          i === index
+                                            ? {
+                                                ...r,
+                                                socialMediaLinks:
+                                                  r.socialMediaLinks.map(
+                                                    (l, li) =>
+                                                      li === linkIndex
+                                                        ? {
+                                                            ...l,
+                                                            url: e.target.value,
+                                                          }
+                                                        : l
+                                                  ),
+                                              }
+                                            : r
+                                        ),
+                                      }));
+                                    }}
+                                    placeholder="https://..."
+                                    className="flex-1"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        roles: prev.roles.map((r, i) =>
+                                          i === index
+                                            ? {
+                                                ...r,
+                                                socialMediaLinks:
+                                                  r.socialMediaLinks.filter(
+                                                    (_, li) => li !== linkIndex
+                                                  ),
+                                              }
+                                            : r
+                                        ),
+                                      }));
+                                    }}
+                                    className="text-red-500 hover:text-red-700 p-2"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    roles: prev.roles.map((r, i) =>
+                                      i === index
+                                        ? {
+                                            ...r,
+                                            socialMediaLinks: [
+                                              ...r.socialMediaLinks,
+                                              { platform: "LinkedIn", url: "" },
+                                            ],
+                                          }
+                                        : r
+                                    ),
+                                  }));
+                                }}
+                                className="w-full"
+                              >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add Link
+                              </Button>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
-                ))}
-
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-gray-700">
-                      Total Estimated Time:
-                    </span>
-                    <span className="font-semibold text-gray-900">
-                      {(() => {
-                        const totalMinutes = calculateTotalTime();
-                        const totalSeconds = Math.round(totalMinutes * 60);
-                        const hours = Math.floor(totalSeconds / 3600);
-                        const minutes = Math.floor((totalSeconds % 3600) / 60);
-                        const seconds = totalSeconds % 60;
-                        return `${hours.toString().padStart(2, "0")}:${minutes
-                          .toString()
-                          .padStart(2, "0")}:${seconds
-                          .toString()
-                          .padStart(2, "0")}`;
-                      })()}
-                    </span>
-                  </div>
                 </div>
-              </div>
-            )}
-          </CardContent>
+              ))}
+
+              {/* Plus button at the end if there are no roles */}
+              {formData.roles.length === 0 && (
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addRoleAtIndex(0)}
+                    className="border-dashed border-2 hover:border-solid"
+                    disabled={isLoading}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add First Role
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardHeader>
         </Card>
 
         {/* Actions */}
@@ -787,32 +923,19 @@ export default function EditEventPage() {
             Cancel
           </Button>
           <Button
-            type="button"
+            type="submit"
             disabled={
               isLoading ||
               !formData.title.trim() ||
               !formData.date ||
               !formData.time
             }
-            className="bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
             size="lg"
-            onClick={handleSaveEvent}
           >
             {isLoading ? "Updating Event..." : "Update Event"}
           </Button>
         </div>
-      </div>
-
-      <ConfirmationModal
-        isOpen={showStatusChangeModal}
-        onClose={cancelStatusChange}
-        onConfirm={confirmStatusChange}
-        title="Change Event Status"
-        description="Changing the status to 'Completed' will mark this event as finished. Are you sure?"
-        confirmText="Mark as Completed"
-        cancelText="Cancel"
-        variant="warning"
-      />
+      </form>
     </main>
   );
 }

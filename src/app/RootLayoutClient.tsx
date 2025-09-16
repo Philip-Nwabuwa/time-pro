@@ -49,7 +49,6 @@ export default function RootLayoutClient({
           <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500 rounded-lg mb-4">
             <Timer className="w-8 h-8 text-white animate-spin" />
           </div>
-          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );

@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useUpdatePage } from "@/lib/api/hooks";
+import { uploadPageImage } from "@/lib/api/pages";
 import PageImagePicker from "@/components/PageImagePicker";
 import type { PageData } from "@/lib/api/types";
 
@@ -38,6 +39,7 @@ export default function EditPageModal({
 }: EditPageModalProps) {
   const { isModalOpen } = useModal();
   const updatePage = useUpdatePage();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<EditPageFormData>({
     title: "",
     description: "",
@@ -60,7 +62,7 @@ export default function EditPageModal({
   }, [pageData]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -93,6 +95,7 @@ export default function EditPageModal({
     }
 
     try {
+      setIsSubmitting(true);
       // Prepare update data - only include fields that have changed
       const updates: any = {};
 
@@ -104,13 +107,21 @@ export default function EditPageModal({
         updates.description = formData.description.trim() || null;
       }
 
-      // For now, we'll skip image updates as they need special handling
-      // This will be implemented when the updatePage API is enhanced
-      // if (formData.imageBlob) {
-      //   updates.imageFile = new File([formData.imageBlob], "page-image.jpg", {
-      //     type: "image/jpeg"
-      //   });
-      // }
+      // Handle image upload if a new image was selected
+      if (formData.imageBlob) {
+        const blobType = (formData.imageBlob as any).type || "image/jpeg";
+        const ext = blobType.split("/")[1] || "jpg";
+        const imageFile = new File([formData.imageBlob], `page-image.${ext}`, {
+          type: blobType,
+        });
+
+        const { filePath, publicUrl } = await uploadPageImage(
+          imageFile,
+          pageData.id
+        );
+        updates.image_url = publicUrl;
+        updates.image_file_path = filePath;
+      }
 
       // Add private page logic when needed
       if (formData.pageType === "private" && formData.pin.trim()) {
@@ -118,10 +129,13 @@ export default function EditPageModal({
         updates.pin = formData.pin.trim();
       }
 
-      await updatePage.mutateAsync({
-        id: pageData.id,
-        updates,
-      });
+      // If nothing changed, just close without calling the API
+      if (Object.keys(updates).length === 0) {
+        onClose();
+        return;
+      }
+
+      await updatePage.mutateAsync({ id: pageData.id, updates });
 
       // Reset form and close modal
       setFormData({
@@ -135,6 +149,8 @@ export default function EditPageModal({
     } catch (error) {
       // Error handling is done in the hook with toast notifications
       console.error("Failed to update page:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -175,7 +191,7 @@ export default function EditPageModal({
               placeholder="Enter page title"
               value={formData.title}
               onChange={handleInputChange}
-              disabled={updatePage.isPending}
+              disabled={isSubmitting || updatePage.isPending}
               required
             />
           </div>
@@ -188,7 +204,7 @@ export default function EditPageModal({
               placeholder="Describe your event page..."
               value={formData.description}
               onChange={handleInputChange}
-              disabled={updatePage.isPending}
+              disabled={isSubmitting || updatePage.isPending}
               className="min-h-[80px]"
             />
           </div>
@@ -248,16 +264,28 @@ export default function EditPageModal({
               type="button"
               variant="outline"
               onClick={handleClose}
-              disabled={updatePage.isPending}
+              disabled={isSubmitting || updatePage.isPending}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={updatePage.isPending || !formData.title.trim()}
+              disabled={
+                isSubmitting || updatePage.isPending || !formData.title.trim()
+              }
               className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500"
             >
-              {updatePage.isPending ? "Updating..." : "Update Page"}
+              {isSubmitting || updatePage.isPending ? (
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                    aria-hidden
+                  />
+                  Updating...
+                </span>
+              ) : (
+                "Update Page"
+              )}
             </Button>
           </DialogFooter>
         </form>

@@ -620,10 +620,18 @@ export async function approveSessionPhoto(
     })
     .eq("id", photoId)
     .select()
-    .single();
+    .maybeSingle();
+  if (error && (error as any).code !== "PGRST116") throw error;
+  if (data) return data as SessionPhoto;
 
-  if (error) throw error;
-  return data;
+  // Fallback: fetch the updated row explicitly (handles RLS/no-return cases)
+  const { data: fetched, error: fetchError } = await supabase
+    .from("event_session_photos")
+    .select("*")
+    .eq("id", photoId)
+    .single();
+  if (fetchError) throw fetchError;
+  return fetched as SessionPhoto;
 }
 
 export async function rejectSessionPhoto(
@@ -636,10 +644,19 @@ export async function rejectSessionPhoto(
     })
     .eq("id", photoId)
     .select()
-    .single();
+    .maybeSingle();
 
-  if (error) throw error;
-  return data;
+  if (error && (error as any).code !== "PGRST116") throw error;
+  if (data) return data as SessionPhoto;
+
+  // Fallback: fetch the updated row explicitly
+  const { data: fetched, error: fetchError } = await supabase
+    .from("event_session_photos")
+    .select("*")
+    .eq("id", photoId)
+    .single();
+  if (fetchError) throw fetchError;
+  return fetched as SessionPhoto;
 }
 
 export async function acceptSessionPhoto(
