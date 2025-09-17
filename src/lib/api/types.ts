@@ -63,6 +63,9 @@ export interface Member {
   role: "admin" | "member";
   joinedDate: string;
   avatar?: string;
+  bio?: string;
+  socialMediaLinks?: { platform: string; url: string }[];
+  linkedin?: string;
 }
 
 // Insert types for database operations

@@ -269,22 +269,33 @@ export default function EditEventPage() {
   };
 
   const handleMemberSelect = (index: number, member: any) => {
-    // Auto-fill speaker details from member profile
+    // Auto-fill speaker details from member profile (name, email, avatar, bio, social links)
     setFormData((prev) => ({
       ...prev,
-      roles: prev.roles.map((role, i) =>
-        i === index
-          ? {
-              ...role,
-              speakerName: member.name,
-              speakerEmail: member.email,
-              // Only update avatar if no custom avatar has been uploaded
-              avatar: role.avatarBlob ? role.avatar : member.avatar || "",
-              avatarBlob: role.avatarBlob,
-              // Keep existing bio and social media links as they might be role-specific
-            }
-          : role
-      ),
+      roles: prev.roles.map((role, i) => {
+        if (i !== index) return role;
+
+        const updatedAvatar = role.avatarBlob
+          ? role.avatar
+          : member.avatar || "";
+
+        // Normalize social links from member if present
+        const memberSocialLinks = Array.isArray(member.socialMediaLinks)
+          ? member.socialMediaLinks
+          : member.linkedin
+          ? [{ platform: "LinkedIn", url: member.linkedin }]
+          : role.socialMediaLinks;
+
+        return {
+          ...role,
+          speakerName: member.name,
+          speakerEmail: member.email,
+          bio: member.bio ?? role.bio ?? "",
+          socialMediaLinks: memberSocialLinks || [],
+          avatar: updatedAvatar,
+          avatarBlob: role.avatarBlob,
+        };
+      }),
     }));
   };
 

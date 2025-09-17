@@ -11,6 +11,9 @@ interface PageMemberWithUserData {
   user_first_name: string;
   user_last_name: string;
   user_avatar_url: string;
+  user_bio?: string | null;
+  user_social_links?: { platform: string; url: string }[] | null;
+  user_linkedin?: string | null;
 }
 
 export async function fetchMembersByPageId(pageId: string): Promise<Member[]> {
@@ -18,7 +21,7 @@ export async function fetchMembersByPageId(pageId: string): Promise<Member[]> {
   // biome-ignore lint/suspicious/noExplicitAny: Required for custom RPC function that returns user data
   const { data, error } = await (supabase as any).rpc(
     "get_page_members_with_user_data",
-    { page_id_param: pageId },
+    { page_id_param: pageId }
   );
 
   if (error) {
@@ -51,8 +54,11 @@ export async function fetchMembersByPageId(pageId: string): Promise<Member[]> {
         role: row.role as "admin" | "member",
         joinedDate: row.joined_at || new Date().toISOString(),
         avatar,
+        bio: row.user_bio || undefined,
+        socialMediaLinks: (row.user_social_links as any) || undefined,
+        linkedin: row.user_linkedin || undefined,
       };
-    },
+    }
   );
 
   return transformedMembers;
@@ -61,7 +67,7 @@ export async function fetchMembersByPageId(pageId: string): Promise<Member[]> {
 export async function addPageMember(
   pageId: string,
   userId: string,
-  role: "admin" | "member" = "member",
+  role: "admin" | "member" = "member"
 ): Promise<Member> {
   const { data: member, error } = await supabase
     .from("page_members")
@@ -88,7 +94,7 @@ export async function addPageMember(
 
 export async function updatePageMemberRole(
   memberId: string,
-  role: "admin" | "member",
+  role: "admin" | "member"
 ): Promise<Member> {
   // Get the page_id first so we can fetch updated member data
   const { data: memberData, error: fetchError } = await supabase
@@ -133,7 +139,7 @@ export async function removePageMember(memberId: string): Promise<void> {
 
 export async function checkUserMembership(
   pageId: string,
-  userId: string,
+  userId: string
 ): Promise<{ isMember: boolean; role?: "admin" | "member" }> {
   const { data: member, error } = await supabase
     .from("page_members")
