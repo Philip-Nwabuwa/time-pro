@@ -45,7 +45,7 @@ export default function PollCard({
 }: PollCardProps) {
   const totalVotes = poll.options.reduce(
     (sum, option) => sum + (option.vote_count || 0),
-    0,
+    0
   );
 
   const handleVote = (optionId: string) => {
@@ -60,6 +60,62 @@ export default function PollCard({
 
   return (
     <Card>
+      {canManage && (
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base truncate">
+                  {poll.title}
+                </CardTitle>
+                {poll.active && (
+                  <div className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                    Live
+                  </div>
+                )}
+              </div>
+              {poll.description && (
+                <p className="text-xs text-gray-600 line-clamp-2">
+                  {poll.description}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {poll.active ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onToggleActive?.(poll.id, false)}
+                  disabled={isLoading}
+                >
+                  Publish
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onToggleActive?.(poll.id, true)}
+                  disabled={isLoading}
+                >
+                  Activate
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onDelete?.(poll.id)}
+                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                  disabled={isLoading}
+                  title="Delete poll"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+      )}
       {/* <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -112,9 +168,13 @@ export default function PollCard({
         <div className="space-y-3 pt-4">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Users className="h-4 w-4" />
-            <span>
-              {totalVotes} {totalVotes === 1 ? "vote" : "votes"}
-            </span>
+            {canManage || !(poll.active ?? false) ? (
+              <span>
+                {totalVotes} {totalVotes === 1 ? "vote" : "votes"}
+              </span>
+            ) : (
+              <span>Results hidden until published</span>
+            )}
             {hasVoted && userVote && (
               <span className="text-purple-900 font-medium">• You voted</span>
             )}
@@ -125,18 +185,22 @@ export default function PollCard({
               const percentage = getPercentage(option.vote_count || 0);
               const isUserChoice = hasVoted && userVote === option.id;
               const canVote = (poll.active ?? false) && !hasVoted;
+              const showResults = canManage || !(poll.active ?? false);
 
               return (
-                <div
+                <button
                   key={option.id}
+                  type="button"
                   onClick={canVote ? () => handleVote(option.id) : undefined}
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  disabled={!canVote || isLoading}
+                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
                     isUserChoice
                       ? "border-purple-900 bg-purple-50"
                       : canVote
-                        ? "border-gray-200 bg-gray-50 hover:border-purple-900 hover:bg-purple-50"
-                        : "border-gray-200 bg-gray-50"
+                      ? "border-gray-200 bg-gray-50 hover:border-purple-900 hover:bg-purple-50 cursor-pointer"
+                      : "border-gray-200 bg-gray-50 cursor-default"
                   }`}
+                  aria-pressed={isUserChoice}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium flex-1">
@@ -147,15 +211,22 @@ export default function PollCard({
                         </span>
                       )}
                     </span>
-                    <span className="text-sm text-gray-600 ml-2">
-                      {percentage}% ({option.vote_count || 0})
-                    </span>
+                    {showResults ? (
+                      <span className="text-sm text-gray-600 ml-2">
+                        {percentage}% ({option.vote_count || 0})
+                      </span>
+                    ) : null}
                   </div>
-                  <Progress
-                    value={percentage}
-                    className={`h-2 ${isUserChoice ? "bg-purple-200" : ""}`}
-                  />
-                </div>
+                  {showResults ? (
+                    <Progress
+                      value={percentage}
+                      className="h-2"
+                      indicatorClassName={
+                        isUserChoice ? "bg-purple-400" : "bg-gray-900"
+                      }
+                    />
+                  ) : null}
+                </button>
               );
             })}
           </div>

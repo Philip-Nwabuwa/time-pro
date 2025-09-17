@@ -193,12 +193,20 @@ export default function EditEventPage() {
       setShowUnsavedChangesModal(true);
       return;
     }
-    router.push(`/page/${pageId}/event/${eventId}`);
+    const dest =
+      eventDetails?.status === "ongoing"
+        ? `/page/${pageId}/event/${eventId}/run`
+        : `/page/${pageId}/event/${eventId}`;
+    router.push(dest);
   };
 
   const confirmLeaveWithoutSaving = () => {
     setShowUnsavedChangesModal(false);
-    router.push(`/page/${pageId}/event/${eventId}`);
+    const dest =
+      eventDetails?.status === "ongoing"
+        ? `/page/${pageId}/event/${eventId}/run`
+        : `/page/${pageId}/event/${eventId}`;
+    router.push(dest);
   };
 
   const cancelLeave = () => {
@@ -936,6 +944,17 @@ export default function EditEventPage() {
           </Button>
         </div>
       </form>
+      {/* Unsaved changes confirmation */}
+      <ConfirmationModal
+        isOpen={showUnsavedChangesModal}
+        onClose={cancelLeave}
+        onConfirm={confirmLeaveWithoutSaving}
+        title="Discard changes?"
+        description="You have unsaved changes. If you leave now, your edits will be lost."
+        confirmText="Discard and Leave"
+        cancelText="Stay on page"
+        variant="warning"
+      />
     </main>
   );
 }

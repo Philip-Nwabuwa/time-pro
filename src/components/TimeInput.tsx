@@ -12,9 +12,9 @@ interface TimeInputProps {
 }
 
 export default function TimeInput({ label, value, onChange }: TimeInputProps) {
-  const [hours, setHours] = useState("00");
-  const [minutes, setMinutes] = useState("00");
-  const [seconds, setSeconds] = useState("00");
+  const [hours, setHours] = useState("");
+  const [minutes, setMinutes] = useState("");
+  const [seconds, setSeconds] = useState("");
 
   const hoursRef = useRef<HTMLInputElement>(null);
   const minutesRef = useRef<HTMLInputElement>(null);
@@ -22,26 +22,45 @@ export default function TimeInput({ label, value, onChange }: TimeInputProps) {
 
   // Parse incoming value and update individual fields
   useEffect(() => {
-    if (value) {
-      const parts = value.split(":");
-      if (parts.length === 3) {
-        setHours(parts[0].padStart(2, "0"));
-        setMinutes(parts[1].padStart(2, "0"));
-        setSeconds(parts[2].padStart(2, "0"));
-      }
+    const isValidTime = (v: string) =>
+      /^(\d{1,3}):(\d{1,2}):(\d{1,2})$/.test(v);
+    if (!value || !isValidTime(value)) {
+      // Default or invalid external value → show empty inputs
+      setHours("");
+      setMinutes("");
+      setSeconds("");
+      return;
     }
+
+    const parts = value.split(":");
+    // Clamp and normalize
+    const h = Math.max(0, Math.min(24, parseInt(parts[0] || "0", 10)));
+    const m = Math.max(0, Math.min(59, parseInt(parts[1] || "0", 10)));
+    const s = Math.max(0, Math.min(59, parseInt(parts[2] || "0", 10)));
+    setHours(h.toString());
+    setMinutes(m.toString());
+    setSeconds(s.toString());
   }, [value]);
 
   // Update parent component when any field changes
   const updateParent = (h: string, m: string, s: string) => {
-    const formattedTime = `${h}:${m}:${s}`;
-    onChange(formattedTime);
+    const anyVal =
+      (h?.length || 0) > 0 || (m?.length || 0) > 0 || (s?.length || 0) > 0;
+    if (!anyVal) {
+      onChange("");
+      return;
+    }
+    const hh = h && h.length > 0 ? h.padStart(2, "0") : "00";
+    const mm = m && m.length > 0 ? m.padStart(2, "0") : "00";
+    const ss = s && s.length > 0 ? s.padStart(2, "0") : "00";
+    onChange(`${hh}:${mm}:${ss}`);
   };
 
   // Validate and constrain input values
   const validateInput = (value: string, max: number): string => {
+    if (value.trim() === "") return "";
     const num = parseInt(value, 10);
-    if (isNaN(num)) return "00";
+    if (isNaN(num)) return "";
     return Math.min(Math.max(0, num), max).toString().padStart(2, "0");
   };
 
@@ -66,12 +85,9 @@ export default function TimeInput({ label, value, onChange }: TimeInputProps) {
     }
 
     // Update parent with current values
-    const currentHours =
-      setter === setHours ? limitedValue.padStart(2, "0") : hours;
-    const currentMinutes =
-      setter === setMinutes ? limitedValue.padStart(2, "0") : minutes;
-    const currentSeconds =
-      setter === setSeconds ? limitedValue.padStart(2, "0") : seconds;
+    const currentHours = setter === setHours ? limitedValue : hours;
+    const currentMinutes = setter === setMinutes ? limitedValue : minutes;
+    const currentSeconds = setter === setSeconds ? limitedValue : seconds;
 
     updateParent(currentHours, currentMinutes, currentSeconds);
   };
@@ -179,10 +195,12 @@ export default function TimeInput({ label, value, onChange }: TimeInputProps) {
   };
 
   // Calculate total minutes for display
+  const safeParse = (v: string) => {
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) ? n : 0;
+  };
   const totalMinutes =
-    parseInt(hours, 10) * 60 +
-    parseInt(minutes, 10) +
-    parseInt(seconds, 10) / 60;
+    safeParse(hours) * 60 + safeParse(minutes) + safeParse(seconds) / 60;
 
   return (
     <div className="space-y-2">
@@ -206,9 +224,9 @@ export default function TimeInput({ label, value, onChange }: TimeInputProps) {
             onChange={(e) =>
               handleInputChange(e.target.value, setHours, minutesRef)
             }
-            onBlur={(e) => handleBlur(e.target.value, setHours, 999)}
+            onBlur={(e) => handleBlur(e.target.value, setHours, 24)}
             onKeyDown={(e) =>
-              handleKeyDown(e, hoursRef, minutesRef, null, hours, setHours, 999)
+              handleKeyDown(e, hoursRef, minutesRef, null, hours, setHours, 24)
             }
             onFocus={(e) => e.target.select()}
             className="w-16 text-center"
