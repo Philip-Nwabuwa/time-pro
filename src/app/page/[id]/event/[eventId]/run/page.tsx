@@ -956,7 +956,7 @@ export default function RunEventPage() {
         [key]: value,
       };
 
-      // Save updated session data
+      // Save updated session data - preserve timer state
       const updatedSessionState = {
         ...currentSessionState,
         userPreferences,
@@ -969,7 +969,7 @@ export default function RunEventPage() {
     }
   };
 
-  // Broadcast timer state to all users via real-time
+  // Broadcast timer state to all users via real-time using atomic function
   const broadcastTimerState = async (timerState: {
     isRunning: boolean;
     hasStarted: boolean;
@@ -980,32 +980,27 @@ export default function RunEventPage() {
     lastResumedAt: string | null;
     controlledBy?: string;
   }) => {
-    if (!eventId) return;
+    if (!eventId || !user?.id) return;
 
     try {
-      // Merge with existing session_data to avoid clobbering other fields (e.g., userPreferences)
-      const { sessionData: currentData } = await fetchEventSessionAll(eventId);
-      const prevState =
-        currentData?.session_data &&
-        typeof currentData.session_data === "object" &&
-        !Array.isArray(currentData.session_data)
-          ? (currentData.session_data as Record<string, any>)
-          : {};
+      // Use atomic function to prevent race conditions
+      const { data, error } = await supabase.rpc('update_timer_state', {
+        p_event_id: eventId,
+        p_is_running: timerState.isRunning,
+        p_has_started: timerState.hasStarted,
+        p_current_speaker_index: timerState.currentSpeakerIndex,
+        p_added_time: timerState.addedTime,
+        p_accumulated_ms: timerState.accumulatedMs,
+        p_last_resumed_at: timerState.lastResumedAt ? new Date(timerState.lastResumedAt).toISOString() : '',
+        p_controlled_by: timerState.controlledBy || user.id
+      });
 
-      const sessionState = {
-        ...prevState,
-        currentSpeakerIndex: timerState.currentSpeakerIndex,
-        addedTime: timerState.addedTime,
-        hasStarted: timerState.hasStarted,
-        isRunning: timerState.isRunning,
-        lastUpdate: timerState.lastUpdate,
-        controlledBy: timerState.controlledBy,
-        accumulatedMs: timerState.accumulatedMs,
-        lastResumedAt: timerState.lastResumedAt,
-        savedAt: new Date().toISOString(),
-      };
+      if (error) {
+        console.error("RPC Error:", error);
+        toast.error("Failed to sync timer state: " + error.message);
+        return;
+      }
 
-      await upsertSessionData(eventId, sessionState);
       setLastTimerUpdate(new Date());
     } catch (error) {
       console.error("Error broadcasting timer state:", error);
@@ -1013,26 +1008,14 @@ export default function RunEventPage() {
     }
   };
 
-  // Save session state periodically
+  // Save session state periodically - only if we're authorized
   const saveSessionState = async () => {
-    if (!eventId) return;
+    if (!eventId || !user?.id) return;
+    
+    // Only save if we're admin or controlling the timer
+    if (userRole !== "admin") return;
 
     try {
-      // Get current session data to preserve user preferences
-      const { sessionData: currentData } = await fetchEventSessionAll(eventId);
-      const currentSessionState =
-        currentData?.session_data &&
-        typeof currentData.session_data === "object" &&
-        !Array.isArray(currentData.session_data)
-          ? (currentData.session_data as Record<string, any>)
-          : {};
-      const existingUserPreferences =
-        currentSessionState.userPreferences &&
-        typeof currentSessionState.userPreferences === "object" &&
-        !Array.isArray(currentSessionState.userPreferences)
-          ? currentSessionState.userPreferences
-          : {};
-
       const nowMs = Date.now();
       const lastResumeTime = lastResumedAt ? Date.parse(lastResumedAt) : null;
       const snapshotAccumulated =
@@ -1040,21 +1023,17 @@ export default function RunEventPage() {
           ? accumulatedMs + Math.max(0, nowMs - lastResumeTime)
           : accumulatedMs;
 
-      const sessionState = {
-        ...currentSessionState, // merge to preserve unrelated fields
+      // Use atomic function for consistency
+      await broadcastTimerState({
+        isRunning,
+        hasStarted,
         currentSpeakerIndex,
         addedTime,
-        hasStarted,
-        isRunning,
         lastUpdate: new Date().toISOString(),
-        controlledBy: user?.id,
-        userPreferences: existingUserPreferences,
         accumulatedMs: snapshotAccumulated,
         lastResumedAt: isRunning ? lastResumedAt : null,
-        savedAt: new Date().toISOString(),
-      };
-
-      await upsertSessionData(eventId, sessionState);
+        controlledBy: user.id,
+      });
     } catch (error) {
       console.error("Error saving session state:", error);
     }
@@ -1265,7 +1244,7 @@ export default function RunEventPage() {
     checkRole();
   }, [user, pageId]);
 
-  // Real-time timer synchronization
+  // Real-time timer synchronization - Only update if not controlling timer
   useEffect(() => {
     if (!eventId || !user) return;
 
@@ -1283,37 +1262,49 @@ export default function RunEventPage() {
           const sessionData = payload.new.session_data;
           if (!sessionData) return;
 
-          // Always apply latest state; compute display seconds to avoid reset on refresh
-          if (sessionData.currentSpeakerIndex !== undefined) {
-            setCurrentSpeakerIndex(sessionData.currentSpeakerIndex);
-          }
-          if (sessionData.addedTime !== undefined) {
-            setAddedTime(sessionData.addedTime);
-          }
-          if (sessionData.hasStarted !== undefined) {
-            setHasStarted(sessionData.hasStarted);
-          }
+          // Get the controlling user
+          const controlledBy = sessionData.controlledBy;
+          const isControlledByMe = controlledBy === user.id;
+          const lastUpdate = sessionData.lastUpdate;
+          
+          // Only apply updates if not controlling or if this is a fresh state
+          // This prevents flickering when the controlling user makes changes
+          if (!isControlledByMe || !lastTimerUpdate || 
+              (lastUpdate && new Date(lastUpdate) > lastTimerUpdate)) {
+            
+            // Apply state changes
+            if (sessionData.currentSpeakerIndex !== undefined) {
+              setCurrentSpeakerIndex(sessionData.currentSpeakerIndex);
+            }
+            if (sessionData.addedTime !== undefined) {
+              setAddedTime(sessionData.addedTime);
+            }
+            if (sessionData.hasStarted !== undefined) {
+              setHasStarted(sessionData.hasStarted);
+            }
 
-          const wasRunning = !!sessionData.isRunning;
-          const lastAt = sessionData.lastResumedAt as string | null;
-          const baseAccum =
-            typeof sessionData.accumulatedMs === "number"
-              ? sessionData.accumulatedMs
-              : 0;
-          setIsRunning(wasRunning);
-          setLastResumedAt(lastAt ?? null);
-
-          if (wasRunning && lastAt) {
-            const elapsed = Math.max(0, Date.now() - Date.parse(lastAt));
-            setAccumulatedMs(baseAccum); // store base, seconds effect will render
-            setSeconds(Math.floor((baseAccum + elapsed) / 1000));
-          } else {
+            const wasRunning = !!sessionData.isRunning;
+            const lastAt = sessionData.lastResumedAt as string | null;
+            const baseAccum =
+              typeof sessionData.accumulatedMs === "number"
+                ? sessionData.accumulatedMs
+                : 0;
+                
+            setIsRunning(wasRunning);
+            setLastResumedAt(lastAt ?? null);
             setAccumulatedMs(baseAccum);
-            setSeconds(Math.floor(baseAccum / 1000));
-          }
 
-          setIsTimerSynced(true);
-          setLastTimerUpdate(new Date());
+            // Calculate current seconds based on timer state
+            if (wasRunning && lastAt) {
+              const elapsed = Math.max(0, Date.now() - Date.parse(lastAt));
+              setSeconds(Math.floor((baseAccum + elapsed) / 1000));
+            } else {
+              setSeconds(Math.floor(baseAccum / 1000));
+            }
+
+            setIsTimerSynced(true);
+            setLastTimerUpdate(new Date());
+          }
         }
       )
       .subscribe();
@@ -1321,7 +1312,7 @@ export default function RunEventPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [eventId, user]);
+  }, [eventId, user, lastTimerUpdate]);
 
   // Load session data on mount
   useEffect(() => {
@@ -1504,6 +1495,7 @@ export default function RunEventPage() {
   }, [eventId, userRole, loadingPhotos]);
 
   // Timer interval - derive seconds from accumulatedMs and lastResumedAt
+  // Only run local timer for display purposes, sync updates come from real-time
   useEffect(() => {
     const computeSeconds = () => {
       if (isRunning && lastResumedAt) {
@@ -1514,8 +1506,17 @@ export default function RunEventPage() {
       }
     };
 
-    computeSeconds();
-    intervalRef.current = window.setInterval(computeSeconds, 1000);
+    // Only run interval if timer is running
+    if (isRunning) {
+      computeSeconds();
+      intervalRef.current = window.setInterval(computeSeconds, 1000);
+    } else {
+      computeSeconds(); // Update once when stopped
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
 
     return () => {
       if (intervalRef.current) {
@@ -1526,47 +1527,37 @@ export default function RunEventPage() {
   }, [isRunning, lastResumedAt, accumulatedMs]);
 
   // Auto-save session state periodically and when timer state changes
+  // Only save if we're admin to prevent conflicts
   useEffect(() => {
+    if (userRole !== "admin" || !sessionHydrated) return;
+    
     const saveInterval = setInterval(() => {
-      // Avoid saving zeros during hydration; only save meaningful state
-      if (!sessionHydrated) return;
       saveSessionState();
     }, 30000); // Save every 30 seconds
     return () => clearInterval(saveInterval);
-  }, [
-    currentSpeakerIndex,
-    seconds,
-    addedTime,
-    hasStarted,
-    isRunning,
-    eventId,
-    sessionHydrated,
-  ]);
+  }, [userRole, sessionHydrated]);
 
-  // Save state immediately when timer stops (paused)
+  // Save state immediately when timer stops (paused) - admin only
   useEffect(() => {
-    if (!sessionHydrated) return;
+    if (!sessionHydrated || userRole !== "admin") return;
     if (!isRunning && hasStarted) {
       // Timer was paused, save state immediately
       saveSessionState();
     }
-  }, [isRunning, hasStarted, sessionHydrated]);
+  }, [isRunning, hasStarted, sessionHydrated, userRole]);
 
-  // Save state when component unmounts or speaker changes
+  // Save state when component unmounts - admin only
   useEffect(() => {
     return () => {
-      if (!sessionHydrated) return;
+      if (!sessionHydrated || userRole !== "admin") return;
       saveSessionState();
     };
-  }, [sessionHydrated]);
+  }, [sessionHydrated, userRole]);
 
+  // Best-effort save on tab close - admin only
   useEffect(() => {
-    if (!sessionHydrated) return;
-    saveSessionState();
-  }, [currentSpeakerIndex, sessionHydrated]);
-
-  // Best-effort save on tab close
-  useEffect(() => {
+    if (userRole !== "admin") return;
+    
     const handler = () => {
       try {
         saveSessionState();
@@ -1574,14 +1565,7 @@ export default function RunEventPage() {
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [
-    accumulatedMs,
-    lastResumedAt,
-    isRunning,
-    hasStarted,
-    currentSpeakerIndex,
-    addedTime,
-  ]);
+  }, [userRole]);
 
   // Handle ESC key to exit fullscreen
   useEffect(() => {
