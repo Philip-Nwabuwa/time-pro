@@ -853,40 +853,16 @@ export default function RunEventPage() {
     }
 
     try {
-      await rejectSessionPhoto(photoId);
+      // Delete the photo instead of just rejecting it
+      await deleteSessionPhoto(photoId);
 
-      // Optimistic update
-      setPhotos((prev = []) =>
-        prev.map((p) =>
-          p.id === photoId
-            ? { ...p, photo: { ...p.photo, status: "rejected" } as any }
-            : p
-        )
-      );
+      // Optimistic update - remove photo from list immediately
+      setPhotos((prev = []) => prev.filter((p) => p.id !== photoId));
 
-      // Background refresh
-      const updatedPhotos =
-        userRole === "admin"
-          ? await fetchSessionPhotos(eventId)
-          : await fetchVisibleSessionPhotos(eventId);
-      const photosWithUrls = await Promise.all(
-        updatedPhotos.map(async (photo) => {
-          const urls = await getPhotoVersionUrls(photo);
-          return {
-            id: photo.id,
-            url: urls.medium, // Use medium version for display
-            photo,
-            selected: false,
-            thumbnailUrl: urls.thumbnail,
-            originalUrl: urls.original,
-          };
-        })
-      );
-      setPhotos(deduplicatePhotos(photosWithUrls));
-      toast.success("Photo rejected");
+      toast.success("Photo deleted");
     } catch (error) {
-      console.error("Error rejecting photo:", error);
-      toast.error("Failed to reject photo");
+      console.error("Error deleting photo:", error);
+      toast.error("Failed to delete photo");
     }
   };
 
@@ -2252,7 +2228,16 @@ export default function RunEventPage() {
 
                   {/* Thumbs */}
                   <div className="mt-4 grid grid-cols-4 gap-3">
-                    {(photos || []).map((photo, index) => {
+                    {(photos || [])
+                      .filter((photo) => {
+                        // For non-admin users, only show accepted photos
+                        if (userRole !== "admin") {
+                          return photo.photo.status === "accepted";
+                        }
+                        // For admins, show all photos
+                        return true;
+                      })
+                      .map((photo, index) => {
                       const isSelected = selectedPhotos.has(photo.id);
                       const isPending = photo.photo.status === "pending";
                       const isRejected = photo.photo.status === "rejected";
