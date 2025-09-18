@@ -470,6 +470,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_photo: {
+        Args: { approver_id: string; photo_id: string }
+        Returns: Json
+      }
       get_all_pages_public: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -479,6 +483,25 @@ export type Database = {
           image_url: string
           is_private: boolean
           title: string
+        }[]
+      }
+      get_event_photos_for_user: {
+        Args: { event_id_param: string; user_id_param: string }
+        Returns: {
+          approved: boolean
+          approved_at: string
+          approved_by: string
+          created_at: string
+          event_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          mime_type: string
+          status: Database["public"]["Enums"]["photo_status"]
+          updated_at: string
+          uploaded_by: string
+          user_role: string
         }[]
       }
       get_page_members_with_user_data: {
@@ -496,6 +519,10 @@ export type Database = {
           user_linkedin: string
           user_social_links: Json
         }[]
+      }
+      reject_and_delete_photo: {
+        Args: { photo_id: string; rejector_id: string }
+        Returns: Json
       }
       update_timer_state: {
         Args: {

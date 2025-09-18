@@ -802,7 +802,17 @@ export default function RunEventPage() {
     }
 
     try {
-      await acceptSessionPhoto(photoId, user.id);
+      // Use the new database function for atomic approval
+      const { data, error } = await supabase.rpc('approve_photo', {
+        photo_id: photoId,
+        approver_id: user.id
+      });
+
+      if (error) {
+        console.error("RPC Error:", error);
+        toast.error("Failed to approve photo: " + error.message);
+        return;
+      }
 
       // Optimistic update: flip status locally so controls disappear immediately
       setPhotos((prev = []) =>
@@ -814,55 +824,45 @@ export default function RunEventPage() {
                   ...p.photo,
                   status: "accepted",
                   approved: true,
+                  approved_by: user.id,
+                  approved_at: new Date().toISOString(),
                 } as any,
               }
             : p
         )
       );
 
-      // Background refresh to ensure consistency
-      const updatedPhotos =
-        userRole === "admin"
-          ? await fetchSessionPhotos(eventId)
-          : await fetchVisibleSessionPhotos(eventId);
-      const photosWithUrls = await Promise.all(
-        updatedPhotos.map(async (photo) => {
-          const urls = await getPhotoVersionUrls(photo);
-          return {
-            id: photo.id,
-            url: urls.medium, // Use medium version for display
-            photo,
-            selected: false,
-            thumbnailUrl: urls.thumbnail,
-            originalUrl: urls.original,
-          };
-        })
-      );
-      setPhotos(deduplicatePhotos(photosWithUrls));
-      toast.success("Photo accepted");
+      toast.success("Photo approved");
     } catch (error) {
-      console.error("Error accepting photo:", error);
-      toast.error("Failed to accept photo");
+      console.error("Error approving photo:", error);
+      toast.error("Failed to approve photo");
     }
   };
 
   const handleRejectPhoto = async (photoId: string) => {
-    if (userRole !== "admin") {
+    if (userRole !== "admin" || !user?.id) {
       toast.error("Only administrators can reject photos");
       return;
     }
 
     try {
-      // Delete the photo instead of just rejecting it
-      await deleteSessionPhoto(photoId);
+      // Use the new database function for atomic rejection and deletion
+      const { data, error } = await supabase.rpc('reject_and_delete_photo', {
+        photo_id: photoId,
+        rejector_id: user.id
+      });
+
+      if (error) {
+        throw error;
+      }
 
       // Optimistic update - remove photo from list immediately
       setPhotos((prev = []) => prev.filter((p) => p.id !== photoId));
 
-      toast.success("Photo deleted");
+      toast.success("Photo rejected and deleted");
     } catch (error) {
-      console.error("Error deleting photo:", error);
-      toast.error("Failed to delete photo");
+      console.error("Error rejecting photo:", error);
+      toast.error("Failed to reject photo");
     }
   };
 
@@ -955,32 +955,53 @@ export default function RunEventPage() {
     accumulatedMs: number;
     lastResumedAt: string | null;
     controlledBy?: string;
-  }) => {
+  }, retryCount = 0) => {
     if (!eventId || !user?.id) return;
 
+    const maxRetries = 2;
+    const retryDelay = 1000; // 1 second
+
     try {
-      // Use atomic function to prevent race conditions
-      const { data, error } = await supabase.rpc('update_timer_state', {
-        p_event_id: eventId,
-        p_is_running: timerState.isRunning,
-        p_has_started: timerState.hasStarted,
-        p_current_speaker_index: timerState.currentSpeakerIndex,
-        p_added_time: timerState.addedTime,
-        p_accumulated_ms: timerState.accumulatedMs,
-        p_last_resumed_at: timerState.lastResumedAt ? new Date(timerState.lastResumedAt).toISOString() : '',
-        p_controlled_by: timerState.controlledBy || user.id
-      });
+      // Use atomic function to prevent race conditions with timeout
+      const { data, error } = await Promise.race([
+        supabase.rpc('update_timer_state', {
+          p_event_id: eventId,
+          p_is_running: timerState.isRunning,
+          p_has_started: timerState.hasStarted,
+          p_current_speaker_index: timerState.currentSpeakerIndex,
+          p_added_time: timerState.addedTime,
+          p_accumulated_ms: timerState.accumulatedMs,
+          p_last_resumed_at: timerState.lastResumedAt ? new Date(timerState.lastResumedAt).toISOString() : '',
+          p_controlled_by: timerState.controlledBy || user.id
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 10000)
+        )
+      ]) as { data: any; error: any };
 
       if (error) {
         console.error("RPC Error:", error);
-        toast.error("Failed to sync timer state: " + error.message);
+        if (retryCount < maxRetries) {
+          console.log(`Retrying timer sync... Attempt ${retryCount + 1}/${maxRetries}`);
+          setTimeout(() => broadcastTimerState(timerState, retryCount + 1), retryDelay);
+          return;
+        }
+        toast.error(`Failed to sync timer state: ${error.message}`);
         return;
       }
 
       setLastTimerUpdate(new Date());
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error broadcasting timer state:", error);
-      toast.error("Failed to sync timer state");
+      const errorMessage = error?.message || 'Unknown error';
+      
+      if (retryCount < maxRetries) {
+        console.log(`Retrying timer sync... Attempt ${retryCount + 1}/${maxRetries}`);
+        setTimeout(() => broadcastTimerState(timerState, retryCount + 1), retryDelay);
+        return;
+      }
+      
+      toast.error(`Failed to sync timer state: ${errorMessage}`);
     }
   };
 
@@ -1299,10 +1320,9 @@ export default function RunEventPage() {
         setLoadingPhotos(true);
         const {
           questions,
-          photos: sessionPhotos,
           polls: sessionPolls,
           sessionData,
-        } = await fetchEventSessionForUser(eventId, userRole === "admin");
+        } = await fetchEventSessionForUser(eventId, false); // Don't fetch photos here
 
         // Load Q&A questions
         setQnaMessages(questions);
@@ -1314,25 +1334,36 @@ export default function RunEventPage() {
         const votes = await getUserPollVotes(eventId);
         setUserVotes(votes);
 
-        // Load photos with enhanced URLs
-        if (sessionPhotos.length > 0) {
-          const photosWithUrls = await Promise.all(
-            sessionPhotos.map(async (photo) => {
-              const urls = await getPhotoVersionUrls(photo);
-              return {
-                id: photo.id,
-                url: urls.medium, // Use medium version for display
-                photo,
-                selected: false,
-                thumbnailUrl: urls.thumbnail,
-                originalUrl: urls.original,
-              };
-            })
-          );
-          // Deduplicate photos to prevent React key errors
-          setPhotos(deduplicatePhotos(photosWithUrls));
-        } else {
+        // Load photos using the new database function
+        const { data: sessionPhotos, error: photosError } = await supabase.rpc('get_event_photos_for_user', {
+          event_id_param: eventId,
+          user_id_param: user?.id || ''
+        });
+
+        if (photosError) {
+          console.error("Error fetching photos:", photosError);
           setPhotos([]);
+        } else {
+          // Load photos with enhanced URLs
+          if (sessionPhotos && sessionPhotos.length > 0) {
+            const photosWithUrls = await Promise.all(
+              sessionPhotos.map(async (photo) => {
+                const urls = await getPhotoVersionUrls(photo);
+                return {
+                  id: photo.id,
+                  url: urls.medium, // Use medium version for display
+                  photo,
+                  selected: false,
+                  thumbnailUrl: urls.thumbnail,
+                  originalUrl: urls.original,
+                };
+              })
+            );
+            // Deduplicate photos to prevent React key errors
+            setPhotos(deduplicatePhotos(photosWithUrls));
+          } else {
+            setPhotos([]);
+          }
         }
 
         // Restore session state if available
@@ -1418,11 +1449,11 @@ export default function RunEventPage() {
       if (loadingPhotos) return;
 
       try {
+        // Fetch Q&A and polls using the existing API
         const {
           questions,
-          photos: sessionPhotos,
           polls: sessionPolls,
-        } = await fetchEventSessionForUser(eventId, userRole === "admin");
+        } = await fetchEventSessionForUser(eventId, false); // Don't fetch photos here
 
         if (cancelled) return;
 
@@ -1436,9 +1467,20 @@ export default function RunEventPage() {
         const votes = await getUserPollVotes(eventId);
         if (!cancelled) setUserVotes(votes);
 
-        // Photos (map to enhanced URLs)
+        // Fetch photos using the new database function with proper role-based filtering
+        const { data: sessionPhotos, error: photosError } = await supabase.rpc('get_event_photos_for_user', {
+          event_id_param: eventId,
+          user_id_param: user?.id || ''
+        });
+
+        if (photosError) {
+          console.error("Error fetching photos:", photosError);
+          return;
+        }
+
+        // Photos (map to enhanced URLs) 
         const photosWithUrls = await Promise.all(
-          sessionPhotos.map(async (photo) => {
+          (sessionPhotos || []).map(async (photo) => {
             const urls = await getPhotoVersionUrls(photo);
             return {
               id: photo.id,
@@ -1450,9 +1492,10 @@ export default function RunEventPage() {
             };
           })
         );
+
         if (!cancelled) {
-          // Deduplicate photos to prevent React key errors
-          setPhotos(deduplicatePhotos(photosWithUrls));
+          // Simple replacement since database function handles all filtering
+          setPhotos(photosWithUrls);
         }
       } catch (err) {
         // Avoid noisy toasts during background refresh

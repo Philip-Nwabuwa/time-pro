@@ -47,7 +47,6 @@ import type {
 } from "@/lib/api/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/hooks";
-import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import MemberSearchInput from "@/components/MemberSearchInput";
 import DateTimePickerForm from "@/components/DateTimePickerForm";
 import TimeInput from "@/components/TimeInput";
@@ -111,11 +110,7 @@ export default function EditEventPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [deletedRoleIds, setDeletedRoleIds] = useState<string[]>([]);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [uploadingRoleId, setUploadingRoleId] = useState<string | null>(null);
-
-  // Modal states
-  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   // Removed status change modal to match create UI
 
   // Populate form data when event details are loaded
@@ -150,12 +145,6 @@ export default function EditEventPage() {
     }
   }, [eventDetails]);
 
-  // Track changes to mark as unsaved
-  useEffect(() => {
-    if (eventDetails) {
-      setHasUnsavedChanges(true);
-    }
-  }, [formData, deletedRoleIds]);
 
   const formatMinutesToTime = (minutes: number): string => {
     const totalSeconds = Math.round(minutes * 60);
@@ -189,28 +178,11 @@ export default function EditEventPage() {
   // Removed status change handlers to match create UI
 
   const handleBack = () => {
-    if (hasUnsavedChanges && !isLoading) {
-      setShowUnsavedChangesModal(true);
-      return;
-    }
     const dest =
       eventDetails?.status === "ongoing"
         ? `/page/${pageId}/event/${eventId}/run`
         : `/page/${pageId}/event/${eventId}`;
     router.push(dest);
-  };
-
-  const confirmLeaveWithoutSaving = () => {
-    setShowUnsavedChangesModal(false);
-    const dest =
-      eventDetails?.status === "ongoing"
-        ? `/page/${pageId}/event/${eventId}/run`
-        : `/page/${pageId}/event/${eventId}`;
-    router.push(dest);
-  };
-
-  const cancelLeave = () => {
-    setShowUnsavedChangesModal(false);
   };
 
   const addRoleAtIndex = (index: number) => {
@@ -454,7 +426,6 @@ export default function EditEventPage() {
       });
 
       toast.success("Event updated successfully!");
-      setHasUnsavedChanges(false);
       handleBack();
     } catch (error) {
       console.error("Error updating event:", error);
@@ -955,17 +926,6 @@ export default function EditEventPage() {
           </Button>
         </div>
       </form>
-      {/* Unsaved changes confirmation */}
-      <ConfirmationModal
-        isOpen={showUnsavedChangesModal}
-        onClose={cancelLeave}
-        onConfirm={confirmLeaveWithoutSaving}
-        title="Discard changes?"
-        description="You have unsaved changes. If you leave now, your edits will be lost."
-        confirmText="Discard and Leave"
-        cancelText="Stay on page"
-        variant="warning"
-      />
     </main>
   );
 }
