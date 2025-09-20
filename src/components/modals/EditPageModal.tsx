@@ -62,7 +62,7 @@ export default function EditPageModal({
   }, [pageData]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -117,7 +117,7 @@ export default function EditPageModal({
 
         const { filePath, publicUrl } = await uploadPageImage(
           imageFile,
-          pageData.id
+          pageData.id,
         );
         updates.image_url = publicUrl;
         updates.image_file_path = filePath;

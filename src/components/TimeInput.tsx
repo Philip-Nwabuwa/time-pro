@@ -68,7 +68,7 @@ export default function TimeInput({ label, value, onChange }: TimeInputProps) {
   const handleInputChange = (
     value: string,
     setter: (val: string) => void,
-    nextRef: React.RefObject<HTMLInputElement | null> | null
+    nextRef: React.RefObject<HTMLInputElement | null> | null,
   ) => {
     // Only allow digits
     const numericValue = value.replace(/\D/g, "");
@@ -96,7 +96,7 @@ export default function TimeInput({ label, value, onChange }: TimeInputProps) {
   const handleBlur = (
     value: string,
     setter: (val: string) => void,
-    maxValue: number
+    maxValue: number,
   ) => {
     const validatedValue = validateInput(value, maxValue);
     setter(validatedValue);
@@ -116,7 +116,7 @@ export default function TimeInput({ label, value, onChange }: TimeInputProps) {
     prevRef: React.RefObject<HTMLInputElement | null> | null,
     value: string,
     setter: (val: string) => void,
-    maxValue: number
+    maxValue: number,
   ) => {
     switch (e.key) {
       case ":":
@@ -147,7 +147,7 @@ export default function TimeInput({ label, value, onChange }: TimeInputProps) {
             : minutes,
           setter === setSeconds
             ? newUpValue.toString().padStart(2, "0")
-            : seconds
+            : seconds,
         );
         break;
 
@@ -165,7 +165,7 @@ export default function TimeInput({ label, value, onChange }: TimeInputProps) {
             : minutes,
           setter === setSeconds
             ? newDownValue.toString().padStart(2, "0")
-            : seconds
+            : seconds,
         );
         break;
 
@@ -175,7 +175,7 @@ export default function TimeInput({ label, value, onChange }: TimeInputProps) {
           prevRef.current.focus();
           prevRef.current.setSelectionRange(
             prevRef.current.value.length,
-            prevRef.current.value.length
+            prevRef.current.value.length,
           );
         }
         break;
@@ -257,7 +257,7 @@ export default function TimeInput({ label, value, onChange }: TimeInputProps) {
                 hoursRef,
                 minutes,
                 setMinutes,
-                59
+                59,
               )
             }
             onFocus={(e) => e.target.select()}
@@ -289,7 +289,7 @@ export default function TimeInput({ label, value, onChange }: TimeInputProps) {
                 minutesRef,
                 seconds,
                 setSeconds,
-                59
+                59,
               )
             }
             onFocus={(e) => e.target.select()}

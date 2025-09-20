@@ -134,17 +134,16 @@ export default function EditEventPage() {
           avatarBlob: null,
           minTime: formatMinutesToTime(item.minMinutes || 3),
           targetTime: formatMinutesToTime(
-            item.targetMinutes || item.allocatedMinutes
+            item.targetMinutes || item.allocatedMinutes,
           ),
           maxTime: formatMinutesToTime(
-            item.maxMinutes || Math.round((item.allocatedMinutes || 5) * 1.5)
+            item.maxMinutes || Math.round((item.allocatedMinutes || 5) * 1.5),
           ),
           socialMediaLinks: item.socialMediaLinks || [],
         })),
       });
     }
   }, [eventDetails]);
-
 
   const formatMinutesToTime = (minutes: number): string => {
     const totalSeconds = Math.round(minutes * 60);
@@ -166,7 +165,7 @@ export default function EditEventPage() {
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -231,11 +230,73 @@ export default function EditEventPage() {
     }));
   };
 
+  const validateRoleTimeSequence = (role: SpeakerRole) => {
+    const minMinutes = parseTimeToMinutes(role.minTime);
+    const targetMinutes = parseTimeToMinutes(role.targetTime);
+    const maxMinutes = parseTimeToMinutes(role.maxTime);
+
+    const errors: string[] = [];
+
+    // Check if time values are empty (0:00:00)
+    if (minMinutes === 0 && role.minTime && role.minTime !== "") {
+      errors.push(`"${role.roleName || "Role"}": Min time cannot be 0:00:00`);
+    }
+    if (targetMinutes === 0 && role.targetTime && role.targetTime !== "") {
+      errors.push(
+        `"${role.roleName || "Role"}": Target time cannot be 0:00:00`,
+      );
+    }
+    if (maxMinutes === 0 && role.maxTime && role.maxTime !== "") {
+      errors.push(`"${role.roleName || "Role"}": Max time cannot be 0:00:00`);
+    }
+
+    // Check if required time values are missing
+    if (!role.targetTime || role.targetTime === "" || targetMinutes === 0) {
+      errors.push(
+        `"${role.roleName || "Role"}": Target time is required and cannot be empty`,
+      );
+    }
+
+    // Check if min time is greater than target time
+    if (minMinutes > 0 && targetMinutes > 0 && minMinutes > targetMinutes) {
+      errors.push(
+        `"${role.roleName || "Role"}": Min time (${role.minTime}) cannot be greater than target time (${role.targetTime})`,
+      );
+    }
+
+    // Check if target time is greater than max time
+    if (targetMinutes > 0 && maxMinutes > 0 && targetMinutes > maxMinutes) {
+      errors.push(
+        `"${role.roleName || "Role"}": Target time (${role.targetTime}) cannot be greater than max time (${role.maxTime})`,
+      );
+    }
+
+    // Check if min time is greater than max time
+    if (minMinutes > 0 && maxMinutes > 0 && minMinutes > maxMinutes) {
+      errors.push(
+        `"${role.roleName || "Role"}": Min time (${role.minTime}) cannot be greater than max time (${role.maxTime})`,
+      );
+    }
+
+    return errors;
+  };
+
+  const validateAllRolesTimeSequence = () => {
+    const allErrors: string[] = [];
+
+    formData.roles.forEach((role) => {
+      const roleErrors = validateRoleTimeSequence(role);
+      allErrors.push(...roleErrors);
+    });
+
+    return allErrors;
+  };
+
   const updateRole = (index: number, field: keyof SpeakerRole, value: any) => {
     setFormData((prev) => ({
       ...prev,
       roles: prev.roles.map((role, i) =>
-        i === index ? { ...role, [field]: value } : role
+        i === index ? { ...role, [field]: value } : role,
       ),
     }));
   };
@@ -255,8 +316,8 @@ export default function EditEventPage() {
         const memberSocialLinks = Array.isArray(member.socialMediaLinks)
           ? member.socialMediaLinks
           : member.linkedin
-          ? [{ platform: "LinkedIn", url: member.linkedin }]
-          : role.socialMediaLinks;
+            ? [{ platform: "LinkedIn", url: member.linkedin }]
+            : role.socialMediaLinks;
 
         return {
           ...role,
@@ -327,6 +388,13 @@ export default function EditEventPage() {
       return;
     }
 
+    // Validate time sequences for all roles
+    const timeErrors = validateAllRolesTimeSequence();
+    if (timeErrors.length > 0) {
+      timeErrors.forEach((error) => toast.error(error));
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -359,16 +427,16 @@ export default function EditEventPage() {
             const uploadResult = await uploadSpeakerAvatar(
               role.avatarBlob,
               eventId,
-              role.id
+              role.id,
             );
             if (uploadResult.success && uploadResult.url) {
               speakerAvatarUrl = uploadResult.url;
             } else {
               console.warn(
-                `Failed to upload avatar for role ${role.roleName}: ${uploadResult.error}`
+                `Failed to upload avatar for role ${role.roleName}: ${uploadResult.error}`,
               );
               toast.error(
-                `Failed to upload avatar for ${role.roleName}: ${uploadResult.error}`
+                `Failed to upload avatar for ${role.roleName}: ${uploadResult.error}`,
               );
             }
           }
@@ -379,7 +447,7 @@ export default function EditEventPage() {
             ...role,
             avatar: speakerAvatarUrl,
           };
-        })
+        }),
       );
 
       // Handle schedule items
@@ -511,8 +579,8 @@ export default function EditEventPage() {
                           formData.time
                         }`
                       : formData.date
-                      ? `${formData.date.toLocaleDateString()} - Select time`
-                      : "Select date and time"}
+                        ? `${formData.date.toLocaleDateString()} - Select time`
+                        : "Select date and time"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -768,10 +836,10 @@ export default function EditEventPage() {
                                                             ...l,
                                                             platform: value,
                                                           }
-                                                        : l
+                                                        : l,
                                                   ),
                                               }
-                                            : r
+                                            : r,
                                         ),
                                       }));
                                     }}
@@ -811,10 +879,10 @@ export default function EditEventPage() {
                                                             ...l,
                                                             url: e.target.value,
                                                           }
-                                                        : l
+                                                        : l,
                                                   ),
                                               }
-                                            : r
+                                            : r,
                                         ),
                                       }));
                                     }}
@@ -834,10 +902,10 @@ export default function EditEventPage() {
                                                 ...r,
                                                 socialMediaLinks:
                                                   r.socialMediaLinks.filter(
-                                                    (_, li) => li !== linkIndex
+                                                    (_, li) => li !== linkIndex,
                                                   ),
                                               }
-                                            : r
+                                            : r,
                                         ),
                                       }));
                                     }}
@@ -863,7 +931,7 @@ export default function EditEventPage() {
                                               { platform: "LinkedIn", url: "" },
                                             ],
                                           }
-                                        : r
+                                        : r,
                                     ),
                                   }));
                                 }}

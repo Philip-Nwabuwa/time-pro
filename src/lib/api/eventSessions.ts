@@ -44,7 +44,7 @@ export interface PollWithOptions extends EventPoll {
 
 // Q&A Questions
 export async function fetchQnaQuestions(
-  eventId: string
+  eventId: string,
 ): Promise<QnaQuestion[]> {
   const { data, error } = await supabase
     .from("event_qna_questions")
@@ -57,7 +57,7 @@ export async function fetchQnaQuestions(
 }
 
 export async function createQnaQuestion(
-  question: Omit<QnaQuestionInsert, "id">
+  question: Omit<QnaQuestionInsert, "id">,
 ): Promise<QnaQuestion> {
   const { data, error } = await supabase
     .from("event_qna_questions")
@@ -74,7 +74,7 @@ export async function createQnaQuestion(
 
 export async function updateQnaQuestion(
   id: string,
-  updates: QnaQuestionUpdate
+  updates: QnaQuestionUpdate,
 ): Promise<QnaQuestion> {
   const { data, error } = await supabase
     .from("event_qna_questions")
@@ -99,7 +99,7 @@ export async function deleteQnaQuestion(id: string): Promise<void> {
 // Question approval functions
 export async function acceptQnaQuestion(
   id: string,
-  approvedBy: string
+  approvedBy: string,
 ): Promise<QnaQuestion> {
   const { data, error } = await supabase
     .from("event_qna_questions")
@@ -148,7 +148,7 @@ export async function markQuestionAsAnswered(id: string): Promise<QnaQuestion> {
 // Fetch questions by status
 export async function fetchQnaQuestionsByStatus(
   eventId: string,
-  status?: "pending" | "accepted" | "answered" | "rejected"
+  status?: "pending" | "accepted" | "answered" | "rejected",
 ): Promise<QnaQuestion[]> {
   let query = supabase
     .from("event_qna_questions")
@@ -167,7 +167,7 @@ export async function fetchQnaQuestionsByStatus(
 
 // Fetch visible questions for regular users (accepted and answered)
 export async function fetchVisibleQnaQuestions(
-  eventId: string
+  eventId: string,
 ): Promise<QnaQuestion[]> {
   const { data, error } = await supabase
     .from("event_qna_questions")
@@ -182,7 +182,7 @@ export async function fetchVisibleQnaQuestions(
 
 // Fetch questions needing approval (for admins)
 export async function fetchPendingQnaQuestions(
-  eventId: string
+  eventId: string,
 ): Promise<QnaQuestion[]> {
   const { data, error } = await supabase
     .from("event_qna_questions")
@@ -197,7 +197,7 @@ export async function fetchPendingQnaQuestions(
 
 // Session Photos
 export async function fetchSessionPhotos(
-  eventId: string
+  eventId: string,
 ): Promise<SessionPhoto[]> {
   const { data, error } = await supabase
     .from("event_session_photos")
@@ -236,13 +236,13 @@ export type BatchUploadProgressCallback = (
   fileIndex: number,
   fileProgress: number,
   fileName: string,
-  phase: "processing" | "uploading" | "saving"
+  phase: "processing" | "uploading" | "saving",
 ) => void;
 
 export async function uploadSessionPhoto(
   eventId: string,
   file: File,
-  isAdmin: boolean = false
+  isAdmin: boolean = false,
 ): Promise<{ photo: SessionPhoto; publicUrl: string }> {
   const { data: user } = await supabase.auth.getUser();
   if (!user.user) throw new Error("Not authenticated");
@@ -300,7 +300,7 @@ export async function uploadSessionPhotoEnhanced(
   processedVersions: import("../utils/fileUtils").ProcessedImageVersions,
   originalFileName: string,
   isAdmin: boolean = false,
-  onProgress?: (phase: "uploading" | "saving", progress: number) => void
+  onProgress?: (phase: "uploading" | "saving", progress: number) => void,
 ): Promise<UploadResult> {
   const { data: user } = await supabase.auth.getUser();
   if (!user.user) throw new Error("Not authenticated");
@@ -326,12 +326,12 @@ export async function uploadSessionPhotoEnhanced(
       .from("event-photos")
       .upload(
         `${basePath}/original${getFileExtension(
-          processedVersions.original.name
+          processedVersions.original.name,
         )}`,
         processedVersions.original,
         {
           metadata: { uploadedBy: user.user.id, version: "original" },
-        }
+        },
       ),
   ];
 
@@ -356,7 +356,7 @@ export async function uploadSessionPhotoEnhanced(
   const originalUrl = supabase.storage
     .from("event-photos")
     .getPublicUrl(
-      `${basePath}/original${getFileExtension(processedVersions.original.name)}`
+      `${basePath}/original${getFileExtension(processedVersions.original.name)}`,
     ).data.publicUrl;
 
   onProgress?.("saving", 80);
@@ -434,7 +434,7 @@ export async function uploadSessionPhotosBatch(
   }>,
   isAdmin: boolean = false,
   onProgress?: BatchUploadProgressCallback,
-  concurrency: number = 2
+  concurrency: number = 2,
 ): Promise<UploadResult[]> {
   const results: UploadResult[] = [];
 
@@ -455,9 +455,9 @@ export async function uploadSessionPhotosBatch(
               fileIndex,
               progress,
               processedFile.originalFileName,
-              phase
+              phase,
             );
-          }
+          },
         );
 
         results[fileIndex] = result;
@@ -465,7 +465,7 @@ export async function uploadSessionPhotosBatch(
       } catch (error) {
         console.error(
           `Failed to upload ${processedFile.originalFileName}:`,
-          error
+          error,
         );
         throw error;
       }
@@ -514,7 +514,7 @@ export async function deleteSessionPhoto(photoId: string): Promise<void> {
   if (storageError) {
     console.warn(
       "Some files may not have been deleted from storage:",
-      storageError
+      storageError,
     );
     // Don't throw here - we still want to delete from database
   }
@@ -581,7 +581,7 @@ export async function getPhotoVersionUrls(photo: SessionPhoto): Promise<{
  * Get thumbnail URL for a photo (prioritizes actual thumbnail if available)
  */
 export async function getPhotoThumbnailUrl(
-  photo: SessionPhoto
+  photo: SessionPhoto,
 ): Promise<string> {
   const urls = await getPhotoVersionUrls(photo);
   return urls.thumbnail;
@@ -599,7 +599,7 @@ export async function getPhotoMediumUrl(photo: SessionPhoto): Promise<string> {
  * Get original URL for a photo
  */
 export async function getPhotoOriginalUrl(
-  photo: SessionPhoto
+  photo: SessionPhoto,
 ): Promise<string> {
   const urls = await getPhotoVersionUrls(photo);
   return urls.original;
@@ -608,7 +608,7 @@ export async function getPhotoOriginalUrl(
 // Photo approval functions
 export async function approveSessionPhoto(
   photoId: string,
-  approvedBy: string
+  approvedBy: string,
 ): Promise<SessionPhoto> {
   const { data, error } = await supabase
     .from("event_session_photos")
@@ -635,7 +635,7 @@ export async function approveSessionPhoto(
 }
 
 export async function rejectSessionPhoto(
-  photoId: string
+  photoId: string,
 ): Promise<SessionPhoto> {
   const { data, error } = await supabase
     .from("event_session_photos")
@@ -661,14 +661,14 @@ export async function rejectSessionPhoto(
 
 export async function acceptSessionPhoto(
   photoId: string,
-  approvedBy: string
+  approvedBy: string,
 ): Promise<SessionPhoto> {
   return approveSessionPhoto(photoId, approvedBy);
 }
 
 // Fetch photos with approval status
 export async function fetchSessionPhotosWithApproval(
-  eventId: string
+  eventId: string,
 ): Promise<SessionPhoto[]> {
   const { data, error } = await supabase
     .from("event_session_photos")
@@ -682,7 +682,7 @@ export async function fetchSessionPhotosWithApproval(
 
 // Fetch only approved photos (for regular users)
 export async function fetchApprovedSessionPhotos(
-  eventId: string
+  eventId: string,
 ): Promise<SessionPhoto[]> {
   const { data, error } = await supabase
     .from("event_session_photos")
@@ -698,7 +698,7 @@ export async function fetchApprovedSessionPhotos(
 // Fetch photos by status
 export async function fetchSessionPhotosByStatus(
   eventId: string,
-  status?: "pending" | "accepted" | "rejected"
+  status?: "pending" | "accepted" | "rejected",
 ): Promise<SessionPhoto[]> {
   let query = supabase
     .from("event_session_photos")
@@ -717,14 +717,14 @@ export async function fetchSessionPhotosByStatus(
 
 // Fetch visible photos for regular users (accepted only)
 export async function fetchVisibleSessionPhotos(
-  eventId: string
+  eventId: string,
 ): Promise<SessionPhoto[]> {
   return fetchApprovedSessionPhotos(eventId);
 }
 
 // Fetch photos needing approval (for admins)
 export async function fetchPendingSessionPhotos(
-  eventId: string
+  eventId: string,
 ): Promise<SessionPhoto[]> {
   const { data, error } = await supabase
     .from("event_session_photos")
@@ -739,7 +739,7 @@ export async function fetchPendingSessionPhotos(
 
 // Session Data (for storing timer states, notes, etc.)
 export async function fetchSessionData(
-  eventId: string
+  eventId: string,
 ): Promise<SessionData | null> {
   const { data, error } = await supabase
     .from("event_session_data")
@@ -753,7 +753,7 @@ export async function fetchSessionData(
 
 export async function upsertSessionData(
   eventId: string,
-  sessionData: any
+  sessionData: any,
 ): Promise<SessionData> {
   const sessionRecord = {
     event_id: eventId,
@@ -775,7 +775,7 @@ export async function upsertSessionData(
 
 // Event Polls
 export async function fetchEventPolls(
-  eventId: string
+  eventId: string,
 ): Promise<PollWithOptions[]> {
   const { data, error } = await supabase
     .from("event_polls")
@@ -783,7 +783,7 @@ export async function fetchEventPolls(
       `
       *,
       options:event_poll_options(*)
-    `
+    `,
     )
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
@@ -824,7 +824,7 @@ export async function createPoll(pollData: {
       option_text: option,
       order_index: index,
       vote_count: 0,
-    })
+    }),
   );
 
   const { data: options, error: optionsError } = await supabase
@@ -839,7 +839,7 @@ export async function createPoll(pollData: {
 
 export async function updatePoll(
   pollId: string,
-  updates: EventPollUpdate
+  updates: EventPollUpdate,
 ): Promise<EventPoll> {
   const { data, error } = await supabase
     .from("event_polls")
@@ -865,7 +865,7 @@ export async function deletePoll(pollId: string): Promise<void> {
 export async function submitPollVote(
   pollId: string,
   optionId: string,
-  respondentId?: string
+  respondentId?: string,
 ): Promise<void> {
   const { data: user } = await supabase.auth.getUser();
   const actualRespondentId = respondentId || user.user?.id || null;
@@ -900,7 +900,7 @@ export async function submitPollVote(
 
 export async function getUserPollVotes(
   eventId: string,
-  userId?: string
+  userId?: string,
 ): Promise<Record<string, string>> {
   const { data: user } = await supabase.auth.getUser();
   const actualUserId = userId || user.user?.id;
@@ -914,7 +914,7 @@ export async function getUserPollVotes(
       poll_id,
       option_id,
       poll:event_polls!inner(event_id)
-    `
+    `,
     )
     .eq("respondent_id", actualUserId)
     .eq("poll.event_id", eventId);
@@ -957,7 +957,7 @@ export async function fetchEventSessionAll(eventId: string): Promise<{
 // Bulk operations with role-based filtering
 export async function fetchEventSessionForUser(
   eventId: string,
-  isAdmin: boolean = false
+  isAdmin: boolean = false,
 ): Promise<{
   questions: QnaQuestion[];
   photos: SessionPhoto[];

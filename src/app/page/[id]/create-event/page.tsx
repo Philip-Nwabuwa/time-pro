@@ -89,7 +89,7 @@ export default function CreateEventPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -114,7 +114,7 @@ export default function CreateEventPage() {
 
   const handleCheckboxChange = (
     name: string,
-    checked: boolean | "indeterminate"
+    checked: boolean | "indeterminate",
   ) => {
     if (checked === "indeterminate") return;
     setFormData((prev) => ({
@@ -159,11 +159,73 @@ export default function CreateEventPage() {
     }));
   };
 
+  const validateRoleTimeSequence = (role: SpeakerRole) => {
+    const minMinutes = parseTimeToMinutes(role.minTime);
+    const targetMinutes = parseTimeToMinutes(role.targetTime);
+    const maxMinutes = parseTimeToMinutes(role.maxTime);
+
+    const errors: string[] = [];
+
+    // Check if time values are empty (0:00:00)
+    if (minMinutes === 0 && role.minTime && role.minTime !== "") {
+      errors.push(`"${role.roleName || "Role"}": Min time cannot be 0:00:00`);
+    }
+    if (targetMinutes === 0 && role.targetTime && role.targetTime !== "") {
+      errors.push(
+        `"${role.roleName || "Role"}": Target time cannot be 0:00:00`,
+      );
+    }
+    if (maxMinutes === 0 && role.maxTime && role.maxTime !== "") {
+      errors.push(`"${role.roleName || "Role"}": Max time cannot be 0:00:00`);
+    }
+
+    // Check if required time values are missing
+    if (!role.targetTime || role.targetTime === "" || targetMinutes === 0) {
+      errors.push(
+        `"${role.roleName || "Role"}": Target time is required and cannot be empty`,
+      );
+    }
+
+    // Check if min time is greater than target time
+    if (minMinutes > 0 && targetMinutes > 0 && minMinutes > targetMinutes) {
+      errors.push(
+        `"${role.roleName || "Role"}": Min time (${role.minTime}) cannot be greater than target time (${role.targetTime})`,
+      );
+    }
+
+    // Check if target time is greater than max time
+    if (targetMinutes > 0 && maxMinutes > 0 && targetMinutes > maxMinutes) {
+      errors.push(
+        `"${role.roleName || "Role"}": Target time (${role.targetTime}) cannot be greater than max time (${role.maxTime})`,
+      );
+    }
+
+    // Check if min time is greater than max time
+    if (minMinutes > 0 && maxMinutes > 0 && minMinutes > maxMinutes) {
+      errors.push(
+        `"${role.roleName || "Role"}": Min time (${role.minTime}) cannot be greater than max time (${role.maxTime})`,
+      );
+    }
+
+    return errors;
+  };
+
+  const validateAllRolesTimeSequence = () => {
+    const allErrors: string[] = [];
+
+    formData.roles.forEach((role) => {
+      const roleErrors = validateRoleTimeSequence(role);
+      allErrors.push(...roleErrors);
+    });
+
+    return allErrors;
+  };
+
   const updateRole = (roleId: string, field: keyof SpeakerRole, value: any) => {
     setFormData((prev) => ({
       ...prev,
       roles: prev.roles.map((role) =>
-        role.id === roleId ? { ...role, [field]: value } : role
+        role.id === roleId ? { ...role, [field]: value } : role,
       ),
     }));
   };
@@ -185,7 +247,7 @@ export default function CreateEventPage() {
               bio: role.bio || member.bio || "",
               // Keep existing social media links as they might be role-specific
             }
-          : role
+          : role,
       ),
     }));
 
@@ -205,7 +267,7 @@ export default function CreateEventPage() {
                 { platform: "LinkedIn", url: "" },
               ],
             }
-          : role
+          : role,
       ),
     }));
   };
@@ -218,10 +280,10 @@ export default function CreateEventPage() {
           ? {
               ...role,
               socialMediaLinks: role.socialMediaLinks.filter(
-                (_, index) => index !== linkIndex
+                (_, index) => index !== linkIndex,
               ),
             }
-          : role
+          : role,
       ),
     }));
   };
@@ -230,7 +292,7 @@ export default function CreateEventPage() {
     roleId: string,
     linkIndex: number,
     field: "platform" | "url",
-    value: string
+    value: string,
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -239,10 +301,10 @@ export default function CreateEventPage() {
           ? {
               ...role,
               socialMediaLinks: role.socialMediaLinks.map((link, index) =>
-                index === linkIndex ? { ...link, [field]: value } : link
+                index === linkIndex ? { ...link, [field]: value } : link,
               ),
             }
-          : role
+          : role,
       ),
     }));
   };
@@ -293,7 +355,7 @@ export default function CreateEventPage() {
 
   const transformRolesToScheduleItems = (
     eventId: string,
-    roles: SpeakerRole[] = formData.roles
+    roles: SpeakerRole[] = formData.roles,
   ): EventScheduleItemInsert[] => {
     return roles.map((role, index) => ({
       event_id: eventId,
@@ -331,6 +393,13 @@ export default function CreateEventPage() {
       return;
     }
 
+    // Validate time sequences for all roles
+    const timeErrors = validateAllRolesTimeSequence();
+    if (timeErrors.length > 0) {
+      timeErrors.forEach((error) => toast.error(error));
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -349,17 +418,17 @@ export default function CreateEventPage() {
             const uploadResult = await uploadSpeakerAvatar(
               role.avatarBlob,
               createdEvent.id,
-              role.id
+              role.id,
             );
 
             if (uploadResult.success && uploadResult.url) {
               speakerAvatarUrl = uploadResult.url;
             } else {
               console.warn(
-                `Failed to upload avatar for role ${role.roleName}: ${uploadResult.error}`
+                `Failed to upload avatar for role ${role.roleName}: ${uploadResult.error}`,
               );
               toast.error(
-                `Failed to upload avatar for ${role.roleName}: ${uploadResult.error}`
+                `Failed to upload avatar for ${role.roleName}: ${uploadResult.error}`,
               );
               // Continue with the existing URL or empty string
             }
@@ -376,19 +445,21 @@ export default function CreateEventPage() {
             ...role,
             avatar: speakerAvatarUrl,
           };
-        })
+        }),
       );
 
       // Create schedule items if there are any roles
       if (rolesWithUploadedAvatars.length > 0) {
         const scheduleItems = transformRolesToScheduleItems(
           createdEvent.id,
-          rolesWithUploadedAvatars
+          rolesWithUploadedAvatars,
         );
 
         // Create all schedule items
         await Promise.all(
-          scheduleItems.map((item) => createScheduleItem(createdEvent.id, item))
+          scheduleItems.map((item) =>
+            createScheduleItem(createdEvent.id, item),
+          ),
         );
       }
 
@@ -399,7 +470,7 @@ export default function CreateEventPage() {
       toast.error(
         error instanceof Error
           ? `Failed to create event: ${error.message}`
-          : "Failed to create event. Please try again."
+          : "Failed to create event. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -484,8 +555,8 @@ export default function CreateEventPage() {
                           formData.time
                         }`
                       : formData.date
-                      ? `${formData.date.toLocaleDateString()} - Select time`
-                      : "Select date and time"}
+                        ? `${formData.date.toLocaleDateString()} - Select time`
+                        : "Select date and time"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -725,7 +796,7 @@ export default function CreateEventPage() {
                                         role.id,
                                         linkIndex,
                                         "platform",
-                                        value
+                                        value,
                                       )
                                     }
                                   >
@@ -754,7 +825,7 @@ export default function CreateEventPage() {
                                         role.id,
                                         linkIndex,
                                         "url",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     placeholder="https://..."

@@ -81,7 +81,7 @@ export default function PageDetailsPage() {
 
   const handleDeleteEvent = async (
     eventId: string,
-    e?: React.MouseEvent<HTMLButtonElement | HTMLDivElement>
+    e?: React.MouseEvent<HTMLButtonElement | HTMLDivElement>,
   ) => {
     if (e) e.stopPropagation();
     try {
@@ -93,7 +93,7 @@ export default function PageDetailsPage() {
 
   const handleCloneEvent = async (
     eventId: string,
-    e?: React.MouseEvent<HTMLButtonElement | HTMLDivElement>
+    e?: React.MouseEvent<HTMLButtonElement | HTMLDivElement>,
   ) => {
     if (e) e.stopPropagation();
     try {

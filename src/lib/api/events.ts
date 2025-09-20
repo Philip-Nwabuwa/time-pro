@@ -31,7 +31,7 @@ export async function fetchEventsByPageId(pageId: string): Promise<Event[]> {
 
 export async function fetchEventDetails(
   pageId: string,
-  eventId: string
+  eventId: string,
 ): Promise<EventDetails | null> {
   const { data: event, error } = await supabase
     .from("events")
@@ -86,7 +86,7 @@ export async function fetchEventDetails(
 
 export async function cloneEvent(
   eventId: string,
-  pageId: string
+  pageId: string,
 ): Promise<Event> {
   // First, get the original event details
   const originalEvent = await fetchEventDetails(pageId, eventId);
@@ -130,12 +130,12 @@ export async function cloneEvent(
         target_minutes: item.targetMinutes || null,
         max_minutes: item.maxMinutes || null,
         social_media_links: item.socialMediaLinks || null,
-      })
+      }),
     );
 
     // Create all schedule items
     await Promise.all(
-      scheduleItems.map((item) => createScheduleItem(newEvent.id, item))
+      scheduleItems.map((item) => createScheduleItem(newEvent.id, item)),
     );
   }
 
@@ -143,7 +143,7 @@ export async function cloneEvent(
 }
 
 export async function createEvent(
-  eventData: Omit<EventInsert, "created_by">
+  eventData: Omit<EventInsert, "created_by">,
 ): Promise<Event> {
   const { data: user } = await supabase.auth.getUser();
   if (!user.user) throw new Error("Not authenticated");
@@ -173,7 +173,7 @@ export async function createEvent(
 
 export async function updateEvent(
   id: string,
-  updates: EventUpdate
+  updates: EventUpdate,
 ): Promise<Event> {
   const { data: event, error } = await supabase
     .from("events")
@@ -227,7 +227,7 @@ export async function startEvent(id: string): Promise<Event> {
 // Schedule items
 export async function createScheduleItem(
   eventId: string,
-  itemData: Omit<EventScheduleItemInsert, "event_id">
+  itemData: Omit<EventScheduleItemInsert, "event_id">,
 ): Promise<void> {
   const { error } = await supabase.from("event_schedule_items").insert({
     ...itemData,
@@ -239,7 +239,7 @@ export async function createScheduleItem(
 
 export async function updateScheduleItem(
   id: string,
-  updates: EventScheduleItemUpdate
+  updates: EventScheduleItemUpdate,
 ): Promise<void> {
   const { error } = await supabase
     .from("event_schedule_items")

@@ -321,7 +321,7 @@ export default function RunEventPage() {
         details.schedule.map((item) => ({
           name: item.speakerName,
           avatar: item.speakerAvatar,
-        }))
+        })),
       );
     }
   }, [details]);
@@ -392,14 +392,15 @@ export default function RunEventPage() {
       }
     };
   }, []);
-  const [photos, setPhotos] = useState<
-    Array<{
-      id: string;
-      url: string;
-      photo: SessionPhoto;
-      selected?: boolean;
-    }>
-  >();
+  const [photos, setPhotos] =
+    useState<
+      Array<{
+        id: string;
+        url: string;
+        photo: SessionPhoto;
+        selected?: boolean;
+      }>
+    >();
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
@@ -416,7 +417,7 @@ export default function RunEventPage() {
       selected?: boolean;
       thumbnailUrl?: string;
       originalUrl?: string;
-    }>
+    }>,
   ) => {
     const seen = new Set<string>();
     return photos.filter((photo) => {
@@ -729,10 +730,10 @@ export default function RunEventPage() {
         answered: !question.answered,
       });
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg))
+        prev.map((msg) => (msg.id === questionId ? updated : msg)),
       );
       toast.success(
-        updated.answered ? "Marked as answered" : "Marked as unanswered"
+        updated.answered ? "Marked as answered" : "Marked as unanswered",
       );
     } catch (error) {
       console.error("Error updating question:", error);
@@ -750,7 +751,7 @@ export default function RunEventPage() {
     try {
       const updated = await acceptQnaQuestion(questionId, user.id);
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg))
+        prev.map((msg) => (msg.id === questionId ? updated : msg)),
       );
       toast.success("Question accepted");
     } catch (error) {
@@ -768,7 +769,7 @@ export default function RunEventPage() {
     try {
       const updated = await rejectQnaQuestion(questionId);
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg))
+        prev.map((msg) => (msg.id === questionId ? updated : msg)),
       );
       toast.success("Question rejected");
     } catch (error) {
@@ -786,7 +787,7 @@ export default function RunEventPage() {
     try {
       const updated = await markQuestionAsAnswered(questionId);
       setQnaMessages((prev) =>
-        prev.map((msg) => (msg.id === questionId ? updated : msg))
+        prev.map((msg) => (msg.id === questionId ? updated : msg)),
       );
       toast.success("Question marked as answered");
     } catch (error) {
@@ -803,9 +804,9 @@ export default function RunEventPage() {
 
     try {
       // Use the new database function for atomic approval
-      const { data, error } = await supabase.rpc('approve_photo', {
+      const { data, error } = await supabase.rpc("approve_photo", {
         photo_id: photoId,
-        approver_id: user.id
+        approver_id: user.id,
       });
 
       if (error) {
@@ -828,8 +829,8 @@ export default function RunEventPage() {
                   approved_at: new Date().toISOString(),
                 } as any,
               }
-            : p
-        )
+            : p,
+        ),
       );
 
       toast.success("Photo approved");
@@ -847,9 +848,9 @@ export default function RunEventPage() {
 
     try {
       // Use the new database function for atomic rejection and deletion
-      const { data, error } = await supabase.rpc('reject_and_delete_photo', {
+      const { data, error } = await supabase.rpc("reject_and_delete_photo", {
         photo_id: photoId,
-        rejector_id: user.id
+        rejector_id: user.id,
       });
 
       if (error) {
@@ -881,7 +882,7 @@ export default function RunEventPage() {
       // Deduplicate by photo ID to prevent duplicates
       const existingIds = new Set(prev.map((p) => p.id));
       const uniqueNewPhotos = newPhotos.filter(
-        (photo) => !existingIds.has(photo.id)
+        (photo) => !existingIds.has(photo.id),
       );
       return [...uniqueNewPhotos, ...prev]; // Add new photos to the beginning
     });
@@ -906,7 +907,7 @@ export default function RunEventPage() {
   const saveUserPreference = async (
     userId: string,
     key: string,
-    value: any
+    value: any,
   ) => {
     if (!eventId) return;
 
@@ -946,16 +947,19 @@ export default function RunEventPage() {
   };
 
   // Broadcast timer state to all users via real-time using atomic function
-  const broadcastTimerState = async (timerState: {
-    isRunning: boolean;
-    hasStarted: boolean;
-    currentSpeakerIndex: number;
-    addedTime: number;
-    lastUpdate: string;
-    accumulatedMs: number;
-    lastResumedAt: string | null;
-    controlledBy?: string;
-  }, retryCount = 0) => {
+  const broadcastTimerState = async (
+    timerState: {
+      isRunning: boolean;
+      hasStarted: boolean;
+      currentSpeakerIndex: number;
+      addedTime: number;
+      lastUpdate: string;
+      accumulatedMs: number;
+      lastResumedAt: string | null;
+      controlledBy?: string;
+    },
+    retryCount = 0,
+  ) => {
     if (!eventId || !user?.id) return;
 
     const maxRetries = 2;
@@ -963,27 +967,34 @@ export default function RunEventPage() {
 
     try {
       // Use atomic function to prevent race conditions with timeout
-      const { data, error } = await Promise.race([
-        supabase.rpc('update_timer_state', {
+      const { data, error } = (await Promise.race([
+        supabase.rpc("update_timer_state", {
           p_event_id: eventId,
           p_is_running: timerState.isRunning,
           p_has_started: timerState.hasStarted,
           p_current_speaker_index: timerState.currentSpeakerIndex,
           p_added_time: timerState.addedTime,
           p_accumulated_ms: timerState.accumulatedMs,
-          p_last_resumed_at: timerState.lastResumedAt ? new Date(timerState.lastResumedAt).toISOString() : '',
-          p_controlled_by: timerState.controlledBy || user.id
+          p_last_resumed_at: timerState.lastResumedAt
+            ? new Date(timerState.lastResumedAt).toISOString()
+            : "",
+          p_controlled_by: timerState.controlledBy || user.id,
         }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 10000)
-        )
-      ]) as { data: any; error: any };
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Request timeout")), 10000),
+        ),
+      ])) as { data: any; error: any };
 
       if (error) {
         console.error("RPC Error:", error);
         if (retryCount < maxRetries) {
-          console.log(`Retrying timer sync... Attempt ${retryCount + 1}/${maxRetries}`);
-          setTimeout(() => broadcastTimerState(timerState, retryCount + 1), retryDelay);
+          console.log(
+            `Retrying timer sync... Attempt ${retryCount + 1}/${maxRetries}`,
+          );
+          setTimeout(
+            () => broadcastTimerState(timerState, retryCount + 1),
+            retryDelay,
+          );
           return;
         }
         toast.error(`Failed to sync timer state: ${error.message}`);
@@ -993,14 +1004,19 @@ export default function RunEventPage() {
       setLastTimerUpdate(new Date());
     } catch (error: any) {
       console.error("Error broadcasting timer state:", error);
-      const errorMessage = error?.message || 'Unknown error';
-      
+      const errorMessage = error?.message || "Unknown error";
+
       if (retryCount < maxRetries) {
-        console.log(`Retrying timer sync... Attempt ${retryCount + 1}/${maxRetries}`);
-        setTimeout(() => broadcastTimerState(timerState, retryCount + 1), retryDelay);
+        console.log(
+          `Retrying timer sync... Attempt ${retryCount + 1}/${maxRetries}`,
+        );
+        setTimeout(
+          () => broadcastTimerState(timerState, retryCount + 1),
+          retryDelay,
+        );
         return;
       }
-      
+
       toast.error(`Failed to sync timer state: ${errorMessage}`);
     }
   };
@@ -1008,7 +1024,7 @@ export default function RunEventPage() {
   // Save session state periodically - only if we're authorized
   const saveSessionState = async () => {
     if (!eventId || !user?.id) return;
-    
+
     // Only save if we're admin or controlling the timer
     if (userRole !== "admin") return;
 
@@ -1063,7 +1079,7 @@ export default function RunEventPage() {
     if (!photos || selectedPhotos.size === 0) return;
 
     const selectedPhotoData = photos.filter((photo) =>
-      selectedPhotos.has(photo.id)
+      selectedPhotos.has(photo.id),
     );
 
     // Download original quality versions
@@ -1094,7 +1110,7 @@ export default function RunEventPage() {
     toast.success(
       `Downloaded ${selectedPhotos.size} original quality photo${
         selectedPhotos.size > 1 ? "s" : ""
-      }`
+      }`,
     );
   };
 
@@ -1109,14 +1125,16 @@ export default function RunEventPage() {
     const confirmDelete = window.confirm(
       `Are you sure you want to delete ${selectedPhotos.size} selected photo${
         selectedPhotos.size > 1 ? "s" : ""
-      }?`
+      }?`,
     );
 
     if (!confirmDelete) return;
 
     try {
       await Promise.all(
-        Array.from(selectedPhotos).map((photoId) => deleteSessionPhoto(photoId))
+        Array.from(selectedPhotos).map((photoId) =>
+          deleteSessionPhoto(photoId),
+        ),
       );
 
       setPhotos((prev) => prev?.filter((p) => !selectedPhotos.has(p.id)));
@@ -1124,7 +1142,7 @@ export default function RunEventPage() {
       toast.success(
         `Deleted ${selectedPhotos.size} photo${
           selectedPhotos.size > 1 ? "s" : ""
-        }`
+        }`,
       );
     } catch (error) {
       console.error("Error deleting photos:", error);
@@ -1182,7 +1200,7 @@ export default function RunEventPage() {
             };
           }
           return poll;
-        })
+        }),
       );
       toast.success("Vote submitted");
     } catch (error) {
@@ -1197,7 +1215,7 @@ export default function RunEventPage() {
     try {
       const updatedPoll = await updatePoll(pollId, { active });
       setPolls((prev) =>
-        prev.map((poll) => (poll.id === pollId ? { ...poll, active } : poll))
+        prev.map((poll) => (poll.id === pollId ? { ...poll, active } : poll)),
       );
       toast.success(`Poll ${active ? "activated" : "deactivated"}`);
     } catch (error) {
@@ -1208,7 +1226,7 @@ export default function RunEventPage() {
 
   const handleDeletePoll = async (pollId: string) => {
     const confirmDelete = window.confirm(
-      "Are you sure you want to delete this poll?"
+      "Are you sure you want to delete this poll?",
     );
     if (!confirmDelete) return;
 
@@ -1263,12 +1281,14 @@ export default function RunEventPage() {
           const controlledBy = sessionData.controlledBy;
           const isControlledByMe = controlledBy === user.id;
           const lastUpdate = sessionData.lastUpdate;
-          
+
           // Only apply updates if not controlling or if this is a fresh state
           // This prevents flickering when the controlling user makes changes
-          if (!isControlledByMe || !lastTimerUpdate || 
-              (lastUpdate && new Date(lastUpdate) > lastTimerUpdate)) {
-            
+          if (
+            !isControlledByMe ||
+            !lastTimerUpdate ||
+            (lastUpdate && new Date(lastUpdate) > lastTimerUpdate)
+          ) {
             // Apply state changes
             if (sessionData.currentSpeakerIndex !== undefined) {
               setCurrentSpeakerIndex(sessionData.currentSpeakerIndex);
@@ -1286,7 +1306,7 @@ export default function RunEventPage() {
               typeof sessionData.accumulatedMs === "number"
                 ? sessionData.accumulatedMs
                 : 0;
-                
+
             setIsRunning(wasRunning);
             setLastResumedAt(lastAt ?? null);
             setAccumulatedMs(baseAccum);
@@ -1302,7 +1322,7 @@ export default function RunEventPage() {
             setIsTimerSynced(true);
             setLastTimerUpdate(new Date());
           }
-        }
+        },
       )
       .subscribe();
 
@@ -1335,10 +1355,13 @@ export default function RunEventPage() {
         setUserVotes(votes);
 
         // Load photos using the new database function
-        const { data: sessionPhotos, error: photosError } = await supabase.rpc('get_event_photos_for_user', {
-          event_id_param: eventId,
-          user_id_param: user?.id || ''
-        });
+        const { data: sessionPhotos, error: photosError } = await supabase.rpc(
+          "get_event_photos_for_user",
+          {
+            event_id_param: eventId,
+            user_id_param: user?.id || "",
+          },
+        );
 
         if (photosError) {
           console.error("Error fetching photos:", photosError);
@@ -1357,7 +1380,7 @@ export default function RunEventPage() {
                   thumbnailUrl: urls.thumbnail,
                   originalUrl: urls.original,
                 };
-              })
+              }),
             );
             // Deduplicate photos to prevent React key errors
             setPhotos(deduplicatePhotos(photosWithUrls));
@@ -1389,8 +1412,8 @@ export default function RunEventPage() {
             typeof state.accumulatedMs === "number"
               ? state.accumulatedMs
               : typeof state.seconds === "number"
-              ? (state.seconds as number) * 1000
-              : 0;
+                ? (state.seconds as number) * 1000
+                : 0;
           const storedLastResumedAt = state.lastResumedAt as string | null;
           const wasRunning = !!state.isRunning;
 
@@ -1420,7 +1443,7 @@ export default function RunEventPage() {
               if (userPrefs.hideTimeDetails !== undefined) {
                 setHideTimeDetails(userPrefs.hideTimeDetails);
                 console.log(
-                  `Hide time details preference restored: ${userPrefs.hideTimeDetails}`
+                  `Hide time details preference restored: ${userPrefs.hideTimeDetails}`,
                 );
               }
             }
@@ -1450,10 +1473,8 @@ export default function RunEventPage() {
 
       try {
         // Fetch Q&A and polls using the existing API
-        const {
-          questions,
-          polls: sessionPolls,
-        } = await fetchEventSessionForUser(eventId, false); // Don't fetch photos here
+        const { questions, polls: sessionPolls } =
+          await fetchEventSessionForUser(eventId, false); // Don't fetch photos here
 
         if (cancelled) return;
 
@@ -1468,17 +1489,20 @@ export default function RunEventPage() {
         if (!cancelled) setUserVotes(votes);
 
         // Fetch photos using the new database function with proper role-based filtering
-        const { data: sessionPhotos, error: photosError } = await supabase.rpc('get_event_photos_for_user', {
-          event_id_param: eventId,
-          user_id_param: user?.id || ''
-        });
+        const { data: sessionPhotos, error: photosError } = await supabase.rpc(
+          "get_event_photos_for_user",
+          {
+            event_id_param: eventId,
+            user_id_param: user?.id || "",
+          },
+        );
 
         if (photosError) {
           console.error("Error fetching photos:", photosError);
           return;
         }
 
-        // Photos (map to enhanced URLs) 
+        // Photos (map to enhanced URLs)
         const photosWithUrls = await Promise.all(
           (sessionPhotos || []).map(async (photo) => {
             const urls = await getPhotoVersionUrls(photo);
@@ -1490,7 +1514,7 @@ export default function RunEventPage() {
               thumbnailUrl: urls.thumbnail,
               originalUrl: urls.original,
             };
-          })
+          }),
         );
 
         if (!cancelled) {
@@ -1549,7 +1573,7 @@ export default function RunEventPage() {
   // Only save if we're admin to prevent conflicts
   useEffect(() => {
     if (userRole !== "admin" || !sessionHydrated) return;
-    
+
     const saveInterval = setInterval(() => {
       saveSessionState();
     }, 30000); // Save every 30 seconds
@@ -1576,7 +1600,7 @@ export default function RunEventPage() {
   // Best-effort save on tab close - admin only
   useEffect(() => {
     if (userRole !== "admin") return;
-    
+
     const handler = () => {
       try {
         saveSessionState();
@@ -1755,7 +1779,7 @@ export default function RunEventPage() {
                           className="h-8 w-8 rounded-full border-2 border-gray-300"
                           onError={(e) => {
                             console.log(
-                              `Image failed to load for ${item.speakerName}: ${item.speakerAvatar}`
+                              `Image failed to load for ${item.speakerName}: ${item.speakerAvatar}`,
                             );
                             e.currentTarget.src = "/next.svg";
                           }}
@@ -1778,7 +1802,7 @@ export default function RunEventPage() {
                                 {formatSeconds(
                                   (item.targetMinutes ||
                                     item.allocatedMinutes ||
-                                    5) * 60
+                                    5) * 60,
                                 )}
                               </p>
                               <p className="text-red-500">
@@ -1929,7 +1953,7 @@ export default function RunEventPage() {
                                   completed: idx < currentSpeakerIndex,
                                   // Support array of social links
                                   socialLinks: Array.isArray(
-                                    item.socialMediaLinks
+                                    item.socialMediaLinks,
                                   )
                                     ? (item.socialMediaLinks as Array<{
                                         platform: string;
@@ -1949,7 +1973,7 @@ export default function RunEventPage() {
                                 className="size-10 lg:size-20 rounded-full border-2 border-gray-300 flex-shrink-0"
                                 onError={(e) => {
                                   console.log(
-                                    `Mobile image failed to load for ${item.speakerName}: ${item.speakerAvatar}`
+                                    `Mobile image failed to load for ${item.speakerName}: ${item.speakerAvatar}`,
                                   );
                                   e.currentTarget.src = "/next.svg";
                                 }}
@@ -1966,7 +1990,7 @@ export default function RunEventPage() {
                                     <p className="text-green-500">
                                       Min:{" "}
                                       {formatSeconds(
-                                        (item.minMinutes || 3) * 60
+                                        (item.minMinutes || 3) * 60,
                                       )}
                                     </p>
                                     <p className="text-yellow-500">
@@ -1974,13 +1998,13 @@ export default function RunEventPage() {
                                       {formatSeconds(
                                         (item.targetMinutes ||
                                           item.allocatedMinutes ||
-                                          5) * 60
+                                          5) * 60,
                                       )}
                                     </p>
                                     <p className="text-red-500">
                                       Max:{" "}
                                       {formatSeconds(
-                                        (item.maxMinutes || 7) * 60
+                                        (item.maxMinutes || 7) * 60,
                                       )}
                                     </p>
                                   </div>
@@ -2078,10 +2102,10 @@ export default function RunEventPage() {
                               isAnswered
                                 ? "bg-green-50 border-green-200"
                                 : isPending && userRole !== "admin"
-                                ? "opacity-50 bg-gray-50 border-gray-200"
-                                : isRejected
-                                ? "opacity-30 bg-red-50 border-red-200"
-                                : "bg-white"
+                                  ? "opacity-50 bg-gray-50 border-gray-200"
+                                  : isRejected
+                                    ? "opacity-30 bg-red-50 border-red-200"
+                                    : "bg-white"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-3">
@@ -2123,7 +2147,7 @@ export default function RunEventPage() {
                                 </div>
                                 <div className="text-xs text-gray-500">
                                   {new Date(
-                                    msg.created_at || ""
+                                    msg.created_at || "",
                                   ).toLocaleTimeString()}
                                   {isPending && userRole !== "admin" && (
                                     <span className="ml-2 text-gray-400">
@@ -2281,129 +2305,129 @@ export default function RunEventPage() {
                         return true;
                       })
                       .map((photo, index) => {
-                      const isSelected = selectedPhotos.has(photo.id);
-                      const isPending = photo.photo.status === "pending";
-                      const isRejected = photo.photo.status === "rejected";
-                      const isAccepted = photo.photo.status === "accepted";
+                        const isSelected = selectedPhotos.has(photo.id);
+                        const isPending = photo.photo.status === "pending";
+                        const isRejected = photo.photo.status === "rejected";
+                        const isAccepted = photo.photo.status === "accepted";
 
-                      return (
-                        <div
-                          key={photo.id}
-                          className={`relative aspect-square rounded-md overflow-hidden border group cursor-pointer ${
-                            isSelected
-                              ? "border-blue-500 border-2 bg-blue-50"
-                              : isPending && userRole !== "admin"
-                              ? "border-gray-200 opacity-50"
-                              : isRejected
-                              ? "border-red-200 opacity-30"
-                              : "border-gray-200"
-                          }`}
-                          onClick={() => openGallery(index)}
-                        >
-                          <img
-                            src={(photo as any).thumbnailUrl || photo.url} // Use thumbnail for grid display
-                            alt={photo.photo.file_name}
-                            className={`h-full w-full object-cover transition-opacity duration-200 ${
-                              isPending && userRole !== "admin"
-                                ? "grayscale"
-                                : ""
-                            }`}
-                            loading="lazy" // Enable lazy loading for better performance
-                            onError={(e) => {
-                              // Fallback to medium/main URL if thumbnail fails
-                              const target = e.target as HTMLImageElement;
-                              if (target.src !== photo.url) {
-                                target.src = photo.url;
-                              }
-                            }}
-                          />
-
-                          {/* Status overlay - only show for non-admin users */}
-                          {isPending && userRole !== "admin" && (
-                            <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                              <Badge className="bg-yellow-500 text-white text-xs">
-                                Pending
-                              </Badge>
-                            </div>
-                          )}
-                          {isRejected && (
-                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                              <Badge className="bg-red-500 text-white text-xs">
-                                Rejected
-                              </Badge>
-                            </div>
-                          )}
-
-                          {/* Admin approval controls for pending photos */}
-                          {userRole === "admin" && isPending && (
-                            <div className="absolute bottom-1 left-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAcceptPhoto(photo.id);
-                                }}
-                                className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs py-1 h-auto"
-                              >
-                                <Check />
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRejectPhoto(photo.id);
-                                }}
-                                className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-1 h-auto"
-                              >
-                                <X />
-                              </Button>
-                            </div>
-                          )}
-
-                          {/* Selection indicator */}
+                        return (
                           <div
-                            className={`absolute top-1 left-1 w-5 h-5 rounded border flex items-center justify-center ${
+                            key={photo.id}
+                            className={`relative aspect-square rounded-md overflow-hidden border group cursor-pointer ${
                               isSelected
-                                ? "bg-blue-500 border-blue-500"
-                                : "bg-white/80 border-gray-300 opacity-0 group-hover:opacity-100"
-                            } transition-opacity`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              togglePhotoSelection(photo.id);
-                            }}
+                                ? "border-blue-500 border-2 bg-blue-50"
+                                : isPending && userRole !== "admin"
+                                  ? "border-gray-200 opacity-50"
+                                  : isRejected
+                                    ? "border-red-200 opacity-30"
+                                    : "border-gray-200"
+                            }`}
+                            onClick={() => openGallery(index)}
                           >
-                            {isSelected && (
-                              <svg
-                                className="h-3 w-3 text-white"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            )}
-                          </div>
+                            <img
+                              src={(photo as any).thumbnailUrl || photo.url} // Use thumbnail for grid display
+                              alt={photo.photo.file_name}
+                              className={`h-full w-full object-cover transition-opacity duration-200 ${
+                                isPending && userRole !== "admin"
+                                  ? "grayscale"
+                                  : ""
+                              }`}
+                              loading="lazy" // Enable lazy loading for better performance
+                              onError={(e) => {
+                                // Fallback to medium/main URL if thumbnail fails
+                                const target = e.target as HTMLImageElement;
+                                if (target.src !== photo.url) {
+                                  target.src = photo.url;
+                                }
+                              }}
+                            />
 
-                          {/* Individual delete button */}
-                          {(userRole === "admin" ||
-                            photo.photo.uploaded_by === user?.id) && (
-                            <button
+                            {/* Status overlay - only show for non-admin users */}
+                            {isPending && userRole !== "admin" && (
+                              <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+                                <Badge className="bg-yellow-500 text-white text-xs">
+                                  Pending
+                                </Badge>
+                              </div>
+                            )}
+                            {isRejected && (
+                              <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                                <Badge className="bg-red-500 text-white text-xs">
+                                  Rejected
+                                </Badge>
+                              </div>
+                            )}
+
+                            {/* Admin approval controls for pending photos */}
+                            {userRole === "admin" && isPending && (
+                              <div className="absolute bottom-1 left-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAcceptPhoto(photo.id);
+                                  }}
+                                  className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs py-1 h-auto"
+                                >
+                                  <Check />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRejectPhoto(photo.id);
+                                  }}
+                                  className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-1 h-auto"
+                                >
+                                  <X />
+                                </Button>
+                              </div>
+                            )}
+
+                            {/* Selection indicator */}
+                            <div
+                              className={`absolute top-1 left-1 w-5 h-5 rounded border flex items-center justify-center ${
+                                isSelected
+                                  ? "bg-blue-500 border-blue-500"
+                                  : "bg-white/80 border-gray-300 opacity-0 group-hover:opacity-100"
+                              } transition-opacity`}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeletePhoto(photo.id);
+                                togglePhotoSelection(photo.id);
                               }}
-                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Delete photo"
                             >
-                              <X className="h-3 w-3" />
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
+                              {isSelected && (
+                                <svg
+                                  className="h-3 w-3 text-white"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              )}
+                            </div>
+
+                            {/* Individual delete button */}
+                            {(userRole === "admin" ||
+                              photo.photo.uploaded_by === user?.id) && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeletePhoto(photo.id);
+                                }}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Delete photo"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               )}

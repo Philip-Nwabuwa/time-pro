@@ -137,8 +137,8 @@ export default function CompletedEventArchivePage() {
                   approved: true,
                 } as any,
               }
-            : p
-        )
+            : p,
+        ),
       );
       toast.success("Photo accepted");
     } catch (e) {
@@ -155,8 +155,8 @@ export default function CompletedEventArchivePage() {
         prev.map((p) =>
           p.id === photoId
             ? { ...p, photo: { ...p.photo, status: "rejected" } as any }
-            : p
-        )
+            : p,
+        ),
       );
       toast.success("Photo rejected");
     } catch (e) {
@@ -189,7 +189,7 @@ export default function CompletedEventArchivePage() {
                 thumbnailUrl: urls.thumbnail,
                 originalUrl: urls.original,
               };
-            })
+            }),
           );
           setPhotos(photosWithUrls);
         } else {
@@ -456,8 +456,8 @@ export default function CompletedEventArchivePage() {
                               isAnswered
                                 ? "bg-green-50 border-green-200"
                                 : isRejected
-                                ? "opacity-30 bg-red-50 border-red-200"
-                                : "bg-white"
+                                  ? "opacity-30 bg-red-50 border-red-200"
+                                  : "bg-white"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-3">
@@ -469,7 +469,7 @@ export default function CompletedEventArchivePage() {
                                 </div>
                                 <div className="text-xs text-gray-500">
                                   {new Date(
-                                    msg.created_at || ""
+                                    msg.created_at || "",
                                   ).toLocaleTimeString()}
                                 </div>
                               </div>
@@ -517,8 +517,8 @@ export default function CompletedEventArchivePage() {
                           userRole !== "admin"
                             ? "border-gray-200 opacity-50"
                             : photo.photo.status === "rejected"
-                            ? "border-red-200 opacity-30"
-                            : "border-gray-200"
+                              ? "border-red-200 opacity-30"
+                              : "border-gray-200"
                         }`}
                         onClick={() => openGallery(index)}
                       >
