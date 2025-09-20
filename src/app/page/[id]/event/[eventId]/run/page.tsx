@@ -71,7 +71,6 @@ import PollsSection from "@/components/polls/PollsSection";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateEvent } from "@/lib/api/events";
 import ImageGallery from "@/components/ImageGallery";
-import AddTimeModal from "@/components/modals/AddTimeModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import EndMeetingModal from "@/components/modals/EndMeetingModal";
 import { checkUserMembership } from "@/lib/api/members";
@@ -430,9 +429,7 @@ export default function RunEventPage() {
   };
 
   // Modal states
-  const [showAddTimeModal, setShowAddTimeModal] = useState(false);
   const [showEndMeetingModal, setShowEndMeetingModal] = useState(false);
-  const [stoppedTime, setStoppedTime] = useState<string>("");
 
   // Polls state
   const [polls, setPolls] = useState<PollWithOptions[]>([]);
@@ -469,25 +466,22 @@ export default function RunEventPage() {
 
   // Timer colors based on time thresholds
   const { timerBackgroundColor, timerTextColor } = useMemo(() => {
-    if (seconds < min) {
+    if (seconds <= min) {
+      // 0 to min: Green
       return {
         timerBackgroundColor: "bg-green-600",
         timerTextColor: "text-white",
       };
-    } else if (seconds > max) {
-      return {
-        timerBackgroundColor: "bg-red-600",
-        timerTextColor: "text-white",
-      };
-    } else if (seconds > target) {
+    } else if (seconds <= target) {
+      // min to target: Yellow
       return {
         timerBackgroundColor: "bg-yellow-600",
         timerTextColor: "text-white",
       };
     } else {
-      // Between min and target - should be green (on time)
+      // greater than target: Red
       return {
-        timerBackgroundColor: "bg-green-600",
+        timerBackgroundColor: "bg-red-600",
         timerTextColor: "text-white",
       };
     }
@@ -615,8 +609,6 @@ export default function RunEventPage() {
       setIsRunning(false);
       setAccumulatedMs(newAccumulated);
       setLastResumedAt(null);
-      setStoppedTime(formatSeconds(currentTime));
-      setShowAddTimeModal(true);
       await broadcastTimerState({
         isRunning: false,
         hasStarted: true,
@@ -630,28 +622,6 @@ export default function RunEventPage() {
     }
   };
 
-  const handleAddTimeFromModal = (additionalSeconds: number) => {
-    if (additionalSeconds > 0) {
-      const newAddedTime = addedTime + additionalSeconds;
-      setAddedTime(newAddedTime);
-      // Broadcast added time change from modal confirmation
-      broadcastTimerState({
-        isRunning,
-        hasStarted,
-        currentSpeakerIndex,
-        addedTime: newAddedTime,
-        lastUpdate: new Date().toISOString(),
-        accumulatedMs,
-        lastResumedAt,
-        controlledBy: user?.id,
-      });
-    }
-    setShowAddTimeModal(false);
-  };
-
-  const handleCloseAddTimeModal = () => {
-    setShowAddTimeModal(false);
-  };
 
   // Hide details toggle function
   const handleToggleHideDetails = () => {
@@ -946,47 +916,45 @@ export default function RunEventPage() {
     }
   };
 
-  // Broadcast timer state to all users via real-time using atomic function
+  // Improved timer state broadcasting with better error handling
   const broadcastTimerState = async (
     timerState: {
       isRunning: boolean;
       hasStarted: boolean;
       currentSpeakerIndex: number;
       addedTime: number;
-      lastUpdate: string;
       accumulatedMs: number;
       lastResumedAt: string | null;
       controlledBy?: string;
+      lastUpdate?: string;
     },
     retryCount = 0,
   ) => {
     if (!eventId || !user?.id) return;
 
-    const maxRetries = 2;
-    const retryDelay = 1000; // 1 second
+    const maxRetries = 3;
+    const retryDelay = Math.min(1000 * Math.pow(2, retryCount), 5000); // Exponential backoff
 
     try {
-      // Use atomic function to prevent race conditions with timeout
+      // Use improved timer state function with longer timeout
       const { data, error } = (await Promise.race([
-        supabase.rpc("update_timer_state", {
+        supabase.rpc("update_timer_state_v2", {
           p_event_id: eventId,
           p_is_running: timerState.isRunning,
           p_has_started: timerState.hasStarted,
           p_current_speaker_index: timerState.currentSpeakerIndex,
           p_added_time: timerState.addedTime,
           p_accumulated_ms: timerState.accumulatedMs,
-          p_last_resumed_at: timerState.lastResumedAt
-            ? new Date(timerState.lastResumedAt).toISOString()
-            : "",
+          p_last_resumed_at: timerState.lastResumedAt || undefined,
           p_controlled_by: timerState.controlledBy || user.id,
         }),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Request timeout")), 10000),
+          setTimeout(() => reject(new Error("Request timeout")), 15000),
         ),
       ])) as { data: any; error: any };
 
       if (error) {
-        console.error("RPC Error:", error);
+        console.error("Timer sync error:", error);
         if (retryCount < maxRetries) {
           console.log(
             `Retrying timer sync... Attempt ${retryCount + 1}/${maxRetries}`,
@@ -997,14 +965,20 @@ export default function RunEventPage() {
           );
           return;
         }
-        toast.error(`Failed to sync timer state: ${error.message}`);
+        toast.error(`Failed to sync timer: ${error.message}`);
         return;
       }
 
+      // Update local state with server response if available
+      if (data && typeof data === 'object' && 'serverCalculatedSeconds' in data) {
+        const serverSeconds = data.serverCalculatedSeconds as number;
+        setSeconds(serverSeconds);
+      }
+
       setLastTimerUpdate(new Date());
+      setIsTimerSynced(true);
     } catch (error: any) {
-      console.error("Error broadcasting timer state:", error);
-      const errorMessage = error?.message || "Unknown error";
+      console.error("Timer broadcast error:", error);
 
       if (retryCount < maxRetries) {
         console.log(
@@ -1017,7 +991,62 @@ export default function RunEventPage() {
         return;
       }
 
-      toast.error(`Failed to sync timer state: ${errorMessage}`);
+      toast.error(`Timer sync failed: Network error`);
+      setIsTimerSynced(false);
+    }
+  };
+
+  // Heartbeat function to keep timer sync alive
+  const sendTimerHeartbeat = async () => {
+    if (!eventId || !isRunning || userRole !== "admin") return;
+
+    try {
+      const { data, error } = await supabase.rpc("heartbeat_timer", {
+        p_event_id: eventId,
+      });
+
+      if (error) {
+        console.warn("Timer heartbeat failed:", error);
+        return;
+      }
+
+      // Update with server-calculated time if available
+      if (data && typeof data === 'object' && 'serverCalculatedSeconds' in data) {
+        const serverSeconds = data.serverCalculatedSeconds as number;
+        setSeconds(serverSeconds);
+        setIsTimerSynced(true);
+      }
+    } catch (error) {
+      console.warn("Timer heartbeat error:", error);
+    }
+  };
+
+  // Get server-calculated timer state
+  const fetchServerTimerState = async (): Promise<{
+    currentSpeakerIndex?: number;
+    addedTime?: number;
+    hasStarted?: boolean;
+    isRunning?: boolean;
+    lastResumedAt?: string | null;
+    accumulatedMs?: number;
+    serverCalculatedSeconds?: number;
+  } | null> => {
+    if (!eventId) return null;
+
+    try {
+      const { data, error } = await supabase.rpc("get_timer_state_with_server_time", {
+        p_event_id: eventId,
+      });
+
+      if (error) {
+        console.error("Failed to fetch server timer state:", error);
+        return null;
+      }
+
+      return data as any;
+    } catch (error) {
+      console.error("Error fetching server timer state:", error);
+      return null;
     }
   };
 
@@ -1259,7 +1288,7 @@ export default function RunEventPage() {
     checkRole();
   }, [user, pageId]);
 
-  // Real-time timer synchronization - Only update if not controlling timer
+  // Simplified real-time timer synchronization
   useEffect(() => {
     if (!eventId || !user) return;
 
@@ -1273,54 +1302,54 @@ export default function RunEventPage() {
           table: "event_session_data",
           filter: `event_id=eq.${eventId}`,
         },
-        (payload) => {
+        async (payload) => {
           const sessionData = payload.new.session_data;
           if (!sessionData) return;
 
-          // Get the controlling user
           const controlledBy = sessionData.controlledBy;
           const isControlledByMe = controlledBy === user.id;
           const lastUpdate = sessionData.lastUpdate;
 
-          // Only apply updates if not controlling or if this is a fresh state
-          // This prevents flickering when the controlling user makes changes
-          if (
+          // For non-controllers, always apply updates
+          // For controllers, only apply if the update is newer than our last action
+          const shouldApplyUpdate =
             !isControlledByMe ||
             !lastTimerUpdate ||
-            (lastUpdate && new Date(lastUpdate) > lastTimerUpdate)
-          ) {
-            // Apply state changes
-            if (sessionData.currentSpeakerIndex !== undefined) {
-              setCurrentSpeakerIndex(sessionData.currentSpeakerIndex);
-            }
-            if (sessionData.addedTime !== undefined) {
-              setAddedTime(sessionData.addedTime);
-            }
-            if (sessionData.hasStarted !== undefined) {
-              setHasStarted(sessionData.hasStarted);
-            }
+            (lastUpdate && new Date(lastUpdate) > lastTimerUpdate);
 
-            const wasRunning = !!sessionData.isRunning;
-            const lastAt = sessionData.lastResumedAt as string | null;
-            const baseAccum =
-              typeof sessionData.accumulatedMs === "number"
-                ? sessionData.accumulatedMs
-                : 0;
+          if (shouldApplyUpdate) {
+            // Get server-calculated state for accurate time
+            const serverState = await fetchServerTimerState();
 
-            setIsRunning(wasRunning);
-            setLastResumedAt(lastAt ?? null);
-            setAccumulatedMs(baseAccum);
+            if (serverState) {
+              // Apply all state from server
+              if (serverState.currentSpeakerIndex !== undefined) {
+                setCurrentSpeakerIndex(serverState.currentSpeakerIndex);
+              }
+              if (serverState.addedTime !== undefined) {
+                setAddedTime(serverState.addedTime);
+              }
+              if (serverState.hasStarted !== undefined) {
+                setHasStarted(serverState.hasStarted);
+              }
+              if (serverState.isRunning !== undefined) {
+                setIsRunning(serverState.isRunning);
+              }
+              if (serverState.lastResumedAt !== undefined) {
+                setLastResumedAt(serverState.lastResumedAt);
+              }
+              if (serverState.accumulatedMs !== undefined) {
+                setAccumulatedMs(serverState.accumulatedMs);
+              }
 
-            // Calculate current seconds based on timer state
-            if (wasRunning && lastAt) {
-              const elapsed = Math.max(0, Date.now() - Date.parse(lastAt));
-              setSeconds(Math.floor((baseAccum + elapsed) / 1000));
-            } else {
-              setSeconds(Math.floor(baseAccum / 1000));
+              // Use server-calculated seconds for accuracy
+              if (serverState.serverCalculatedSeconds !== undefined) {
+                setSeconds(serverState.serverCalculatedSeconds);
+              }
+
+              setIsTimerSynced(true);
+              setLastTimerUpdate(new Date());
             }
-
-            setIsTimerSynced(true);
-            setLastTimerUpdate(new Date());
           }
         },
       )
@@ -1330,6 +1359,46 @@ export default function RunEventPage() {
       supabase.removeChannel(channel);
     };
   }, [eventId, user, lastTimerUpdate]);
+
+  // Heartbeat for running timers
+  useEffect(() => {
+    if (!isRunning || userRole !== "admin") return;
+
+    // Send heartbeat every 10 seconds for running timers
+    const heartbeatInterval = setInterval(sendTimerHeartbeat, 10000);
+
+    return () => {
+      clearInterval(heartbeatInterval);
+    };
+  }, [isRunning, userRole, eventId]);
+
+  // Timer recovery - periodically check server state if sync is lost
+  useEffect(() => {
+    if (!eventId || isTimerSynced) return;
+
+    const recoveryInterval = setInterval(async () => {
+      console.log("Attempting timer recovery...");
+      const serverState = await fetchServerTimerState();
+
+      if (serverState) {
+        // Apply server state
+        setCurrentSpeakerIndex(serverState.currentSpeakerIndex || 0);
+        setAddedTime(serverState.addedTime || 0);
+        setHasStarted(serverState.hasStarted || false);
+        setIsRunning(serverState.isRunning || false);
+        setLastResumedAt(serverState.lastResumedAt || null);
+        setAccumulatedMs(serverState.accumulatedMs || 0);
+        setSeconds(serverState.serverCalculatedSeconds || 0);
+
+        setIsTimerSynced(true);
+        toast.success("Timer synchronized");
+      }
+    }, 15000); // Try recovery every 15 seconds
+
+    return () => {
+      clearInterval(recoveryInterval);
+    };
+  }, [eventId, isTimerSynced]);
 
   // Load session data on mount
   useEffect(() => {
@@ -1389,64 +1458,87 @@ export default function RunEventPage() {
           }
         }
 
-        // Restore session state if available
-        if (
-          sessionData?.session_data &&
-          typeof sessionData.session_data === "object" &&
-          !Array.isArray(sessionData.session_data)
-        ) {
-          const state = sessionData.session_data as Record<string, any>;
-          console.log("Restoring session state:", state);
+        // Restore session state using server-calculated time
+        const serverState = await fetchServerTimerState();
+        if (serverState) {
+          console.log("Restoring session state from server:", serverState);
 
-          if (state.currentSpeakerIndex !== undefined) {
-            setCurrentSpeakerIndex(state.currentSpeakerIndex);
+          // Apply server state
+          if (serverState.currentSpeakerIndex !== undefined) {
+            setCurrentSpeakerIndex(serverState.currentSpeakerIndex);
           }
-          if (state.addedTime !== undefined) setAddedTime(state.addedTime);
-          if (state.hasStarted !== undefined) setHasStarted(state.hasStarted);
-
-          // Restore timing model robustly:
-          // If timer is running and lastResumedAt exists, compute elapsed since then
-          // otherwise use accumulatedMs fallback
-          const now = Date.now();
-          const storedAccumulated =
-            typeof state.accumulatedMs === "number"
-              ? state.accumulatedMs
-              : typeof state.seconds === "number"
-                ? (state.seconds as number) * 1000
-                : 0;
-          const storedLastResumedAt = state.lastResumedAt as string | null;
-          const wasRunning = !!state.isRunning;
-
-          setIsRunning(wasRunning);
-          setLastResumedAt(storedLastResumedAt ?? null);
-
-          if (wasRunning && storedLastResumedAt) {
-            const elapsed = Math.max(0, now - Date.parse(storedLastResumedAt));
-            setAccumulatedMs(storedAccumulated); // keep base
-            setSeconds(Math.floor((storedAccumulated + elapsed) / 1000));
-          } else {
-            setAccumulatedMs(storedAccumulated);
-            setSeconds(Math.floor(storedAccumulated / 1000));
+          if (serverState.addedTime !== undefined) {
+            setAddedTime(serverState.addedTime);
           }
+          if (serverState.hasStarted !== undefined) {
+            setHasStarted(serverState.hasStarted);
+          }
+          if (serverState.isRunning !== undefined) {
+            setIsRunning(serverState.isRunning);
+          }
+          if (serverState.lastResumedAt !== undefined) {
+            setLastResumedAt(serverState.lastResumedAt);
+          }
+          if (serverState.accumulatedMs !== undefined) {
+            setAccumulatedMs(serverState.accumulatedMs);
+          }
+
+          // Use server-calculated seconds for accuracy
+          if (serverState.serverCalculatedSeconds !== undefined) {
+            setSeconds(serverState.serverCalculatedSeconds);
+          }
+
+          setIsTimerSynced(true);
 
           // Restore user preferences if available
           if (
-            state.userPreferences &&
-            typeof state.userPreferences === "object" &&
-            !Array.isArray(state.userPreferences) &&
-            user?.id
+            sessionData?.session_data &&
+            typeof sessionData.session_data === "object" &&
+            !Array.isArray(sessionData.session_data)
           ) {
-            const userPrefs = (state.userPreferences as Record<string, any>)[
-              user.id
-            ];
-            if (userPrefs) {
-              if (userPrefs.hideTimeDetails !== undefined) {
-                setHideTimeDetails(userPrefs.hideTimeDetails);
-                console.log(
-                  `Hide time details preference restored: ${userPrefs.hideTimeDetails}`,
-                );
+            const state = sessionData.session_data as Record<string, any>;
+
+            if (
+              state.userPreferences &&
+              typeof state.userPreferences === "object" &&
+              !Array.isArray(state.userPreferences) &&
+              user?.id
+            ) {
+              const userPrefs = (state.userPreferences as Record<string, any>)[
+                user.id
+              ];
+              if (userPrefs) {
+                if (userPrefs.hideTimeDetails !== undefined) {
+                  setHideTimeDetails(userPrefs.hideTimeDetails);
+                  console.log(
+                    `Hide time details preference restored: ${userPrefs.hideTimeDetails}`,
+                  );
+                }
               }
             }
+          }
+        } else {
+          // Fallback to legacy session data if server state fails
+          if (
+            sessionData?.session_data &&
+            typeof sessionData.session_data === "object" &&
+            !Array.isArray(sessionData.session_data)
+          ) {
+            const state = sessionData.session_data as Record<string, any>;
+            console.log("Restoring session state (fallback):", state);
+
+            if (state.currentSpeakerIndex !== undefined) {
+              setCurrentSpeakerIndex(state.currentSpeakerIndex);
+            }
+            if (state.addedTime !== undefined) setAddedTime(state.addedTime);
+            if (state.hasStarted !== undefined) setHasStarted(state.hasStarted);
+            if (state.isRunning !== undefined) setIsRunning(state.isRunning);
+            if (state.lastResumedAt !== undefined) setLastResumedAt(state.lastResumedAt);
+            if (state.accumulatedMs !== undefined) setAccumulatedMs(state.accumulatedMs);
+
+            // Calculate seconds from accumulated time
+            const accMs = state.accumulatedMs || 0;
+            setSeconds(Math.floor(accMs / 1000));
           }
         }
         setSessionHydrated(true);
@@ -1537,13 +1629,13 @@ export default function RunEventPage() {
     };
   }, [eventId, userRole, loadingPhotos]);
 
-  // Timer interval - derive seconds from accumulatedMs and lastResumedAt
-  // Only run local timer for display purposes, sync updates come from real-time
+  // Improved timer interval with server sync validation
   useEffect(() => {
     const computeSeconds = () => {
       if (isRunning && lastResumedAt) {
         const elapsed = Math.max(0, Date.now() - Date.parse(lastResumedAt));
-        setSeconds(Math.floor((accumulatedMs + elapsed) / 1000));
+        const calculatedSeconds = Math.floor((accumulatedMs + elapsed) / 1000);
+        setSeconds(calculatedSeconds);
       } else {
         setSeconds(Math.floor(accumulatedMs / 1000));
       }
@@ -1569,46 +1661,57 @@ export default function RunEventPage() {
     };
   }, [isRunning, lastResumedAt, accumulatedMs]);
 
-  // Auto-save session state periodically and when timer state changes
-  // Only save if we're admin to prevent conflicts
+  // Periodic server sync validation for running timers
+  useEffect(() => {
+    if (!isRunning || userRole !== "admin") return;
+
+    // Sync with server every 30 seconds to prevent major drift
+    const syncInterval = setInterval(async () => {
+      const serverState = await fetchServerTimerState();
+      if (serverState && serverState.serverCalculatedSeconds !== undefined) {
+        const clientSeconds = seconds;
+        const serverSeconds = serverState.serverCalculatedSeconds;
+        const drift = Math.abs(clientSeconds - serverSeconds);
+
+        // If drift is more than 3 seconds, sync with server
+        if (drift > 3) {
+          console.log(`Timer drift detected: ${drift}s, syncing with server`);
+          setSeconds(serverSeconds);
+          setAccumulatedMs(serverState.accumulatedMs || 0);
+          setLastResumedAt(serverState.lastResumedAt || null);
+        }
+      }
+    }, 30000);
+
+    return () => {
+      clearInterval(syncInterval);
+    };
+  }, [isRunning, userRole, seconds]);
+
+  // Simplified auto-save - only admin users can save timer state
+  // Timer state is saved automatically through broadcastTimerState calls
   useEffect(() => {
     if (userRole !== "admin" || !sessionHydrated) return;
 
+    // Backup save every 60 seconds (reduced frequency to prevent conflicts)
     const saveInterval = setInterval(() => {
-      saveSessionState();
-    }, 30000); // Save every 30 seconds
+      if (isRunning) {
+        // Only save if timer is actively running
+        saveSessionState();
+      }
+    }, 60000);
+
     return () => clearInterval(saveInterval);
-  }, [userRole, sessionHydrated]);
+  }, [userRole, sessionHydrated, isRunning]);
 
-  // Save state immediately when timer stops (paused) - admin only
-  useEffect(() => {
-    if (!sessionHydrated || userRole !== "admin") return;
-    if (!isRunning && hasStarted) {
-      // Timer was paused, save state immediately
-      saveSessionState();
-    }
-  }, [isRunning, hasStarted, sessionHydrated, userRole]);
-
-  // Save state when component unmounts - admin only
+  // Save state on component unmount - admin only
   useEffect(() => {
     return () => {
-      if (!sessionHydrated || userRole !== "admin") return;
-      saveSessionState();
-    };
-  }, [sessionHydrated, userRole]);
-
-  // Best-effort save on tab close - admin only
-  useEffect(() => {
-    if (userRole !== "admin") return;
-
-    const handler = () => {
-      try {
+      if (userRole === "admin" && sessionHydrated) {
         saveSessionState();
-      } catch {}
+      }
     };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [userRole]);
+  }, [userRole, sessionHydrated]);
 
   // Handle ESC key to exit fullscreen
   useEffect(() => {
@@ -2588,12 +2691,6 @@ export default function RunEventPage() {
       />
 
       {/* Modals */}
-      <AddTimeModal
-        isOpen={showAddTimeModal}
-        onClose={handleCloseAddTimeModal}
-        onConfirm={handleAddTimeFromModal}
-        currentTime={stoppedTime}
-      />
 
       <EndMeetingModal
         isOpen={showEndMeetingModal}
