@@ -1358,7 +1358,7 @@ export default function RunEventPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [eventId, user, lastTimerUpdate]);
+  }, [eventId, user]);
 
   // Heartbeat for running timers
   useEffect(() => {
